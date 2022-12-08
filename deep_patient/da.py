@@ -28,13 +28,13 @@ class DA(object):
         try:
             self.nv = int(nvisible)
         except Exception:
-            print 'ERROR: visible unit no. not valid'
+            print('ERROR: visible unit no. not valid')
             return
 
         try:
             self.nh = int(nhidden)
         except Exception:
-            print 'ERROR: hidden unit no. not valid'
+            print('ERROR: hidden unit no. not valid')
             return
 
         # hidden units
@@ -57,11 +57,11 @@ class DA(object):
 
     def train(self, data):
         if data.shape[1] != self.nv:
-            print 'ERROR: no. of data features not agreeing with the' \
-                'no. of visible units'
+            print('ERROR: no. of data features not agreeing with the' \
+                'no. of visible units')
             return
 
-        print 'training: DA [layer: %d]' % self.layer
+        print('training: DA [layer: %d]' % self.layer)
 
         try:
             data = data.toarray()
@@ -69,13 +69,13 @@ class DA(object):
             pass
 
         if data.shape[0] > max_sample:
-            idx = [i for i in xrange(data.shape[0])]
+            idx = [i for i in range(data.shape[0])]
             random.shuffle(idx)
             idx = idx[:max_sample]
             data = data[idx, :]
-            print 'resized data: using %d samples' % (data.shape[0])
+            print('resized data: using %d samples' % (data.shape[0]))
 
-        print '(*) preprocessing: normalize features'
+        print('(*) preprocessing: normalize features')
         data = self.normalizer.fit_transform(data)
 
         dt = theano.shared(value=data.astype(
@@ -98,14 +98,14 @@ class DA(object):
         start_time = timeit.default_timer()
 
         pcost = 0.0
-        for epc in xrange(self.epochs):
+        for epc in range(self.epochs):
             c = []
 
-            for bidx in xrange(nbatch):
+            for bidx in range(int(nbatch)):
                 c.append(train_da(bidx))
 
             ccost = np.mean(c)
-            print '(*) epoch %d, cost %.3f' % (epc + 1, ccost)
+            print('(*) epoch %d, cost %.3f' % (epc + 1, ccost))
 
             if abs(ccost - pcost) < 10e-1:
                 break
@@ -114,7 +114,7 @@ class DA(object):
 
         end_time = timeit.default_timer()
 
-        print '(*) training time: %.2f sec.' % (end_time - start_time)
+        print('(*) training time: %.2f sec.' % (end_time - start_time))
 
         return
 
@@ -235,12 +235,12 @@ class DA(object):
         """
         Print model details
         """
-        print 'initialized: DA [layer: %d]' % self.layer
-        print '(*) no. of visible units: %d' % self.nv
-        print '(*) no. of hidden units: %d' % self.nh
-        print '(*) data corruption level: %.2f' % self.corrupt_lvl
-        print '(*) learning rate: %.2f' % self.learn_rate
-        print '(*) batch size: %d' % self.batch_size
-        print '(*) no. of epochs: %d' % self.epochs
-        print ''
+        print('initialized: DA [layer: %d]' % self.layer)
+        print('(*) no. of visible units: %d' % self.nv)
+        print('(*) no. of hidden units: %d' % self.nh)
+        print('(*) data corruption level: %.2f' % self.corrupt_lvl)
+        print('(*) learning rate: %.2f' % self.learn_rate)
+        print('(*) batch size: %d' % self.batch_size)
+        print('(*) no. of epochs: %d' % self.epochs)
+        print('')
         return

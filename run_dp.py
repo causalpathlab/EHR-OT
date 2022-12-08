@@ -1,5 +1,6 @@
 from scipy import sparse
-import deep_patient as dp
+from deep_patient.sda import SDA
+# import deep_patient as dp
 import numpy as np
 
 # create fake data
@@ -9,7 +10,7 @@ data = sparse.csc_matrix(rndm, dtype=float)
 # initiate the model
 nhidden = 10
 nlayer = 3
-sda = dp.SDA(data.shape[1],
+sda = SDA(data.shape[1],
              nhidden=nhidden,
              nlayer=nlayer,
              param={
@@ -24,5 +25,5 @@ sda.train(data)
 # apply the mode
 deep_repr = sda.apply(data)
 
-print '\nfinal representation\n'
-print deep_repr
+print('\nfinal representation\n')
+print(deep_repr)
