@@ -1,4 +1,5 @@
 from theano.tensor.shared_randomstreams import RandomStreams
+# from theano.tensor.random.utils import RandomStream
 from sklearn import preprocessing as preproc
 from scipy import sparse
 import random

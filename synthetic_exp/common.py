@@ -4,9 +4,6 @@ Common functions for synthetic datasets
 import sys
 sys.path.append("/home/wanxinli/deep_patient")
 
-import csv
-from deep_patient.sda import SDA
-import numpy as np
 import os
 import ot
 import pandas as pd
