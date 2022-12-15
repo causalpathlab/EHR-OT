@@ -144,6 +144,7 @@ def run_proc_multi(sim_func, custom_train_reps, n_times = 100):
         trans_female_accuracies, trans_female_precisions, trans_female_recalls
 
 
+
 """ 
 Constructs a dataframe to demonstrate the accuracy statistics for binary labels
 """
@@ -168,6 +169,10 @@ def save_scores(male_accuracies, male_precisions, male_recalls, \
     # save
     score_df.to_csv(os.path.join(indir, "scores.csv"), index=None)
 
+
+""" 
+Box plot of simulation result statistics
+"""
 
 def box_plot(scores_path):
     """ 
