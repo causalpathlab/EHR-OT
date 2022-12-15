@@ -24,20 +24,21 @@ def trans_female2male(male_reps, female_reps):
 
     :returns: transported female representations
     """
-    ot_emd = ot.da.EMDTransport()
+    ot_emd = ot.da.EMDTransport(max_iter=100000) # change this number if not converged
     ot_emd.fit(Xs=female_reps, Xt=male_reps)
     trans_female_reps = ot_emd.transform(Xs=female_reps)
     return trans_female_reps
 
 
 """ 
-Caculate statistics
+Caculate result statistics for binary labels
 """
 
-def cal_stats(male_reps, male_labels, female_reps, female_labels, trans_female_reps):
+def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, trans_female_reps):
     """ 
     Calculate accuracy statistics based on logistic regression between the \
         patient representations and label labels
+    This function is for binary labels
     
     :returns: using the male model,\
         - accuracy for male/female/transported female
@@ -72,10 +73,10 @@ def cal_stats(male_reps, male_labels, female_reps, female_labels, trans_female_r
 
 
 """ 
-Wrap up everything
+Wrap up everything for binary labels
 """
 
-def entire_proc(sim_func, custom_train_reps):
+def entire_proc_binary(sim_func, custom_train_reps):
     """ 
     Executes the entire procedure including
         - generate male sequences, male labels, female sequences and female labels
@@ -94,7 +95,7 @@ def entire_proc(sim_func, custom_train_reps):
     male_accuracy, male_precision, male_recall, \
         female_accuracy, female_precision, female_recall, \
         trans_female_accuracy, trans_female_precision, trans_female_recall = \
-        cal_stats(male_reps, male_labels, female_reps, female_labels, trans_female_reps)
+        cal_stats_binary(male_reps, male_labels, female_reps, female_labels, trans_female_reps)
     return male_accuracy, male_precision, male_recall, \
         female_accuracy, female_precision, female_recall, \
         trans_female_accuracy, trans_female_precision, trans_female_recall 
@@ -102,12 +103,14 @@ def entire_proc(sim_func, custom_train_reps):
 
 
 """ 
-Run entire procedure on multiple simulations and print accuracy statistics
+Run entire procedure on multiple simulations and print accuracy statistics, \
+    for binary labels
 """
 
 def run_proc_multi(sim_func, custom_train_reps, n_times = 100):
     """ 
-    Run the entire procedure (entire_proc) multiple times (default 100 times)
+    Run the entire procedure (entire_proc) multiple times (default 100 times), \
+        for binary labels
 
     :returns: vectors of accuracy statistics of multiple rounds
     """
@@ -126,7 +129,7 @@ def run_proc_multi(sim_func, custom_train_reps, n_times = 100):
         male_accuracy, male_precision, male_recall, \
         female_accuracy, female_precision, female_recall, \
         trans_female_accuracy, trans_female_precision, trans_female_recall = \
-                entire_proc(sim_func, custom_train_reps)
+                entire_proc_binary(sim_func, custom_train_reps)
         male_accuracies.append(male_accuracy)
         male_precisions.append(male_precision)
         male_recalls.append(male_recall)
@@ -142,7 +145,7 @@ def run_proc_multi(sim_func, custom_train_reps, n_times = 100):
 
 
 """ 
-Constructs a dataframe to demonstrate the accuracy statistics
+Constructs a dataframe to demonstrate the accuracy statistics for binary labels
 """
 
 def save_scores(male_accuracies, male_precisions, male_recalls, \
@@ -168,10 +171,11 @@ def save_scores(male_accuracies, male_precisions, male_recalls, \
 
 def box_plot(scores_path):
     """ 
-    Box plot of the scores in score dataframe stored in scores_path. Specifically, we plot the box plots of 
-    - precision/recall of female over accuracy/precision/recall of male
-    - precision/recall of transported female over accuracy/precision/recall of male
-    - precision/recall of transported female over accuracy/precision/recall of female
+    Box plot of the scores in score dataframe stored in scores_path for binary labels. \
+        Specifically, we plot the box plots of 
+        - precision/recall of female over accuracy/precision/recall of male
+        - precision/recall of transported female over accuracy/precision/recall of male
+        - precision/recall of transported female over accuracy/precision/recall of female
 
     :param scores_path: the path to scores.csv
     """
@@ -247,6 +251,40 @@ def box_plot(scores_path):
     plt.boxplot(trans_female_female_recall, flierprops=flierprops)
     plt.title("transported female \n recall to \n female recall")
 
-
     plt.tight_layout()
     plt.show()
+
+
+""" 
+Caculate result statistics for continuous labels (e.g. duration in hospital)
+"""
+
+def cal_stats_cts(male_reps, male_labels, \
+    female_reps, female_labels, trans_female_reps):
+    """ 
+    Calculate accuracy statistics based on linear regression between the \
+        patient representations and labels
+    This function is for continuous labels
+    
+    :returns: using the male model,\
+        - the coefficient of determination of the predictions of males
+        - ... of females
+        - ... of transported females
+    
+    Note that The best possible score is 1.0 and it can be negative \
+        (because the model can be arbitrarily worse). \
+        A constant model that always predicts the expected value of y, \
+        disregarding the input features, would get a score of 0.0.
+            
+    """
+    # fit the model
+    male_model = linear_model.LinearRegression()
+    male_model = male_model.fit(male_reps, male_labels)
+
+    # calculate the stats
+    male_score = male_model.score(male_reps, male_labels)
+    female_score = male_model.score(female_reps, female_labels)
+    trans_female_score = male_model.score(trans_female_reps, female_labels)
+
+    return male_score, female_score, trans_female_score
+
