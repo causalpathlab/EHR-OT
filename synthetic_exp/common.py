@@ -17,14 +17,17 @@ from sklearn.metrics import recall_score
 Transport female representations to male representations
 """
 
-def trans_female2male(male_reps, female_reps):
+def trans_female2male(male_reps, female_reps, max_iter = None):
     """ 
     Optimal transport (without entropy regularization) female representations \
         to male representations
 
+    :param int max_iter: maximum number of iteration for OT
     :returns: transported female representations
     """
-    ot_emd = ot.da.EMDTransport(max_iter=100000) # change this number if not converged
+    ot_emd = ot.da.EMDTransport()
+    if max_iter is not None:
+        ot_emd = ot.da.EMDTransport(max_iter=max_iter)
     ot_emd.fit(Xs=female_reps, Xt=male_reps)
     trans_female_reps = ot_emd.transform(Xs=female_reps)
     return trans_female_reps
@@ -34,11 +37,14 @@ def trans_female2male(male_reps, female_reps):
 Caculate result statistics for binary labels
 """
 
-def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, trans_female_reps):
+def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
+    trans_female_reps, max_iter = None):
     """ 
     Calculate accuracy statistics based on logistic regression between the \
         patient representations and label labels
     This function is for binary labels
+
+    :param max_iter: maxmium number of iterations for the logistic model
     
     :returns: using the male model,\
         - accuracy for male/female/transported female
@@ -48,6 +54,8 @@ def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, trans_f
     """
     # fit the model
     male_logit_model = linear_model.LogisticRegression()
+    if max_iter is not None:
+        male_logit_model = linear_model.LogisticRegression(max_iter=max_iter)
     male_logit_model.fit(male_reps, male_labels)
 
     # calculate the stats
