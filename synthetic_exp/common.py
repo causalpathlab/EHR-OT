@@ -4,6 +4,7 @@ Common functions for synthetic datasets
 import sys
 sys.path.append("/home/wanxinli/deep_patient")
 
+import numpy as np
 import matplotlib.pyplot as plt
 import ot
 import pandas as pd
@@ -16,7 +17,7 @@ from sklearn.metrics import recall_score
 Transport female representations to male representations
 """
 
-def trans_female2male(male_reps, female_reps, max_iter = None):
+def trans_female2male(male_reps, female_reps, max_iter):
     """ 
     Optimal transport (without entropy regularization) female representations \
         to male representations
@@ -24,11 +25,24 @@ def trans_female2male(male_reps, female_reps, max_iter = None):
     :param int max_iter: maximum number of iteration for OT
     :returns: transported female representations
     """
-    ot_emd = ot.da.EMDTransport()
-    if max_iter is not None:
-        ot_emd = ot.da.EMDTransport(max_iter=max_iter)
-    ot_emd.fit(Xs=female_reps, Xt=male_reps)
-    trans_female_reps = ot_emd.transform(Xs=female_reps)
+    # ot_emd = ot.da.EMDTransport(max_iter=max_iter)
+    # ot_emd.fit(Xs=female_reps, Xt=male_reps)
+    # trans_female_reps = ot_emd.transform(Xs=female_reps)
+
+    reg = 0.005
+    reg_m_kl = 0.2
+    n = female_reps.shape[0]
+
+    a, b = np.ones((n,)) / n, np.ones((n,)) / n  # uniform distribution on samples
+
+    M = ot.dist(female_reps, male_reps)
+    M /= M.max()
+
+    coupling = ot.unbalanced.sinkhorn_unbalanced(a, b, M, reg, reg_m_kl)
+    print(female_reps.shape)
+    print(coupling.shape)
+    trans_female_reps = np.matmul(coupling, female_reps)
+
     return trans_female_reps
 
 
@@ -37,13 +51,13 @@ Caculate result statistics for binary labels
 """
 
 def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
-    trans_female_reps, func, max_iter = None):
+    trans_female_reps, model_func, max_iter):
     """ 
     Calculate accuracy statistics based on logistic regression between the \
         patient representations and label labels
     This function is for binary labels
 
-    :param function func: the function to model the relationship between \
+    :param function model_func: the function to model the relationship between \
         representations and reponse
     :param int max_iter: maximun number of iterations for the logistic model
     
@@ -54,23 +68,21 @@ def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
             
     """
     # fit the model
-    male_logit_model = func()
-    if max_iter is not None:
-        male_logit_model = func(max_iter=max_iter)
-    male_logit_model.fit(male_reps, male_labels)
+    male_model = model_func(max_iter=max_iter)
+    male_model.fit(male_reps, male_labels)
 
     # calculate the stats
-    male_pred_labels = male_logit_model.predict(male_reps)
+    male_pred_labels = male_model.predict(male_reps)
     male_accuracy = accuracy_score(male_labels, male_pred_labels)
     male_precision = precision_score(male_labels, male_pred_labels)
     male_recall = recall_score(male_labels, male_pred_labels)
 
-    female_pred_labels = male_logit_model.predict(female_reps)
+    female_pred_labels = male_model.predict(female_reps)
     female_accuracy = accuracy_score(female_labels, female_pred_labels)
     female_precision = precision_score(female_labels, female_pred_labels)
     female_recall = recall_score(female_labels, female_pred_labels)
 
-    trans_female_pred_labels = male_logit_model.predict(trans_female_reps)
+    trans_female_pred_labels = male_model.predict(trans_female_reps)
     trans_female_accuracy = accuracy_score(female_labels, trans_female_pred_labels)
     trans_female_precision = precision_score(female_labels, trans_female_pred_labels)
     trans_female_recall = recall_score(female_labels, trans_female_pred_labels)
@@ -85,7 +97,7 @@ def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
 Wrap up everything for binary labels
 """
 
-def entire_proc_binary(sim_func, custom_train_reps, func):
+def entire_proc_binary(sim_func, custom_train_reps, model_func, max_iter):
     """ 
     Executes the entire procedure including
         - generate male sequences, male labels, female sequences and female labels
@@ -96,16 +108,24 @@ def entire_proc_binary(sim_func, custom_train_reps, func):
 
     :param function sim_func: simulation function
     :param function custom_train_reps: customized deep patient function for training representations
-    :param function func: the function to model the relationship bewteen representations and response
+    :param function model_func: the function to model the relationship bewteen representations and response
+    :param int max_iter: maximum number of iteration to transport between representations
     :returns: the accuracy scores
     """
+    # print("calling entire_proc_binary")
     male_seqs, male_labels, female_seqs, female_labels = sim_func()
     male_reps, female_reps = custom_train_reps(male_seqs, female_seqs)
-    trans_female_reps = trans_female2male(male_reps, female_reps)
+    # np.savetxt("../outputs/female_seqs.txt", female_seqs, fmt="%d")
+    # np.savetxt("../outputs/male_reps.txt", male_reps)
+    # np.savetxt("../outputs/female_reps.txt", female_reps)
+    trans_female_reps = trans_female2male(male_reps, female_reps, max_iter)
+    # np.savetxt("../outputs/trans_female_reps.txt", trans_female_reps)
+    
     male_accuracy, male_precision, male_recall, \
         female_accuracy, female_precision, female_recall, \
         trans_female_accuracy, trans_female_precision, trans_female_recall = \
-        cal_stats_binary(male_reps, male_labels, female_reps, female_labels, trans_female_reps, func)
+        cal_stats_binary(male_reps, male_labels, female_reps, female_labels, trans_female_reps, model_func, max_iter)
+    print("before entire_proc_binary return")
     return male_accuracy, male_precision, male_recall, \
         female_accuracy, female_precision, female_recall, \
         trans_female_accuracy, trans_female_precision, trans_female_recall 
@@ -117,16 +137,18 @@ Run entire procedure on multiple simulations and print accuracy statistics, \
     for binary labels
 """
 
-def run_proc_multi(sim_func, custom_train_reps, func, n_times = 100):
+def run_proc_multi(sim_func, custom_train_reps, model_func, max_iter = 100000, n_times = 100):
     """ 
     Run the entire procedure (entire_proc) multiple times (default 100 times), \
         for binary labels
 
-    :param function func: the function to model the relationship between representations and responses
+    :param int max_iter: maximum number of iterations to transport representations (default 100000)
+    :param function model_func: the function to model the relationship between representations and responses
 
     :returns: vectors of accuracy statistics of multiple rounds
     """
-
+    
+    print("calling run_proc_multi")
     male_accuracies = []
     male_precisions = [] 
     male_recalls = [] 
@@ -150,24 +172,34 @@ def run_proc_multi(sim_func, custom_train_reps, func, n_times = 100):
         trans_female_recall = None
 
         try:
+            print("enter try")
             male_accuracy, male_precision, male_recall, \
             female_accuracy, female_precision, female_recall, \
             trans_female_accuracy, trans_female_precision, trans_female_recall = \
-                    entire_proc_binary(sim_func, custom_train_reps, func=func)
+                    entire_proc_binary(sim_func, custom_train_reps, model_func, max_iter)
+                    
+            print("printing out accuracies")
+            print(male_accuracy, male_precision, male_recall, \
+            female_accuracy, female_precision, female_recall, \
+            trans_female_accuracy, trans_female_precision, trans_female_recall)
         except Exception: # most likely only one label is generated for the examples
+            print("exception 1")
             continue
 
         # if domain 2 data performs better using the model trained by domain 1 data, \
         # there is no need to transport
         if male_accuracy <= female_accuracy or male_precision <= female_precision \
             or male_recall <= female_recall: 
+            print("exception 2")
             continue
 
         # denominator cannot be 0
         if male_accuracy == 0 or male_precision == 0 or male_recall == 0 \
             or female_accuracy == 0 or female_precision == 0 or female_recall == 0:
+            print("exception 3")
             continue
 
+        print("append accuracies")
         male_accuracies.append(male_accuracy)
         male_precisions.append(male_precision)
         male_recalls.append(male_recall)
@@ -303,6 +335,7 @@ def box_plot(scores_path):
     plt.subplot(3, 3, 3)
     plt.boxplot(trans_female_female_accuracy, flierprops=flierprops)
     # plt.ylim(y_min, y_max)
+    plt.axhline(y = 1, color = 'b', linestyle = '-')
     plt.title("transported female \n accuracy to \n female accuracy")
 
     
@@ -321,6 +354,7 @@ def box_plot(scores_path):
     plt.subplot(3, 3, 6)
     plt.boxplot(trans_female_female_precision, flierprops=flierprops)
     # plt.ylim(y_min, y_max)
+    plt.axhline(y = 1, color = 'b', linestyle = '-')
     plt.title("transported female \n precision to \n female precision")
 
     
@@ -339,6 +373,7 @@ def box_plot(scores_path):
     plt.subplot(3, 3, 9)
     plt.boxplot(trans_female_female_recall, flierprops=flierprops)
     # plt.ylim(y_min, y_max)
+    plt.axhline(y = 1, color = 'b', linestyle = '-')
     plt.title("transported female \n recall to \n female recall")
 
     plt.tight_layout()
