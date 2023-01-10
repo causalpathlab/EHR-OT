@@ -37,13 +37,15 @@ Caculate result statistics for binary labels
 """
 
 def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
-    trans_female_reps, max_iter = None):
+    trans_female_reps, func, max_iter = None):
     """ 
     Calculate accuracy statistics based on logistic regression between the \
         patient representations and label labels
     This function is for binary labels
 
-    :param max_iter: maxmium number of iterations for the logistic model
+    :param function func: the function to model the relationship between \
+        representations and reponse
+    :param int max_iter: maximun number of iterations for the logistic model
     
     :returns: using the male model,\
         - accuracy for male/female/transported female
@@ -52,9 +54,9 @@ def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
             
     """
     # fit the model
-    male_logit_model = linear_model.LogisticRegression()
+    male_logit_model = func()
     if max_iter is not None:
-        male_logit_model = linear_model.LogisticRegression(max_iter=max_iter)
+        male_logit_model = func(max_iter=max_iter)
     male_logit_model.fit(male_reps, male_labels)
 
     # calculate the stats
@@ -83,7 +85,7 @@ def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
 Wrap up everything for binary labels
 """
 
-def entire_proc_binary(sim_func, custom_train_reps):
+def entire_proc_binary(sim_func, custom_train_reps, func):
     """ 
     Executes the entire procedure including
         - generate male sequences, male labels, female sequences and female labels
@@ -94,6 +96,7 @@ def entire_proc_binary(sim_func, custom_train_reps):
 
     :param function sim_func: simulation function
     :param function custom_train_reps: customized deep patient function for training representations
+    :param function func: the function to model the relationship bewteen representations and response
     :returns: the accuracy scores
     """
     male_seqs, male_labels, female_seqs, female_labels = sim_func()
@@ -102,7 +105,7 @@ def entire_proc_binary(sim_func, custom_train_reps):
     male_accuracy, male_precision, male_recall, \
         female_accuracy, female_precision, female_recall, \
         trans_female_accuracy, trans_female_precision, trans_female_recall = \
-        cal_stats_binary(male_reps, male_labels, female_reps, female_labels, trans_female_reps)
+        cal_stats_binary(male_reps, male_labels, female_reps, female_labels, trans_female_reps, func)
     return male_accuracy, male_precision, male_recall, \
         female_accuracy, female_precision, female_recall, \
         trans_female_accuracy, trans_female_precision, trans_female_recall 
@@ -114,10 +117,12 @@ Run entire procedure on multiple simulations and print accuracy statistics, \
     for binary labels
 """
 
-def run_proc_multi(sim_func, custom_train_reps, n_times = 100):
+def run_proc_multi(sim_func, custom_train_reps, func, n_times = 100):
     """ 
     Run the entire procedure (entire_proc) multiple times (default 100 times), \
         for binary labels
+
+    :param function func: the function to model the relationship between representations and responses
 
     :returns: vectors of accuracy statistics of multiple rounds
     """
@@ -148,7 +153,7 @@ def run_proc_multi(sim_func, custom_train_reps, n_times = 100):
             male_accuracy, male_precision, male_recall, \
             female_accuracy, female_precision, female_recall, \
             trans_female_accuracy, trans_female_precision, trans_female_recall = \
-                    entire_proc_binary(sim_func, custom_train_reps)
+                    entire_proc_binary(sim_func, custom_train_reps, func=func)
         except Exception: # most likely only one label is generated for the examples
             continue
 
