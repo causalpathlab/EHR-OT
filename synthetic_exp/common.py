@@ -12,6 +12,7 @@ from sklearn import linear_model
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
+from sklearn.metrics import f1_score
 
 """ 
 Transport female representations to male representations
@@ -30,7 +31,7 @@ def trans_female2male(male_reps, female_reps, max_iter):
     # trans_female_reps = ot_emd.transform(Xs=female_reps)
 
     reg = 0.005
-    reg_m_kl = 0.2
+    reg_m_kl = 0.5
     n = female_reps.shape[0]
 
     a, b = np.ones((n,)) / n, np.ones((n,)) / n  # uniform distribution on samples
@@ -65,6 +66,7 @@ def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
         - accuracy for male/female/transported female
         - precision for male/female/transported female
         - recall for male/female/transported female
+        - f1 for male/female/transported female
             
     """
     # fit the model
@@ -76,21 +78,27 @@ def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
     male_accuracy = accuracy_score(male_labels, male_pred_labels)
     male_precision = precision_score(male_labels, male_pred_labels)
     male_recall = recall_score(male_labels, male_pred_labels)
+    male_f1 = f1_score(male_labels, male_pred_labels, average="weighted")
 
     female_pred_labels = male_model.predict(female_reps)
+    print("female_labels are:", female_labels)
+    print("female_pred_labels are:", female_pred_labels)
     female_accuracy = accuracy_score(female_labels, female_pred_labels)
     female_precision = precision_score(female_labels, female_pred_labels)
     female_recall = recall_score(female_labels, female_pred_labels)
+    female_f1 = f1_score(female_labels, female_pred_labels, average="weighted")
 
     trans_female_pred_labels = male_model.predict(trans_female_reps)
+    print("trans_female_pred_labels are:", trans_female_pred_labels)
     trans_female_accuracy = accuracy_score(female_labels, trans_female_pred_labels)
     trans_female_precision = precision_score(female_labels, trans_female_pred_labels)
     trans_female_recall = recall_score(female_labels, trans_female_pred_labels)
+    trans_female_f1 = f1_score(female_labels, trans_female_pred_labels, average="weighted")
 
 
-    return male_accuracy, male_precision, male_recall, \
-        female_accuracy, female_precision, female_recall, \
-        trans_female_accuracy, trans_female_precision, trans_female_recall
+    return male_accuracy, male_precision, male_recall, male_f1, \
+        female_accuracy, female_precision, female_recall, female_f1, \
+        trans_female_accuracy, trans_female_precision, trans_female_recall, trans_female_f1
 
 
 """ 
@@ -188,8 +196,7 @@ def run_proc_multi(sim_func, custom_train_reps, model_func, max_iter = 100000, n
 
         # if domain 2 data performs better using the model trained by domain 1 data, \
         # there is no need to transport
-        if male_accuracy <= female_accuracy or male_precision <= female_precision \
-            or male_recall <= female_recall: 
+        if male_accuracy <= female_accuracy: 
             print("exception 2")
             continue
 
