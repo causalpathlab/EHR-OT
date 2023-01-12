@@ -10,6 +10,7 @@ import ot
 import pandas as pd
 from sklearn import linear_model
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import f1_score
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import f1_score
@@ -18,32 +19,37 @@ from sklearn.metrics import f1_score
 Transport female representations to male representations
 """
 
-def trans_female2male(male_reps, female_reps, max_iter):
+def trans_female2male(male_reps, female_reps, type="balanced"):
     """ 
     Optimal transport (without entropy regularization) female representations \
         to male representations
 
-    :param int max_iter: maximum number of iteration for OT
+    :param str type: balanced or unbalanced
     :returns: transported female representations
     """
-    # ot_emd = ot.da.EMDTransport(max_iter=max_iter)
-    # ot_emd.fit(Xs=female_reps, Xt=male_reps)
-    # trans_female_reps = ot_emd.transform(Xs=female_reps)
+    trans_female_reps = None
+    if type == "balanced":
+        print("enter balanced")
+        ot_emd = ot.da.SinkhornTransport(reg_e=1e-1)
+        ot_emd.fit(Xs=female_reps, Xt=male_reps)
+        trans_female_reps = ot_emd.transform(Xs=female_reps)
 
-    reg = 0.005
-    reg_m_kl = 0.5
-    n = female_reps.shape[0]
+    elif type == "unbalanced":
+        reg = 0.005
+        reg_m_kl = 0.5
+        n = female_reps.shape[0]
 
-    a, b = np.ones((n,)) / n, np.ones((n,)) / n  # uniform distribution on samples
+        a, b = np.ones((n,)) / n, np.ones((n,)) / n  # uniform distribution on samples
 
-    M = ot.dist(female_reps, male_reps)
-    M /= M.max()
+        M = ot.dist(female_reps, male_reps)
+        M /= M.max()
 
-    coupling = ot.unbalanced.sinkhorn_unbalanced(a, b, M, reg, reg_m_kl)
-    print(female_reps.shape)
-    print(coupling.shape)
-    trans_female_reps = np.matmul(coupling, female_reps)
+        coupling = ot.unbalanced.sinkhorn_unbalanced(a, b, M, reg, reg_m_kl)
+        print(female_reps.shape)
+        print(coupling.shape)
+        trans_female_reps = np.matmul(coupling, female_reps)
 
+    print("before return is:", trans_female_reps)
     return trans_female_reps
 
 
@@ -52,7 +58,7 @@ Caculate result statistics for binary labels
 """
 
 def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
-    trans_female_reps, model_func, max_iter):
+    trans_female_reps, model_func):
     """ 
     Calculate accuracy statistics based on logistic regression between the \
         patient representations and label labels
@@ -60,7 +66,6 @@ def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
 
     :param function model_func: the function to model the relationship between \
         representations and reponse
-    :param int max_iter: maximun number of iterations for the logistic model
     
     :returns: using the male model,\
         - accuracy for male/female/transported female
@@ -70,7 +75,7 @@ def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
             
     """
     # fit the model
-    male_model = model_func(max_iter=max_iter)
+    male_model = model_func()
     male_model.fit(male_reps, male_labels)
 
     # calculate the stats
@@ -105,7 +110,7 @@ def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
 Wrap up everything for binary labels
 """
 
-def entire_proc_binary(sim_func, custom_train_reps, model_func, max_iter):
+def entire_proc_binary(sim_func, custom_train_reps, model_func):
     """ 
     Executes the entire procedure including
         - generate male sequences, male labels, female sequences and female labels
@@ -117,26 +122,19 @@ def entire_proc_binary(sim_func, custom_train_reps, model_func, max_iter):
     :param function sim_func: simulation function
     :param function custom_train_reps: customized deep patient function for training representations
     :param function model_func: the function to model the relationship bewteen representations and response
-    :param int max_iter: maximum number of iteration to transport between representations
     :returns: the accuracy scores
     """
-    # print("calling entire_proc_binary")
-    male_seqs, male_labels, female_seqs, female_labels = sim_func()
+    male_seqs, male_labels, female_seqs, female_labels = sim_func(num_patient = 50)
     male_reps, female_reps = custom_train_reps(male_seqs, female_seqs)
-    # np.savetxt("../outputs/female_seqs.txt", female_seqs, fmt="%d")
-    # np.savetxt("../outputs/male_reps.txt", male_reps)
-    # np.savetxt("../outputs/female_reps.txt", female_reps)
-    trans_female_reps = trans_female2male(male_reps, female_reps, max_iter)
-    # np.savetxt("../outputs/trans_female_reps.txt", trans_female_reps)
+    trans_female_reps = trans_female2male(male_reps, female_reps)
     
-    male_accuracy, male_precision, male_recall, \
-        female_accuracy, female_precision, female_recall, \
-        trans_female_accuracy, trans_female_precision, trans_female_recall = \
-        cal_stats_binary(male_reps, male_labels, female_reps, female_labels, trans_female_reps, model_func, max_iter)
-    print("before entire_proc_binary return")
-    return male_accuracy, male_precision, male_recall, \
-        female_accuracy, female_precision, female_recall, \
-        trans_female_accuracy, trans_female_precision, trans_female_recall 
+    male_accuracy, male_precision, male_recall, male_f1, \
+        female_accuracy, female_precision, female_recall, female_f1, \
+        trans_female_accuracy, trans_female_precision, trans_female_recall, trans_female_f1 = \
+        cal_stats_binary(male_reps, male_labels, female_reps, female_labels, trans_female_reps, model_func)
+    return male_accuracy, male_precision, male_recall, male_f1, \
+        female_accuracy, female_precision, female_recall, female_f1, \
+        trans_female_accuracy, trans_female_precision, trans_female_recall, trans_female_f1
     
 
 
@@ -145,13 +143,13 @@ Run entire procedure on multiple simulations and print accuracy statistics, \
     for binary labels
 """
 
-def run_proc_multi(sim_func, custom_train_reps, model_func, max_iter = 100000, n_times = 100):
+def run_proc_multi(sim_func, custom_train_reps, model_func, n_times = 100, filter=True):
     """ 
     Run the entire procedure (entire_proc) multiple times (default 100 times), \
         for binary labels
 
-    :param int max_iter: maximum number of iterations to transport representations (default 100000)
     :param function model_func: the function to model the relationship between representations and responses
+    :param bool filter: whether to filter out female accuracies > 0.7
 
     :returns: vectors of accuracy statistics of multiple rounds
     """
@@ -160,36 +158,42 @@ def run_proc_multi(sim_func, custom_train_reps, model_func, max_iter = 100000, n
     male_accuracies = []
     male_precisions = [] 
     male_recalls = [] 
+    male_f1s = []
     female_accuracies = []
     female_precisions = []
     female_recalls = [] 
+    female_f1s = []
     trans_female_accuracies = []
     trans_female_precisions = []
     trans_female_recalls = []
+    trans_female_f1s = []
 
     for _ in range(n_times):
         # init accuracies
         male_accuracy = None
         male_precision = None
         male_recall = None
+        male_f1 = None
         female_accuracy = None
         female_precision = None
         female_recall = None
+        female_f1 = None
         trans_female_accuracy = None
         trans_female_precision = None
         trans_female_recall = None
+        trans_female_f1 = None
 
         try:
             print("enter try")
-            male_accuracy, male_precision, male_recall, \
-            female_accuracy, female_precision, female_recall, \
-            trans_female_accuracy, trans_female_precision, trans_female_recall = \
-                    entire_proc_binary(sim_func, custom_train_reps, model_func, max_iter)
+            male_accuracy, male_precision, male_recall, male_f1, \
+            female_accuracy, female_precision, female_recall, female_f1, \
+            trans_female_accuracy, trans_female_precision, trans_female_recall, trans_female_f1 = \
+                    entire_proc_binary(sim_func, custom_train_reps, model_func)
                     
-            print("printing out accuracies")
-            print(male_accuracy, male_precision, male_recall, \
-            female_accuracy, female_precision, female_recall, \
-            trans_female_accuracy, trans_female_precision, trans_female_recall)
+            # print("printing out accuracies")
+            # print(male_accuracy, male_precision, male_recall, \
+            # female_accuracy, female_precision, female_recall, \
+            # trans_female_accuracy, trans_female_precision, trans_female_recall)
         except Exception: # most likely only one label is generated for the examples
             print("exception 1")
             continue
@@ -200,35 +204,49 @@ def run_proc_multi(sim_func, custom_train_reps, model_func, max_iter = 100000, n
             print("exception 2")
             continue
 
-        # denominator cannot be 0
-        if male_accuracy == 0 or male_precision == 0 or male_recall == 0 \
-            or female_accuracy == 0 or female_precision == 0 or female_recall == 0:
-            print("exception 3")
+        # filter if domain 2 data achieves accuracy > 0.7, little room for improvement
+        if filter and female_accuracy > 0.7:
             continue
 
-        print("append accuracies")
+        # denominator cannot be 0
+        min_deno = 0.001
+        male_accuracy = max(male_accuracy, min_deno)
+        male_precision = max(male_precision, min_deno)
+        male_recall = max(male_recall, min_deno)
+        male_f1 = max(male_f1, min_deno)
+        female_accuracy = max(female_accuracy, min_deno)
+        female_precision = max(female_precision, min_deno)
+        female_recall = max(female_recall, min_deno)
+        female_f1 = max(female_f1, min_deno)
+        trans_female_accuracy = max(trans_female_accuracy, min_deno)
+        trans_female_precision = max(trans_female_precision, min_deno)
+        trans_female_recall = max(trans_female_recall, min_deno)
+        trans_female_f1 = max(trans_female_f1, min_deno)
+
         male_accuracies.append(male_accuracy)
         male_precisions.append(male_precision)
         male_recalls.append(male_recall)
+        male_f1s.append(male_f1)
         female_accuracies.append(female_accuracy)
         female_precisions.append(female_precision)
         female_recalls.append(female_recall)
+        female_f1s.append(female_f1)
         trans_female_accuracies.append(trans_female_accuracy)
         trans_female_precisions.append(trans_female_precision)
         trans_female_recalls.append(trans_female_recall) 
-    return male_accuracies, male_precisions, male_recalls, \
-        female_accuracies, female_precisions, female_recalls, \
-        trans_female_accuracies, trans_female_precisions, trans_female_recalls
-
+        trans_female_f1s.append(trans_female_f1)
+    return male_accuracies, male_precisions, male_recalls, male_f1s, \
+        female_accuracies, female_precisions, female_recalls, female_f1s, \
+        trans_female_accuracies, trans_female_precisions, trans_female_recalls, trans_female_f1s
 
 
 """ 
 Constructs a dataframe to demonstrate the accuracy statistics for binary labels
 """
 
-def save_scores(male_accuracies, male_precisions, male_recalls, \
-        female_accuracies, female_precisions, female_recalls, \
-        trans_female_accuracies, trans_female_precisions, trans_female_recalls, file_path):
+def save_scores(male_accuracies, male_precisions, male_recalls, male_f1s, \
+        female_accuracies, female_precisions, female_recalls, female_f1s, \
+        trans_female_accuracies, trans_female_precisions, trans_female_recalls, trans_female_f1s, file_path):
     """ 
     Save accuracy statistics to file path
     """
@@ -237,12 +255,15 @@ def save_scores(male_accuracies, male_precisions, male_recalls, \
     score_df['male_accuracy'] = male_accuracies
     score_df['male_precision'] = male_precisions
     score_df['male_recall'] = male_recalls
+    score_df['male_f1'] = male_f1s
     score_df['female_accuracy'] = female_accuracies
     score_df['female_precision'] = female_precisions
     score_df['female_recall'] = female_recalls
+    score_df['female_f1'] = female_f1s
     score_df['trans_female_accuracy'] = trans_female_accuracies
     score_df['trans_female_precision'] = trans_female_precisions
     score_df['trans_female_recall'] = trans_female_recalls
+    score_df['trans_female_f1'] = trans_female_f1s
     # save
     score_df.to_csv(file_path, index=None, header=True)
 
@@ -267,65 +288,72 @@ def box_plot(scores_path):
     male_accuracy = scores_df['male_accuracy']
     male_precision = scores_df['male_precision']
     male_recall = scores_df['male_recall']
+    male_f1 = scores_df['male_f1']
 
     female_accuracy = scores_df['female_accuracy']
     female_precision = scores_df['female_precision']
     female_recall = scores_df['female_recall']
+    female_f1 = scores_df['female_f1']
 
     trans_female_accuracy = scores_df['trans_female_accuracy']
     trans_female_precision = scores_df['trans_female_precision']
     trans_female_recall = scores_df['trans_female_recall']
+    trans_female_f1 = scores_df['trans_female_f1']
 
     fig = plt.figure(figsize=(16,16))
     flierprops={'marker': 'o', 'markersize': 4, 'markerfacecolor': 'fuchsia'}
 
-    y_max = 0
-    y_min = float("inf")
-
     # female to male accuracy
     female_male_accuracy = [i / j for i, j in zip(female_accuracy, male_accuracy)]
-    y_max = max(y_max, max(female_male_accuracy))
-    y_min = min(y_min, min(female_male_accuracy))
 
     # transported female to male accuracy
     trans_female_male_accuracy = [i / j for i, j in zip(trans_female_accuracy, male_accuracy)]
-    y_max = max(y_max, max(trans_female_male_accuracy))
-    y_min = min(y_min, min(trans_female_male_accuracy))
 
     # transported female to female accuracy
     trans_female_female_accuracy = [i / j for i, j in zip(trans_female_accuracy, female_accuracy)]
-    y_max = max(y_max, max(trans_female_female_accuracy))
-    y_min = min(y_min, min(trans_female_female_accuracy))
+    print("average trans female to female accuracy is:", np.mean(trans_female_female_accuracy))
 
-    # female to male precision
-    female_male_precision = [i / j for i, j in zip(female_precision, male_precision)]
-    y_max = max(y_max, max(female_male_precision))
-    y_min = min(y_min, min(female_male_precision))
 
-    # transported female to male precision
-    trans_female_male_precision = [i / j for i, j in zip(trans_female_precision, male_precision)]
-    y_max = max(y_max, max(trans_female_male_precision))
-    y_min = min(y_min, min(trans_female_male_precision))
+    # female to male accuracy
+    female_male_f1 = [i / j for i, j in zip(female_f1, male_f1)]
 
-    # transported female to female precision
-    trans_female_female_precision = [i / j for i, j in zip(trans_female_precision, female_precision)]
-    y_max = max(y_max, max(trans_female_female_precision))
-    y_min = min(y_min, min(trans_female_female_precision))
+    # transported female to male accuracy
+    trans_female_male_f1 = [i / j for i, j in zip(trans_female_f1, male_f1)]
 
-    # female to male recall
-    female_male_recall = [i / j for i, j in zip(female_recall, male_recall)]
-    y_max = max(y_max, max(female_male_recall))
-    y_min = min(y_min, min(female_male_recall))
+    # transported female to female accuracy
+    trans_female_female_f1 = [i / j for i, j in zip(trans_female_f1, female_f1)]
+    print("average trans female to female f1 is:", np.mean(trans_female_female_f1))
 
-    # transported female to male recall
-    trans_female_male_recall = [i / j for i, j in zip(trans_female_recall, male_recall)]
-    y_max = max(y_max, max(trans_female_male_recall))
-    y_min = min(y_min, min(trans_female_male_recall))
 
-    # transported female to female recall
-    trans_female_female_recall = [i / j for i, j in zip(trans_female_recall, female_recall)]
-    y_max = max(y_max, max(trans_female_female_recall ))
-    y_min = min(y_min, min(trans_female_female_recall ))
+    # # female to male precision
+    # female_male_precision = [i / j for i, j in zip(female_precision, male_precision)]
+    # y_max = max(y_max, max(female_male_precision))
+    # y_min = min(y_min, min(female_male_precision))
+
+    # # transported female to male precision
+    # trans_female_male_precision = [i / j for i, j in zip(trans_female_precision, male_precision)]
+    # y_max = max(y_max, max(trans_female_male_precision))
+    # y_min = min(y_min, min(trans_female_male_precision))
+
+    # # transported female to female precision
+    # trans_female_female_precision = [i / j for i, j in zip(trans_female_precision, female_precision)]
+    # y_max = max(y_max, max(trans_female_female_precision))
+    # y_min = min(y_min, min(trans_female_female_precision))
+
+    # # female to male recall
+    # female_male_recall = [i / j for i, j in zip(female_recall, male_recall)]
+    # y_max = max(y_max, max(female_male_recall))
+    # y_min = min(y_min, min(female_male_recall))
+
+    # # transported female to male recall
+    # trans_female_male_recall = [i / j for i, j in zip(trans_female_recall, male_recall)]
+    # y_max = max(y_max, max(trans_female_male_recall))
+    # y_min = min(y_min, min(trans_female_male_recall))
+
+    # # transported female to female recall
+    # trans_female_female_recall = [i / j for i, j in zip(trans_female_recall, female_recall)]
+    # y_max = max(y_max, max(trans_female_female_recall ))
+    # y_min = min(y_min, min(trans_female_female_recall ))
 
     plt.subplot(3, 3, 1)
     plt.boxplot(female_male_accuracy, flierprops=flierprops)
@@ -345,43 +373,61 @@ def box_plot(scores_path):
     plt.axhline(y = 1, color = 'b', linestyle = '-')
     plt.title("transported female \n accuracy to \n female accuracy")
 
-    
     plt.subplot(3, 3, 4)
-    plt.boxplot(female_male_precision, flierprops=flierprops)
+    plt.boxplot(female_male_f1, flierprops=flierprops)
     # plt.ylim(y_min, y_max)
-    plt.title("female precision to \n male precision")
+    plt.title("female precision to \n male f1")
 
     
     plt.subplot(3, 3, 5)
-    plt.boxplot(trans_female_male_precision, flierprops=flierprops)
+    plt.boxplot(trans_female_male_f1, flierprops=flierprops)
     # plt.ylim(y_min, y_max)
-    plt.title("transported female \n precision to \n male precision")
+    plt.title("transported female \n precision to \n male f1")
 
     
     plt.subplot(3, 3, 6)
-    plt.boxplot(trans_female_female_precision, flierprops=flierprops)
+    plt.boxplot(trans_female_female_f1, flierprops=flierprops)
     # plt.ylim(y_min, y_max)
     plt.axhline(y = 1, color = 'b', linestyle = '-')
-    plt.title("transported female \n precision to \n female precision")
+    plt.title("transported female \n precision to \n female f1")
 
     
-    plt.subplot(3, 3, 7)
-    plt.boxplot(female_male_recall, flierprops=flierprops)
-    # plt.ylim(y_min, y_max)
-    plt.title("female recall to \n male recall")
+    # plt.subplot(3, 3, 4)
+    # plt.boxplot(female_male_precision, flierprops=flierprops)
+    # # plt.ylim(y_min, y_max)
+    # plt.title("female precision to \n male precision")
 
     
-    plt.subplot(3, 3, 8)
-    plt.boxplot(trans_female_male_recall, flierprops=flierprops)
-    # plt.ylim(y_min, y_max)
-    plt.title("transported female \n recall to \n male recall")
+    # plt.subplot(3, 3, 5)
+    # plt.boxplot(trans_female_male_precision, flierprops=flierprops)
+    # # plt.ylim(y_min, y_max)
+    # plt.title("transported female \n precision to \n male precision")
 
     
-    plt.subplot(3, 3, 9)
-    plt.boxplot(trans_female_female_recall, flierprops=flierprops)
-    # plt.ylim(y_min, y_max)
-    plt.axhline(y = 1, color = 'b', linestyle = '-')
-    plt.title("transported female \n recall to \n female recall")
+    # plt.subplot(3, 3, 6)
+    # plt.boxplot(trans_female_female_precision, flierprops=flierprops)
+    # # plt.ylim(y_min, y_max)
+    # plt.axhline(y = 1, color = 'b', linestyle = '-')
+    # plt.title("transported female \n precision to \n female precision")
+
+    
+    # plt.subplot(3, 3, 7)
+    # plt.boxplot(female_male_recall, flierprops=flierprops)
+    # # plt.ylim(y_min, y_max)
+    # plt.title("female recall to \n male recall")
+
+    
+    # plt.subplot(3, 3, 8)
+    # plt.boxplot(trans_female_male_recall, flierprops=flierprops)
+    # # plt.ylim(y_min, y_max)
+    # plt.title("transported female \n recall to \n male recall")
+
+    
+    # plt.subplot(3, 3, 9)
+    # plt.boxplot(trans_female_female_recall, flierprops=flierprops)
+    # # plt.ylim(y_min, y_max)
+    # plt.axhline(y = 1, color = 'b', linestyle = '-')
+    # plt.title("transported female \n recall to \n female recall")
 
     plt.tight_layout()
     plt.show()
