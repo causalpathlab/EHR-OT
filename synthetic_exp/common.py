@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import ot
 import pandas as pd
 from sklearn import linear_model
+from sklearn import metrics
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import f1_score
 from sklearn.metrics import precision_score
@@ -29,7 +30,6 @@ def trans_female2male(male_reps, female_reps, type="balanced"):
     """
     trans_female_reps = None
     if type == "balanced":
-        print("enter balanced")
         ot_emd = ot.da.SinkhornTransport(reg_e=1e-1)
         ot_emd.fit(Xs=female_reps, Xt=male_reps)
         trans_female_reps = ot_emd.transform(Xs=female_reps)
@@ -45,11 +45,8 @@ def trans_female2male(male_reps, female_reps, type="balanced"):
         M /= M.max()
 
         coupling = ot.unbalanced.sinkhorn_unbalanced(a, b, M, reg, reg_m_kl)
-        print(female_reps.shape)
-        print(coupling.shape)
         trans_female_reps = np.matmul(coupling, female_reps)
 
-    print("before return is:", trans_female_reps)
     return trans_female_reps
 
 
@@ -86,15 +83,12 @@ def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
     male_f1 = f1_score(male_labels, male_pred_labels, average="weighted")
 
     female_pred_labels = male_model.predict(female_reps)
-    print("female_labels are:", female_labels)
-    print("female_pred_labels are:", female_pred_labels)
     female_accuracy = accuracy_score(female_labels, female_pred_labels)
     female_precision = precision_score(female_labels, female_pred_labels)
     female_recall = recall_score(female_labels, female_pred_labels)
     female_f1 = f1_score(female_labels, female_pred_labels, average="weighted")
 
     trans_female_pred_labels = male_model.predict(trans_female_reps)
-    print("trans_female_pred_labels are:", trans_female_pred_labels)
     trans_female_accuracy = accuracy_score(female_labels, trans_female_pred_labels)
     trans_female_precision = precision_score(female_labels, trans_female_pred_labels)
     trans_female_recall = recall_score(female_labels, trans_female_pred_labels)
@@ -104,6 +98,47 @@ def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
     return male_accuracy, male_precision, male_recall, male_f1, \
         female_accuracy, female_precision, female_recall, female_f1, \
         trans_female_accuracy, trans_female_precision, trans_female_recall, trans_female_f1
+
+
+def cal_stats_cts(male_reps, male_labels, female_reps, female_labels, \
+    trans_female_reps, model_func):
+    """ 
+    Calculate accuracy statistics based on logistic regression between the \
+        patient representations and label labels
+    This function is for continous labels
+
+    :param function model_func: the function to model the relationship between \
+        representations and reponse
+    
+    :returns: using the male model,\
+        - mean absoluate error (MAE) for male/female/transported female
+        - mean squared error (MSE) for male/female/transported female
+        - residual mean squared error (RMSE) for male/female/transported female
+            
+    """
+    # fit the model
+    male_model = model_func()
+    male_model.fit(male_reps, male_labels)
+
+    # calculate the stats
+    male_pred_labels = male_model.predict(male_reps)
+    male_mae = metrics.mean_absolute_error(male_labels, male_pred_labels)
+    male_mse = metrics.mean_squared_error(male_labels, male_pred_labels)
+    male_rmse = np.sqrt(metrics.mean_squared_error(male_labels, male_pred_labels))
+
+    female_pred_labels = male_model.predict(female_reps)
+    female_mae = metrics.mean_absolute_error(female_labels, female_pred_labels)
+    female_mse = metrics.mean_squared_error(female_labels, female_pred_labels)
+    female_rmse = np.sqrt(metrics.mean_squared_error(female_labels, female_pred_labels))
+
+    trans_female_pred_labels = male_model.predict(trans_female_reps)
+    trans_female_mae = metrics.mean_absolute_error(female_labels, trans_female_pred_labels)
+    trans_female_mse = metrics.mean_squared_error(female_labels, trans_female_pred_labels)
+    trans_female_rmse =  np.sqrt(metrics.mean_squared_error(female_labels, trans_female_pred_labels))
+
+    return male_mae, male_mse, male_rmse, female_mae, female_mse, female_rmse,\
+        trans_female_mae, trans_female_mse, trans_female_rmse
+
 
 
 """ 
@@ -137,6 +172,34 @@ def entire_proc_binary(sim_func, custom_train_reps, model_func):
         trans_female_accuracy, trans_female_precision, trans_female_recall, trans_female_f1
     
 
+""" 
+Wrap up everything for continuous labels
+"""
+
+def entire_proc_cts(sim_func, custom_train_reps, model_func):
+    """ 
+    Executes the entire procedure including
+        - generate male sequences, male labels, female sequences and female labels
+        - generate male representations and female representations
+        - transport female representations to male representations
+        - train regression model using male representations and male expires
+        - calculate accuracy statistics for males, females and transported females
+
+    :param function sim_func: simulation function
+    :param function custom_train_reps: customized deep patient function for training representations
+    :param function model_func: the function to model the relationship bewteen representations and response
+    :returns: the accuracy scores
+    """
+    male_seqs, male_labels, female_seqs, female_labels = sim_func(num_patient = 50)
+    male_reps, female_reps = custom_train_reps(male_seqs, female_seqs)
+    trans_female_reps = trans_female2male(male_reps, female_reps)
+    
+    male_mae, male_mse, male_rmse, female_mae, female_mse, female_rmse, \
+        trans_female_mae, trans_female_mse, trans_female_rmse = \
+        cal_stats_cts(male_reps, male_labels, female_reps, female_labels, trans_female_reps, model_func)
+    return male_mae, male_mse, male_rmse,  female_mae, female_mse, female_rmse, \
+        trans_female_mae, trans_female_mse, trans_female_rmse
+
 
 """ 
 Run entire procedure on multiple simulations and print accuracy statistics, \
@@ -154,7 +217,6 @@ def run_proc_multi(sim_func, custom_train_reps, model_func, n_times = 100):
     :returns: vectors of accuracy statistics of multiple rounds
     """
     
-    print("calling run_proc_multi")
     male_accuracies = []
     male_precisions = [] 
     male_recalls = [] 
@@ -184,16 +246,11 @@ def run_proc_multi(sim_func, custom_train_reps, model_func, n_times = 100):
         trans_female_f1 = None
 
         try:
-            print("enter try")
             male_accuracy, male_precision, male_recall, male_f1, \
             female_accuracy, female_precision, female_recall, female_f1, \
             trans_female_accuracy, trans_female_precision, trans_female_recall, trans_female_f1 = \
                     entire_proc_binary(sim_func, custom_train_reps, model_func)
-                    
-            # print("printing out accuracies")
-            # print(male_accuracy, male_precision, male_recall, \
-            # female_accuracy, female_precision, female_recall, \
-            # trans_female_accuracy, trans_female_precision, trans_female_recall)
+
         except Exception: # most likely only one label is generated for the examples
             print("exception 1")
             continue
@@ -237,6 +294,73 @@ def run_proc_multi(sim_func, custom_train_reps, model_func, n_times = 100):
 
 
 """ 
+Run entire procedure on multiple simulations and print accuracy statistics, \
+    for continuous labels
+"""
+
+def run_proc_multi_cts(sim_func, custom_train_reps, model_func, n_times = 100):
+    """ 
+    Run the entire procedure (entire_proc) multiple times (default 100 times), \
+        for continuous labels
+
+    :param function model_func: the function to model the relationship between representations and responses
+
+    :returns: vectors of accuracy statistics of multiple rounds
+    """
+    
+    male_maes = []
+    male_mses = [] 
+    male_rmses = [] 
+    female_maes = []
+    female_mses = []
+    female_rmses = [] 
+    trans_female_maes = []
+    trans_female_mses = []
+    trans_female_rmses = []
+
+    for _ in range(n_times):
+        # init accuracies
+        male_mae = None
+        male_mse = None
+        male_rmse = None 
+        female_mae = None
+        female_mse = None
+        female_rmse = None 
+        trans_female_mae = None
+        trans_female_mse = None
+        trans_female_rmse = None
+
+
+        try:
+            male_mae, male_mse, male_rmse, female_mae, female_mse, female_rmse, \
+                trans_female_mae, trans_female_mse, trans_female_rmse = \
+                    entire_proc_cts(sim_func, custom_train_reps, model_func)
+                    
+        except Exception: # most likely only one label is generated for the examples
+            print("exception 1")
+            continue
+
+        # if domain 2 data performs better using the model trained by domain 1 data, \
+        # there is no need to transport
+        if male_mae >= female_mae: 
+            print("exception 2")
+            continue
+
+        male_maes.append(male_mae)
+        male_mses.append(male_mse)
+        male_rmses.append(male_rmse)
+        female_maes.append(female_mae)
+        female_mses.append(female_mse)
+        female_rmses.append(female_rmse)
+        trans_female_maes.append(trans_female_mae)
+        trans_female_mses.append(trans_female_mse)
+        trans_female_rmses.append(trans_female_rmse)
+    return male_maes, male_mses, male_rmses,  female_maes, female_mses, female_rmses, \
+        trans_female_maes, trans_female_mses, trans_female_rmses
+
+
+
+""" 
 Constructs a dataframe to demonstrate the accuracy statistics for binary labels
 """
 
@@ -260,6 +384,32 @@ def save_scores(male_accuracies, male_precisions, male_recalls, male_f1s, \
     score_df['trans_female_precision'] = trans_female_precisions
     score_df['trans_female_recall'] = trans_female_recalls
     score_df['trans_female_f1'] = trans_female_f1s
+    # save
+    score_df.to_csv(file_path, index=None, header=True)
+
+
+
+""" 
+Constructs a dataframe to demonstrate the accuracy statistics for continuous labels
+"""
+
+def save_scores_cts(male_maes, male_mses, male_rmses,  female_maes, female_mses, female_rmses, \
+        trans_female_maes, trans_female_mses, trans_female_rmses, file_path):
+    """ 
+    Save accuracy statistics to file path
+    """
+    # construct dataframe
+    score_df = pd.DataFrame()
+    score_df['male_mae'] = male_maes
+    score_df['male_mse'] = male_mses
+    score_df['male_rmse'] = male_rmses
+    score_df['female_mae'] = female_maes
+    score_df['female_mse'] = female_mses
+    score_df['female_rmse'] = female_rmses
+    score_df['trans_female_mae'] = trans_female_maes
+    score_df['trans_female_mse'] = trans_female_mses
+    score_df['trans_female_rmse'] = trans_female_rmses
+
     # save
     score_df.to_csv(file_path, index=None, header=True)
 
@@ -297,8 +447,6 @@ def box_plot(scores_path, filter = True):
         for i in range(len(female_accuracy)):
             if female_accuracy[i] > high_acc_thres:
                 delete_indices.append(i)
-        print("delete_indices is:", delete_indices)
-        print("male_accuracy is:", male_accuracy)
         male_accuracy = np.delete(list(male_accuracy), delete_indices)
         male_f1 = np.delete(list(male_f1), delete_indices)
         female_accuracy = np.delete(list(female_accuracy), delete_indices)
@@ -308,7 +456,6 @@ def box_plot(scores_path, filter = True):
     
 
     trans_female_female_accuracy_incre =  [i - j for i, j in zip(trans_female_accuracy, female_accuracy)]
-    print(trans_female_female_accuracy_incre)
     trans_female_female_f1_incre =  [i - j for i, j in zip(trans_female_f1, female_f1)]
     print("number of stats is:", len(trans_female_female_accuracy_incre))
     print("number of 0 in incre is:", trans_female_female_accuracy_incre.count(0))
@@ -383,10 +530,68 @@ def box_plot(scores_path, filter = True):
     plt.title("transported female \n precision to \n female f1")
 
     
+    plt.tight_layout()
+    plt.show()
 
+
+
+""" 
+Histogram plot of simulation result statistics for continuous labels
+"""
+def hist_plot_cts(scores_path):
+    """ 
+    histogram plot of the scores in score dataframe stored in scores_path for binary labels. \
+        Specifically, we plot the box plots of 
+        - mae/mse/rmse of female over mae/mse/rmse of male
+        - mae/mse/rmse of transported female over mae/mse/rmse of male
+        - mae/mse/rmse of transported female over mae/mse/rmse of female
+
+    :param str scores_path: the path to scores.csv
+    """
+
+    scores_df = pd.read_csv(scores_path, index_col=None, header=0)
+
+    male_mae = scores_df['male_mae']
+    male_rmse = scores_df['male_rmse']
+
+    female_mae = scores_df['female_mae']
+    female_rmse = scores_df['female_rmse']
+
+    trans_female_mae = scores_df['trans_female_mae']
+    trans_female_rmse = scores_df['trans_female_rmse']
+
+    fig = plt.figure(figsize=(16,16))
+    flierprops={'marker': 'o', 'markersize': 4, 'markerfacecolor': 'fuchsia'}
+
+
+
+    # transported female to female mae
+    trans_female_female_mae = [i / j for i, j in zip(trans_female_mae, female_mae)]
+
+    # transported female to female rmse
+    trans_female_female_rmse = [i / j for i, j in zip(trans_female_rmse, female_rmse)]
+
+
+    bin_width = 0.01
+    plt.subplot(3, 3, 1)
+    plt.hist(trans_female_female_mae, \
+        bins=np.arange(min(trans_female_female_mae), max(trans_female_female_mae) + bin_width, bin_width))
+    plt.title("trans female to female accuracy ratio histogram")
+
+    
+    plt.subplot(3, 3, 2)
+    plt.hist(trans_female_female_rmse , \
+        bins=np.arange(min(trans_female_female_rmse), max(trans_female_female_rmse) + bin_width, bin_width))
+    plt.title("trans female to female rmse ratio histogram")
+
+    print("average trans female to female mae is {:.1%}".format(np.mean(trans_female_female_mae)))
+    print("median trans female to female mae is {:.1%}".format(np.median(trans_female_female_mae)))
+    print("average trans female to female rmse is {:.1%}".format(np.mean(trans_female_female_rmse)))
+    print("median trans female to female rmse f1 is {:.1%}".format(np.median(trans_female_female_rmse)))
 
     plt.tight_layout()
     plt.show()
+
 
 
 """ 
@@ -432,10 +637,10 @@ def hist_plot(scores_path, filter = True):
     trans_female_female_accuracy_incre =  [i - j for i, j in zip(trans_female_accuracy, female_accuracy)]
     trans_female_female_f1_incre =  [i - j for i, j in zip(trans_female_f1, female_f1)]
 
-    print("average trans female to female accuracy increment is '{:.1%}".format(np.mean(trans_female_female_accuracy_incre)))
-    print("median trans female to female accuracy increment is '{:.1%}".format(np.median(trans_female_female_accuracy_incre)))
-    print("average trans female to female accuracy f1 is '{:.1%}".format(np.mean(trans_female_female_f1_incre)))
-    print("median trans female to female accuracy f1 is '{:.1%}".format(np.median(trans_female_female_f1_incre)))
+    print("average trans female to female accuracy increment is {:.1%}".format(np.mean(trans_female_female_accuracy_incre)))
+    print("median trans female to female accuracy increment is {:.1%}".format(np.median(trans_female_female_accuracy_incre)))
+    print("average trans female to female accuracy f1 is {:.1%}".format(np.mean(trans_female_female_f1_incre)))
+    print("median trans female to female accuracy f1 is {:.1%}".format(np.median(trans_female_female_f1_incre)))
 
     fig = plt.figure(figsize=(16,16))
     flierprops={'marker': 'o', 'markersize': 4, 'markerfacecolor': 'fuchsia'}
@@ -474,37 +679,4 @@ def hist_plot(scores_path, filter = True):
     plt.tight_layout()
     plt.show()
 
-
-""" 
-Caculate result statistics for continuous labels (e.g. duration in hospital)
-"""
-
-def cal_stats_cts(male_reps, male_labels, \
-    female_reps, female_labels, trans_female_reps):
-    """ 
-    Calculate accuracy statistics based on linear regression between the \
-        patient representations and labels
-    This function is for continuous labels
-    
-    :returns: using the male model,\
-        - the coefficient of determination of the predictions of males
-        - ... of females
-        - ... of transported females
-    
-    Note that The best possible score is 1.0 and it can be negative \
-        (because the model can be arbitrarily worse). \
-        A constant model that always predicts the expected value of y, \
-        disregarding the input features, would get a score of 0.0.
-            
-    """
-    # fit the model
-    male_model = linear_model.LinearRegression()
-    male_model = male_model.fit(male_reps, male_labels)
-
-    # calculate the stats
-    male_score = male_model.score(male_reps, male_labels)
-    female_score = male_model.score(female_reps, female_labels)
-    trans_female_score = male_model.score(trans_female_reps, female_labels)
-
-    return male_score, female_score, trans_female_score
 
