@@ -17,45 +17,45 @@ from sklearn.metrics import recall_score
 from sklearn.metrics import f1_score
 
 """ 
-Transport female representations to male representations
+Transport source representations to target representations
 """
 
-def trans_female2male(male_reps, female_reps, type="balanced"):
+def trans_source2target(target_reps, source_reps, type="balanced"):
     """ 
-    Optimal transport (without entropy regularization) female representations \
-        to male representations
+    Optimal transport (without entropy regularization) source representations \
+        to target representations
 
     :param str type: balanced or unbalanced
-    :returns: transported female representations
+    :returns: transported source representations
     """
-    trans_female_reps = None
+    trans_source_reps = None
     if type == "balanced":
         ot_emd = ot.da.SinkhornTransport(reg_e=1e-1)
-        ot_emd.fit(Xs=female_reps, Xt=male_reps)
-        trans_female_reps = ot_emd.transform(Xs=female_reps)
+        ot_emd.fit(Xs=source_reps, Xt=target_reps)
+        trans_source_reps = ot_emd.transform(Xs=source_reps)
 
     elif type == "unbalanced":
         reg = 0.005
         reg_m_kl = 0.5
-        n = female_reps.shape[0]
+        n = source_reps.shape[0]
 
         a, b = np.ones((n,)) / n, np.ones((n,)) / n  # uniform distribution on samples
 
-        M = ot.dist(female_reps, male_reps)
+        M = ot.dist(source_reps, target_reps)
         M /= M.max()
 
         coupling = ot.unbalanced.sinkhorn_unbalanced(a, b, M, reg, reg_m_kl)
-        trans_female_reps = np.matmul(coupling, female_reps)
+        trans_source_reps = np.matmul(coupling, source_reps)
 
-    return trans_female_reps
+    return trans_source_reps
 
 
 """ 
 Caculate result statistics for binary labels
 """
 
-def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
-    trans_female_reps, model_func):
+def cal_stats_binary(target_reps, target_labels, source_reps, source_labels, \
+    trans_source_reps, model_func):
     """ 
     Calculate accuracy statistics based on logistic regression between the \
         patient representations and label labels
@@ -64,44 +64,44 @@ def cal_stats_binary(male_reps, male_labels, female_reps, female_labels, \
     :param function model_func: the function to model the relationship between \
         representations and reponse
     
-    :returns: using the male model,\
-        - accuracy for male/female/transported female
-        - precision for male/female/transported female
-        - recall for male/female/transported female
-        - f1 for male/female/transported female
+    :returns: using the target model,\
+        - accuracy for target/source/transported source
+        - precision for target/source/transported source
+        - recall for target/source/transported source
+        - f1 for target/source/transported source
             
     """
     # fit the model
-    male_model = model_func()
-    male_model.fit(male_reps, male_labels)
+    target_model = model_func()
+    target_model.fit(target_reps, target_labels)
 
     # calculate the stats
-    male_pred_labels = male_model.predict(male_reps)
-    male_accuracy = accuracy_score(male_labels, male_pred_labels)
-    male_precision = precision_score(male_labels, male_pred_labels)
-    male_recall = recall_score(male_labels, male_pred_labels)
-    male_f1 = f1_score(male_labels, male_pred_labels, average="weighted")
+    target_pred_labels = target_model.predict(target_reps)
+    target_accuracy = accuracy_score(target_labels, target_pred_labels)
+    target_precision = precision_score(target_labels, target_pred_labels)
+    target_recall = recall_score(target_labels, target_pred_labels)
+    target_f1 = f1_score(target_labels, target_pred_labels, average="weighted")
 
-    female_pred_labels = male_model.predict(female_reps)
-    female_accuracy = accuracy_score(female_labels, female_pred_labels)
-    female_precision = precision_score(female_labels, female_pred_labels)
-    female_recall = recall_score(female_labels, female_pred_labels)
-    female_f1 = f1_score(female_labels, female_pred_labels, average="weighted")
+    source_pred_labels = target_model.predict(source_reps)
+    source_accuracy = accuracy_score(source_labels, source_pred_labels)
+    source_precision = precision_score(source_labels, source_pred_labels)
+    source_recall = recall_score(source_labels, source_pred_labels)
+    source_f1 = f1_score(source_labels, source_pred_labels, average="weighted")
 
-    trans_female_pred_labels = male_model.predict(trans_female_reps)
-    trans_female_accuracy = accuracy_score(female_labels, trans_female_pred_labels)
-    trans_female_precision = precision_score(female_labels, trans_female_pred_labels)
-    trans_female_recall = recall_score(female_labels, trans_female_pred_labels)
-    trans_female_f1 = f1_score(female_labels, trans_female_pred_labels, average="weighted")
-
-
-    return male_accuracy, male_precision, male_recall, male_f1, \
-        female_accuracy, female_precision, female_recall, female_f1, \
-        trans_female_accuracy, trans_female_precision, trans_female_recall, trans_female_f1
+    trans_source_pred_labels = target_model.predict(trans_source_reps)
+    trans_source_accuracy = accuracy_score(source_labels, trans_source_pred_labels)
+    trans_source_precision = precision_score(source_labels, trans_source_pred_labels)
+    trans_source_recall = recall_score(source_labels, trans_source_pred_labels)
+    trans_source_f1 = f1_score(source_labels, trans_source_pred_labels, average="weighted")
 
 
-def cal_stats_cts(male_reps, male_labels, female_reps, female_labels, \
-    trans_female_reps, model_func):
+    return target_accuracy, target_precision, target_recall, target_f1, \
+        source_accuracy, source_precision, source_recall, source_f1, \
+        trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1
+
+
+def cal_stats_cts(target_reps, target_labels, source_reps, source_labels, \
+    trans_source_reps, model_func):
     """ 
     Calculate accuracy statistics based on logistic regression between the \
         patient representations and label labels
@@ -110,34 +110,34 @@ def cal_stats_cts(male_reps, male_labels, female_reps, female_labels, \
     :param function model_func: the function to model the relationship between \
         representations and reponse
     
-    :returns: using the male model,\
-        - mean absoluate error (MAE) for male/female/transported female
-        - mean squared error (MSE) for male/female/transported female
-        - residual mean squared error (RMSE) for male/female/transported female
+    :returns: using the target model,\
+        - mean absoluate error (MAE) for target/source/transported source
+        - mean squared error (MSE) for target/source/transported source
+        - residual mean squared error (RMSE) for target/source/transported source
             
     """
     # fit the model
-    male_model = model_func()
-    male_model.fit(male_reps, male_labels)
+    target_model = model_func()
+    target_model.fit(target_reps, target_labels)
 
     # calculate the stats
-    male_pred_labels = male_model.predict(male_reps)
-    male_mae = metrics.mean_absolute_error(male_labels, male_pred_labels)
-    male_mse = metrics.mean_squared_error(male_labels, male_pred_labels)
-    male_rmse = np.sqrt(metrics.mean_squared_error(male_labels, male_pred_labels))
+    target_pred_labels = target_model.predict(target_reps)
+    target_mae = metrics.mean_absolute_error(target_labels, target_pred_labels)
+    target_mse = metrics.mean_squared_error(target_labels, target_pred_labels)
+    target_rmse = np.sqrt(metrics.mean_squared_error(target_labels, target_pred_labels))
 
-    female_pred_labels = male_model.predict(female_reps)
-    female_mae = metrics.mean_absolute_error(female_labels, female_pred_labels)
-    female_mse = metrics.mean_squared_error(female_labels, female_pred_labels)
-    female_rmse = np.sqrt(metrics.mean_squared_error(female_labels, female_pred_labels))
+    source_pred_labels = target_model.predict(source_reps)
+    source_mae = metrics.mean_absolute_error(source_labels, source_pred_labels)
+    source_mse = metrics.mean_squared_error(source_labels, source_pred_labels)
+    source_rmse = np.sqrt(metrics.mean_squared_error(source_labels, source_pred_labels))
 
-    trans_female_pred_labels = male_model.predict(trans_female_reps)
-    trans_female_mae = metrics.mean_absolute_error(female_labels, trans_female_pred_labels)
-    trans_female_mse = metrics.mean_squared_error(female_labels, trans_female_pred_labels)
-    trans_female_rmse =  np.sqrt(metrics.mean_squared_error(female_labels, trans_female_pred_labels))
+    trans_source_pred_labels = target_model.predict(trans_source_reps)
+    trans_source_mae = metrics.mean_absolute_error(source_labels, trans_source_pred_labels)
+    trans_source_mse = metrics.mean_squared_error(source_labels, trans_source_pred_labels)
+    trans_source_rmse =  np.sqrt(metrics.mean_squared_error(source_labels, trans_source_pred_labels))
 
-    return male_mae, male_mse, male_rmse, female_mae, female_mse, female_rmse,\
-        trans_female_mae, trans_female_mse, trans_female_rmse
+    return target_mae, target_mse, target_rmse, source_mae, source_mse, source_rmse,\
+        trans_source_mae, trans_source_mse, trans_source_rmse
 
 
 
@@ -148,28 +148,28 @@ Wrap up everything for binary labels
 def entire_proc_binary(sim_func, custom_train_reps, model_func):
     """ 
     Executes the entire procedure including
-        - generate male sequences, male labels, female sequences and female labels
-        - generate male representations and female representations
-        - transport female representations to male representations
-        - train logistic regression model using male representations and male expires
-        - calculate accuracy statistics for males, females and transported females
+        - generate target sequences, target labels, source sequences and source labels
+        - generate target representations and source representations
+        - transport source representations to target representations
+        - train logistic regression model using target representations and target expires
+        - calculate accuracy statistics for targets, sources and transported sources
 
     :param function sim_func: simulation function
     :param function custom_train_reps: customized deep patient function for training representations
     :param function model_func: the function to model the relationship bewteen representations and response
     :returns: the accuracy scores
     """
-    male_seqs, male_labels, female_seqs, female_labels = sim_func(num_patient = 50)
-    male_reps, female_reps = custom_train_reps(male_seqs, female_seqs)
-    trans_female_reps = trans_female2male(male_reps, female_reps)
+    target_seqs, target_labels, source_seqs, source_labels = sim_func(num_patient = 50)
+    target_reps, source_reps = custom_train_reps(target_seqs, source_seqs)
+    trans_source_reps = trans_source2target(target_reps, source_reps)
     
-    male_accuracy, male_precision, male_recall, male_f1, \
-        female_accuracy, female_precision, female_recall, female_f1, \
-        trans_female_accuracy, trans_female_precision, trans_female_recall, trans_female_f1 = \
-        cal_stats_binary(male_reps, male_labels, female_reps, female_labels, trans_female_reps, model_func)
-    return male_accuracy, male_precision, male_recall, male_f1, \
-        female_accuracy, female_precision, female_recall, female_f1, \
-        trans_female_accuracy, trans_female_precision, trans_female_recall, trans_female_f1
+    target_accuracy, target_precision, target_recall, target_f1, \
+        source_accuracy, source_precision, source_recall, source_f1, \
+        trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1 = \
+        cal_stats_binary(target_reps, target_labels, source_reps, source_labels, trans_source_reps, model_func)
+    return target_accuracy, target_precision, target_recall, target_f1, \
+        source_accuracy, source_precision, source_recall, source_f1, \
+        trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1
     
 
 """ 
@@ -179,26 +179,26 @@ Wrap up everything for continuous labels
 def entire_proc_cts(sim_func, custom_train_reps, model_func):
     """ 
     Executes the entire procedure including
-        - generate male sequences, male labels, female sequences and female labels
-        - generate male representations and female representations
-        - transport female representations to male representations
-        - train regression model using male representations and male expires
-        - calculate accuracy statistics for males, females and transported females
+        - generate target sequences, target labels, source sequences and source labels
+        - generate target representations and source representations
+        - transport source representations to target representations
+        - train regression model using target representations and target expires
+        - calculate accuracy statistics for targets, sources and transported sources
 
     :param function sim_func: simulation function
     :param function custom_train_reps: customized deep patient function for training representations
     :param function model_func: the function to model the relationship bewteen representations and response
     :returns: the accuracy scores
     """
-    male_seqs, male_labels, female_seqs, female_labels = sim_func(num_patient = 50)
-    male_reps, female_reps = custom_train_reps(male_seqs, female_seqs)
-    trans_female_reps = trans_female2male(male_reps, female_reps)
+    target_seqs, target_labels, source_seqs, source_labels = sim_func(num_patient = 50)
+    target_reps, source_reps = custom_train_reps(target_seqs, source_seqs)
+    trans_source_reps = trans_source2target(target_reps, source_reps)
     
-    male_mae, male_mse, male_rmse, female_mae, female_mse, female_rmse, \
-        trans_female_mae, trans_female_mse, trans_female_rmse = \
-        cal_stats_cts(male_reps, male_labels, female_reps, female_labels, trans_female_reps, model_func)
-    return male_mae, male_mse, male_rmse,  female_mae, female_mse, female_rmse, \
-        trans_female_mae, trans_female_mse, trans_female_rmse
+    target_mae, target_mse, target_rmse, source_mae, source_mse, source_rmse, \
+        trans_source_mae, trans_source_mse, trans_source_rmse = \
+        cal_stats_cts(target_reps, target_labels, source_reps, source_labels, trans_source_reps, model_func)
+    return target_mae, target_mse, target_rmse,  source_mae, source_mse, source_rmse, \
+        trans_source_mae, trans_source_mse, trans_source_rmse
 
 
 """ 
@@ -212,43 +212,43 @@ def run_proc_multi(sim_func, custom_train_reps, model_func, n_times = 100):
         for binary labels
 
     :param function model_func: the function to model the relationship between representations and responses
-    :param bool filter: whether to filter out female accuracies > 0.7
+    :param bool filter: whether to filter out source accuracies > 0.7
 
     :returns: vectors of accuracy statistics of multiple rounds
     """
     
-    male_accuracies = []
-    male_precisions = [] 
-    male_recalls = [] 
-    male_f1s = []
-    female_accuracies = []
-    female_precisions = []
-    female_recalls = [] 
-    female_f1s = []
-    trans_female_accuracies = []
-    trans_female_precisions = []
-    trans_female_recalls = []
-    trans_female_f1s = []
+    target_accuracies = []
+    target_precisions = [] 
+    target_recalls = [] 
+    target_f1s = []
+    source_accuracies = []
+    source_precisions = []
+    source_recalls = [] 
+    source_f1s = []
+    trans_source_accuracies = []
+    trans_source_precisions = []
+    trans_source_recalls = []
+    trans_source_f1s = []
 
     for _ in range(n_times):
         # init accuracies
-        male_accuracy = None
-        male_precision = None
-        male_recall = None
-        male_f1 = None
-        female_accuracy = None
-        female_precision = None
-        female_recall = None
-        female_f1 = None
-        trans_female_accuracy = None
-        trans_female_precision = None
-        trans_female_recall = None
-        trans_female_f1 = None
+        target_accuracy = None
+        target_precision = None
+        target_recall = None
+        target_f1 = None
+        source_accuracy = None
+        source_precision = None
+        source_recall = None
+        source_f1 = None
+        trans_source_accuracy = None
+        trans_source_precision = None
+        trans_source_recall = None
+        trans_source_f1 = None
 
         try:
-            male_accuracy, male_precision, male_recall, male_f1, \
-            female_accuracy, female_precision, female_recall, female_f1, \
-            trans_female_accuracy, trans_female_precision, trans_female_recall, trans_female_f1 = \
+            target_accuracy, target_precision, target_recall, target_f1, \
+            source_accuracy, source_precision, source_recall, source_f1, \
+            trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1 = \
                     entire_proc_binary(sim_func, custom_train_reps, model_func)
 
         except Exception: # most likely only one label is generated for the examples
@@ -257,40 +257,40 @@ def run_proc_multi(sim_func, custom_train_reps, model_func, n_times = 100):
 
         # if domain 2 data performs better using the model trained by domain 1 data, \
         # there is no need to transport
-        if male_accuracy <= female_accuracy: 
+        if target_accuracy <= source_accuracy: 
             print("exception 2")
             continue
 
         # denominator cannot be 0
         min_deno = 0.001
-        male_accuracy = max(male_accuracy, min_deno)
-        male_precision = max(male_precision, min_deno)
-        male_recall = max(male_recall, min_deno)
-        male_f1 = max(male_f1, min_deno)
-        female_accuracy = max(female_accuracy, min_deno)
-        female_precision = max(female_precision, min_deno)
-        female_recall = max(female_recall, min_deno)
-        female_f1 = max(female_f1, min_deno)
-        trans_female_accuracy = max(trans_female_accuracy, min_deno)
-        trans_female_precision = max(trans_female_precision, min_deno)
-        trans_female_recall = max(trans_female_recall, min_deno)
-        trans_female_f1 = max(trans_female_f1, min_deno)
+        target_accuracy = max(target_accuracy, min_deno)
+        target_precision = max(target_precision, min_deno)
+        target_recall = max(target_recall, min_deno)
+        target_f1 = max(target_f1, min_deno)
+        source_accuracy = max(source_accuracy, min_deno)
+        source_precision = max(source_precision, min_deno)
+        source_recall = max(source_recall, min_deno)
+        source_f1 = max(source_f1, min_deno)
+        trans_source_accuracy = max(trans_source_accuracy, min_deno)
+        trans_source_precision = max(trans_source_precision, min_deno)
+        trans_source_recall = max(trans_source_recall, min_deno)
+        trans_source_f1 = max(trans_source_f1, min_deno)
 
-        male_accuracies.append(male_accuracy)
-        male_precisions.append(male_precision)
-        male_recalls.append(male_recall)
-        male_f1s.append(male_f1)
-        female_accuracies.append(female_accuracy)
-        female_precisions.append(female_precision)
-        female_recalls.append(female_recall)
-        female_f1s.append(female_f1)
-        trans_female_accuracies.append(trans_female_accuracy)
-        trans_female_precisions.append(trans_female_precision)
-        trans_female_recalls.append(trans_female_recall) 
-        trans_female_f1s.append(trans_female_f1)
-    return male_accuracies, male_precisions, male_recalls, male_f1s, \
-        female_accuracies, female_precisions, female_recalls, female_f1s, \
-        trans_female_accuracies, trans_female_precisions, trans_female_recalls, trans_female_f1s
+        target_accuracies.append(target_accuracy)
+        target_precisions.append(target_precision)
+        target_recalls.append(target_recall)
+        target_f1s.append(target_f1)
+        source_accuracies.append(source_accuracy)
+        source_precisions.append(source_precision)
+        source_recalls.append(source_recall)
+        source_f1s.append(source_f1)
+        trans_source_accuracies.append(trans_source_accuracy)
+        trans_source_precisions.append(trans_source_precision)
+        trans_source_recalls.append(trans_source_recall) 
+        trans_source_f1s.append(trans_source_f1)
+    return target_accuracies, target_precisions, target_recalls, target_f1s, \
+        source_accuracies, source_precisions, source_recalls, source_f1s, \
+        trans_source_accuracies, trans_source_precisions, trans_source_recalls, trans_source_f1s
 
 
 """ 
@@ -308,32 +308,32 @@ def run_proc_multi_cts(sim_func, custom_train_reps, model_func, n_times = 100):
     :returns: vectors of accuracy statistics of multiple rounds
     """
     
-    male_maes = []
-    male_mses = [] 
-    male_rmses = [] 
-    female_maes = []
-    female_mses = []
-    female_rmses = [] 
-    trans_female_maes = []
-    trans_female_mses = []
-    trans_female_rmses = []
+    target_maes = []
+    target_mses = [] 
+    target_rmses = [] 
+    source_maes = []
+    source_mses = []
+    source_rmses = [] 
+    trans_source_maes = []
+    trans_source_mses = []
+    trans_source_rmses = []
 
     for _ in range(n_times):
         # init accuracies
-        male_mae = None
-        male_mse = None
-        male_rmse = None 
-        female_mae = None
-        female_mse = None
-        female_rmse = None 
-        trans_female_mae = None
-        trans_female_mse = None
-        trans_female_rmse = None
+        target_mae = None
+        target_mse = None
+        target_rmse = None 
+        source_mae = None
+        source_mse = None
+        source_rmse = None 
+        trans_source_mae = None
+        trans_source_mse = None
+        trans_source_rmse = None
 
 
         try:
-            male_mae, male_mse, male_rmse, female_mae, female_mse, female_rmse, \
-                trans_female_mae, trans_female_mse, trans_female_rmse = \
+            target_mae, target_mse, target_rmse, source_mae, source_mse, source_rmse, \
+                trans_source_mae, trans_source_mse, trans_source_rmse = \
                     entire_proc_cts(sim_func, custom_train_reps, model_func)
                     
         except Exception: # most likely only one label is generated for the examples
@@ -342,21 +342,21 @@ def run_proc_multi_cts(sim_func, custom_train_reps, model_func, n_times = 100):
 
         # if domain 2 data performs better using the model trained by domain 1 data, \
         # there is no need to transport
-        if male_mae >= female_mae: 
+        if target_mae >= source_mae: 
             print("exception 2")
             continue
 
-        male_maes.append(male_mae)
-        male_mses.append(male_mse)
-        male_rmses.append(male_rmse)
-        female_maes.append(female_mae)
-        female_mses.append(female_mse)
-        female_rmses.append(female_rmse)
-        trans_female_maes.append(trans_female_mae)
-        trans_female_mses.append(trans_female_mse)
-        trans_female_rmses.append(trans_female_rmse)
-    return male_maes, male_mses, male_rmses,  female_maes, female_mses, female_rmses, \
-        trans_female_maes, trans_female_mses, trans_female_rmses
+        target_maes.append(target_mae)
+        target_mses.append(target_mse)
+        target_rmses.append(target_rmse)
+        source_maes.append(source_mae)
+        source_mses.append(source_mse)
+        source_rmses.append(source_rmse)
+        trans_source_maes.append(trans_source_mae)
+        trans_source_mses.append(trans_source_mse)
+        trans_source_rmses.append(trans_source_rmse)
+    return target_maes, target_mses, target_rmses,  source_maes, source_mses, source_rmses, \
+        trans_source_maes, trans_source_mses, trans_source_rmses
 
 
 
@@ -364,26 +364,26 @@ def run_proc_multi_cts(sim_func, custom_train_reps, model_func, n_times = 100):
 Constructs a dataframe to demonstrate the accuracy statistics for binary labels
 """
 
-def save_scores(male_accuracies, male_precisions, male_recalls, male_f1s, \
-        female_accuracies, female_precisions, female_recalls, female_f1s, \
-        trans_female_accuracies, trans_female_precisions, trans_female_recalls, trans_female_f1s, file_path):
+def save_scores(target_accuracies, target_precisions, target_recalls, target_f1s, \
+        source_accuracies, source_precisions, source_recalls, source_f1s, \
+        trans_source_accuracies, trans_source_precisions, trans_source_recalls, trans_source_f1s, file_path):
     """ 
     Save accuracy statistics to file path
     """
     # construct dataframe
     score_df = pd.DataFrame()
-    score_df['male_accuracy'] = male_accuracies
-    score_df['male_precision'] = male_precisions
-    score_df['male_recall'] = male_recalls
-    score_df['male_f1'] = male_f1s
-    score_df['female_accuracy'] = female_accuracies
-    score_df['female_precision'] = female_precisions
-    score_df['female_recall'] = female_recalls
-    score_df['female_f1'] = female_f1s
-    score_df['trans_female_accuracy'] = trans_female_accuracies
-    score_df['trans_female_precision'] = trans_female_precisions
-    score_df['trans_female_recall'] = trans_female_recalls
-    score_df['trans_female_f1'] = trans_female_f1s
+    score_df['target_accuracy'] = target_accuracies
+    score_df['target_precision'] = target_precisions
+    score_df['target_recall'] = target_recalls
+    score_df['target_f1'] = target_f1s
+    score_df['source_accuracy'] = source_accuracies
+    score_df['source_precision'] = source_precisions
+    score_df['source_recall'] = source_recalls
+    score_df['source_f1'] = source_f1s
+    score_df['trans_source_accuracy'] = trans_source_accuracies
+    score_df['trans_source_precision'] = trans_source_precisions
+    score_df['trans_source_recall'] = trans_source_recalls
+    score_df['trans_source_f1'] = trans_source_f1s
     # save
     score_df.to_csv(file_path, index=None, header=True)
 
@@ -393,22 +393,22 @@ def save_scores(male_accuracies, male_precisions, male_recalls, male_f1s, \
 Constructs a dataframe to demonstrate the accuracy statistics for continuous labels
 """
 
-def save_scores_cts(male_maes, male_mses, male_rmses,  female_maes, female_mses, female_rmses, \
-        trans_female_maes, trans_female_mses, trans_female_rmses, file_path):
+def save_scores_cts(target_maes, target_mses, target_rmses,  source_maes, source_mses, source_rmses, \
+        trans_source_maes, trans_source_mses, trans_source_rmses, file_path):
     """ 
     Save accuracy statistics to file path
     """
     # construct dataframe
     score_df = pd.DataFrame()
-    score_df['male_mae'] = male_maes
-    score_df['male_mse'] = male_mses
-    score_df['male_rmse'] = male_rmses
-    score_df['female_mae'] = female_maes
-    score_df['female_mse'] = female_mses
-    score_df['female_rmse'] = female_rmses
-    score_df['trans_female_mae'] = trans_female_maes
-    score_df['trans_female_mse'] = trans_female_mses
-    score_df['trans_female_rmse'] = trans_female_rmses
+    score_df['target_mae'] = target_maes
+    score_df['target_mse'] = target_mses
+    score_df['target_rmse'] = target_rmses
+    score_df['source_mae'] = source_maes
+    score_df['source_mse'] = source_mses
+    score_df['source_rmse'] = source_rmses
+    score_df['trans_source_mae'] = trans_source_maes
+    score_df['trans_source_mse'] = trans_source_mses
+    score_df['trans_source_rmse'] = trans_source_rmses
 
     # save
     score_df.to_csv(file_path, index=None, header=True)
@@ -422,112 +422,112 @@ def box_plot(scores_path, filter = True):
     """ 
     Box plot of the scores in score dataframe stored in scores_path for binary labels. \
         Specifically, we plot the box plots of 
-        - precision/recall of female over accuracy/precision/recall of male
-        - precision/recall of transported female over accuracy/precision/recall of male
-        - precision/recall of transported female over accuracy/precision/recall of female
+        - precision/recall of source over accuracy/precision/recall of target
+        - precision/recall of transported source over accuracy/precision/recall of target
+        - precision/recall of transported source over accuracy/precision/recall of source
 
     :param str scores_path: the path to scores.csv
-    :param bool filter: filter out scores where female accuracy is greater than > 0.7 (small room for improvement)
+    :param bool filter: filter out scores where source accuracy is greater than > 0.7 (small room for improvement)
     """
 
     scores_df = pd.read_csv(scores_path, index_col=None, header=0)
 
-    male_accuracy = scores_df['male_accuracy']
-    male_f1 = scores_df['male_f1']
+    target_accuracy = scores_df['target_accuracy']
+    target_f1 = scores_df['target_f1']
 
-    female_accuracy = scores_df['female_accuracy']
-    female_f1 = scores_df['female_f1']
+    source_accuracy = scores_df['source_accuracy']
+    source_f1 = scores_df['source_f1']
 
-    trans_female_accuracy = scores_df['trans_female_accuracy']
-    trans_female_f1 = scores_df['trans_female_f1']
+    trans_source_accuracy = scores_df['trans_source_accuracy']
+    trans_source_f1 = scores_df['trans_source_f1']
 
     if filter:
         delete_indices = []
         high_acc_thres = 0.7
-        for i in range(len(female_accuracy)):
-            if female_accuracy[i] > high_acc_thres:
+        for i in range(len(source_accuracy)):
+            if source_accuracy[i] > high_acc_thres:
                 delete_indices.append(i)
-        male_accuracy = np.delete(list(male_accuracy), delete_indices)
-        male_f1 = np.delete(list(male_f1), delete_indices)
-        female_accuracy = np.delete(list(female_accuracy), delete_indices)
-        female_f1 = np.delete(list(female_f1), delete_indices)
-        trans_female_accuracy = np.delete(list(trans_female_accuracy), delete_indices)
-        trans_female_f1 = np.delete(list(trans_female_f1), delete_indices)
+        target_accuracy = np.delete(list(target_accuracy), delete_indices)
+        target_f1 = np.delete(list(target_f1), delete_indices)
+        source_accuracy = np.delete(list(source_accuracy), delete_indices)
+        source_f1 = np.delete(list(source_f1), delete_indices)
+        trans_source_accuracy = np.delete(list(trans_source_accuracy), delete_indices)
+        trans_source_f1 = np.delete(list(trans_source_f1), delete_indices)
     
 
-    trans_female_female_accuracy_incre =  [i - j for i, j in zip(trans_female_accuracy, female_accuracy)]
-    trans_female_female_f1_incre =  [i - j for i, j in zip(trans_female_f1, female_f1)]
-    print("number of stats is:", len(trans_female_female_accuracy_incre))
-    print("number of 0 in incre is:", trans_female_female_accuracy_incre.count(0))
-    print("number of elements > 0 is:", np.sum(np.array(trans_female_female_accuracy_incre) > 0, axis=0))
-    print("number of elements < 0 is:", np.sum(np.array(trans_female_female_accuracy_incre) < 0, axis=0))
-    print("average trans female to female accuracy increment is:", np.mean(trans_female_female_accuracy_incre))
-    print("median trans female to female accuracy increment is:", np.median(trans_female_female_accuracy_incre))
-    print("average trans female to female accuracy f1 is:", np.mean(trans_female_female_f1_incre ))
-    print("median trans female to female accuracy f1 is:", np.median(trans_female_female_f1_incre))
+    trans_source_source_accuracy_incre =  [i - j for i, j in zip(trans_source_accuracy, source_accuracy)]
+    trans_source_source_f1_incre =  [i - j for i, j in zip(trans_source_f1, source_f1)]
+    print("number of stats is:", len(trans_source_source_accuracy_incre))
+    print("number of 0 in incre is:", trans_source_source_accuracy_incre.count(0))
+    print("number of elements > 0 is:", np.sum(np.array(trans_source_source_accuracy_incre) > 0, axis=0))
+    print("number of elements < 0 is:", np.sum(np.array(trans_source_source_accuracy_incre) < 0, axis=0))
+    print("average trans source to source accuracy increment is:", np.mean(trans_source_source_accuracy_incre))
+    print("median trans source to source accuracy increment is:", np.median(trans_source_source_accuracy_incre))
+    print("average trans source to source accuracy f1 is:", np.mean(trans_source_source_f1_incre ))
+    print("median trans source to source accuracy f1 is:", np.median(trans_source_source_f1_incre))
 
     fig = plt.figure(figsize=(16,16))
     flierprops={'marker': 'o', 'markersize': 4, 'markerfacecolor': 'fuchsia'}
 
-    # female to male accuracy
-    female_male_accuracy = [i / j for i, j in zip(female_accuracy, male_accuracy)]
+    # source to target accuracy
+    source_target_accuracy = [i / j for i, j in zip(source_accuracy, target_accuracy)]
 
-    # transported female to male accuracy
-    trans_female_male_accuracy = [i / j for i, j in zip(trans_female_accuracy, male_accuracy)]
+    # transported source to target accuracy
+    trans_source_target_accuracy = [i / j for i, j in zip(trans_source_accuracy, target_accuracy)]
 
-    # transported female to female accuracy
-    trans_female_female_accuracy = [i / j for i, j in zip(trans_female_accuracy, female_accuracy)]
-    print("average trans female to female accuracy is:", np.mean(trans_female_female_accuracy))
-    print("median trans female to female accuracy is:", np.median(trans_female_female_accuracy))
+    # transported source to source accuracy
+    trans_source_source_accuracy = [i / j for i, j in zip(trans_source_accuracy, source_accuracy)]
+    print("average trans source to source accuracy is:", np.mean(trans_source_source_accuracy))
+    print("median trans source to source accuracy is:", np.median(trans_source_source_accuracy))
 
 
-    # female to male accuracy
-    female_male_f1 = [i / j for i, j in zip(female_f1, male_f1)]
+    # source to target accuracy
+    source_target_f1 = [i / j for i, j in zip(source_f1, target_f1)]
 
-    # transported female to male accuracy
-    trans_female_male_f1 = [i / j for i, j in zip(trans_female_f1, male_f1)]
+    # transported source to target accuracy
+    trans_source_target_f1 = [i / j for i, j in zip(trans_source_f1, target_f1)]
 
-    # transported female to female accuracy
-    trans_female_female_f1 = [i / j for i, j in zip(trans_female_f1, female_f1)]
-    print("average trans female to female f1 is:", np.mean(trans_female_female_f1))
-    print("median trans female to female f1 is:", np.median(trans_female_female_f1))
+    # transported source to source accuracy
+    trans_source_source_f1 = [i / j for i, j in zip(trans_source_f1, source_f1)]
+    print("average trans source to source f1 is:", np.mean(trans_source_source_f1))
+    print("median trans source to source f1 is:", np.median(trans_source_source_f1))
 
 
     plt.subplot(3, 3, 1)
-    plt.boxplot(female_male_accuracy, flierprops=flierprops)
+    plt.boxplot(source_target_accuracy, flierprops=flierprops)
     # plt.ylim(y_min, y_max)
-    plt.title("female accuracy to \n male accuracy")
+    plt.title("source accuracy to \n target accuracy")
 
     
     plt.subplot(3, 3, 2)
-    plt.boxplot(trans_female_male_accuracy, flierprops=flierprops)
+    plt.boxplot(trans_source_target_accuracy, flierprops=flierprops)
     # plt.ylim(y_min, y_max)
-    plt.title("transported female \n accuracy to \n male accuracy")
+    plt.title("transported source \n accuracy to \n target accuracy")
 
     
     plt.subplot(3, 3, 3)
-    plt.boxplot(trans_female_female_accuracy, flierprops=flierprops)
+    plt.boxplot(trans_source_source_accuracy, flierprops=flierprops)
     # plt.ylim(y_min, y_max)
     plt.axhline(y = 1, color = 'b', linestyle = '-')
-    plt.title("transported female \n accuracy to \n female accuracy")
+    plt.title("transported source \n accuracy to \n source accuracy")
 
     plt.subplot(3, 3, 4)
-    plt.boxplot(female_male_f1, flierprops=flierprops)
+    plt.boxplot(source_target_f1, flierprops=flierprops)
     # plt.ylim(y_min, y_max)
-    plt.title("female precision to \n male f1")
+    plt.title("source precision to \n target f1")
 
     
     plt.subplot(3, 3, 5)
-    plt.boxplot(trans_female_male_f1, flierprops=flierprops)
+    plt.boxplot(trans_source_target_f1, flierprops=flierprops)
     # plt.ylim(y_min, y_max)
-    plt.title("transported female \n precision to \n male f1")
+    plt.title("transported source \n precision to \n target f1")
 
     
     plt.subplot(3, 3, 6)
-    plt.boxplot(trans_female_female_f1, flierprops=flierprops)
+    plt.boxplot(trans_source_source_f1, flierprops=flierprops)
     # plt.ylim(y_min, y_max)
     plt.axhline(y = 1, color = 'b', linestyle = '-')
-    plt.title("transported female \n precision to \n female f1")
+    plt.title("transported source \n precision to \n source f1")
 
     
     plt.tight_layout()
@@ -542,52 +542,52 @@ def hist_plot_cts(scores_path):
     """ 
     histogram plot of the scores in score dataframe stored in scores_path for binary labels. \
         Specifically, we plot the box plots of 
-        - mae/mse/rmse of female over mae/mse/rmse of male
-        - mae/mse/rmse of transported female over mae/mse/rmse of male
-        - mae/mse/rmse of transported female over mae/mse/rmse of female
+        - mae/mse/rmse of source over mae/mse/rmse of target
+        - mae/mse/rmse of transported source over mae/mse/rmse of target
+        - mae/mse/rmse of transported source over mae/mse/rmse of source
 
     :param str scores_path: the path to scores.csv
     """
 
     scores_df = pd.read_csv(scores_path, index_col=None, header=0)
 
-    male_mae = scores_df['male_mae']
-    male_rmse = scores_df['male_rmse']
+    target_mae = scores_df['target_mae']
+    target_rmse = scores_df['target_rmse']
 
-    female_mae = scores_df['female_mae']
-    female_rmse = scores_df['female_rmse']
+    source_mae = scores_df['source_mae']
+    source_rmse = scores_df['source_rmse']
 
-    trans_female_mae = scores_df['trans_female_mae']
-    trans_female_rmse = scores_df['trans_female_rmse']
+    trans_source_mae = scores_df['trans_source_mae']
+    trans_source_rmse = scores_df['trans_source_rmse']
 
     fig = plt.figure(figsize=(16,16))
     flierprops={'marker': 'o', 'markersize': 4, 'markerfacecolor': 'fuchsia'}
 
 
 
-    # transported female to female mae
-    trans_female_female_mae = [i / j for i, j in zip(trans_female_mae, female_mae)]
+    # transported source to source mae
+    trans_source_source_mae = [i / j for i, j in zip(trans_source_mae, source_mae)]
 
-    # transported female to female rmse
-    trans_female_female_rmse = [i / j for i, j in zip(trans_female_rmse, female_rmse)]
+    # transported source to source rmse
+    trans_source_source_rmse = [i / j for i, j in zip(trans_source_rmse, source_rmse)]
 
 
     bin_width = 0.01
     plt.subplot(3, 3, 1)
-    plt.hist(trans_female_female_mae, \
-        bins=np.arange(min(trans_female_female_mae), max(trans_female_female_mae) + bin_width, bin_width))
-    plt.title("trans female to female accuracy ratio histogram")
+    plt.hist(trans_source_source_mae, \
+        bins=np.arange(min(trans_source_source_mae), max(trans_source_source_mae) + bin_width, bin_width))
+    plt.title("trans source to source accuracy ratio histogram")
 
     
     plt.subplot(3, 3, 2)
-    plt.hist(trans_female_female_rmse , \
-        bins=np.arange(min(trans_female_female_rmse), max(trans_female_female_rmse) + bin_width, bin_width))
-    plt.title("trans female to female rmse ratio histogram")
+    plt.hist(trans_source_source_rmse , \
+        bins=np.arange(min(trans_source_source_rmse), max(trans_source_source_rmse) + bin_width, bin_width))
+    plt.title("trans source to source rmse ratio histogram")
 
-    print("average trans female to female mae is {:.1%}".format(np.mean(trans_female_female_mae)))
-    print("median trans female to female mae is {:.1%}".format(np.median(trans_female_female_mae)))
-    print("average trans female to female rmse is {:.1%}".format(np.mean(trans_female_female_rmse)))
-    print("median trans female to female rmse f1 is {:.1%}".format(np.median(trans_female_female_rmse)))
+    print("average trans source to source mae is {:.1%}".format(np.mean(trans_source_source_mae)))
+    print("median trans source to source mae is {:.1%}".format(np.median(trans_source_source_mae)))
+    print("average trans source to source rmse is {:.1%}".format(np.mean(trans_source_source_rmse)))
+    print("median trans source to source rmse f1 is {:.1%}".format(np.median(trans_source_source_rmse)))
 
     plt.tight_layout()
     plt.show()
@@ -601,80 +601,80 @@ def hist_plot(scores_path, filter = True):
     """ 
     histogram plot of the scores in score dataframe stored in scores_path for binary labels. \
         Specifically, we plot the box plots of 
-        - precision/recall of female over accuracy/precision/recall of male
-        - precision/recall of transported female over accuracy/precision/recall of male
-        - precision/recall of transported female over accuracy/precision/recall of female
+        - precision/recall of source over accuracy/precision/recall of target
+        - precision/recall of transported source over accuracy/precision/recall of target
+        - precision/recall of transported source over accuracy/precision/recall of source
 
     :param str scores_path: the path to scores.csv
-    :param bool filter: filter out scores where female accuracy is greater than > 0.7 (small room for improvement)
+    :param bool filter: filter out scores where source accuracy is greater than > 0.7 (small room for improvement)
     """
 
     scores_df = pd.read_csv(scores_path, index_col=None, header=0)
 
-    male_accuracy = scores_df['male_accuracy']
-    male_f1 = scores_df['male_f1']
+    target_accuracy = scores_df['target_accuracy']
+    target_f1 = scores_df['target_f1']
 
-    female_accuracy = scores_df['female_accuracy']
-    female_f1 = scores_df['female_f1']
+    source_accuracy = scores_df['source_accuracy']
+    source_f1 = scores_df['source_f1']
 
-    trans_female_accuracy = scores_df['trans_female_accuracy']
-    trans_female_f1 = scores_df['trans_female_f1']
+    trans_source_accuracy = scores_df['trans_source_accuracy']
+    trans_source_f1 = scores_df['trans_source_f1']
 
     if filter:
         delete_indices = []
         high_acc_thres = 0.7
-        for i in range(len(female_accuracy)):
-            if female_accuracy[i] > high_acc_thres:
+        for i in range(len(source_accuracy)):
+            if source_accuracy[i] > high_acc_thres:
                 delete_indices.append(i)
-        male_accuracy = np.delete(list(male_accuracy), delete_indices)
-        male_f1 = np.delete(list(male_f1), delete_indices)
-        female_accuracy = np.delete(list(female_accuracy), delete_indices)
-        female_f1 = np.delete(list(female_f1), delete_indices)
-        trans_female_accuracy = np.delete(list(trans_female_accuracy), delete_indices)
-        trans_female_f1 = np.delete(list(trans_female_f1), delete_indices)
+        target_accuracy = np.delete(list(target_accuracy), delete_indices)
+        target_f1 = np.delete(list(target_f1), delete_indices)
+        source_accuracy = np.delete(list(source_accuracy), delete_indices)
+        source_f1 = np.delete(list(source_f1), delete_indices)
+        trans_source_accuracy = np.delete(list(trans_source_accuracy), delete_indices)
+        trans_source_f1 = np.delete(list(trans_source_f1), delete_indices)
     
 
-    trans_female_female_accuracy_incre =  [i - j for i, j in zip(trans_female_accuracy, female_accuracy)]
-    trans_female_female_f1_incre =  [i - j for i, j in zip(trans_female_f1, female_f1)]
+    trans_source_source_accuracy_incre =  [i - j for i, j in zip(trans_source_accuracy, source_accuracy)]
+    trans_source_source_f1_incre =  [i - j for i, j in zip(trans_source_f1, source_f1)]
 
-    print("average trans female to female accuracy increment is {:.1%}".format(np.mean(trans_female_female_accuracy_incre)))
-    print("median trans female to female accuracy increment is {:.1%}".format(np.median(trans_female_female_accuracy_incre)))
-    print("average trans female to female accuracy f1 is {:.1%}".format(np.mean(trans_female_female_f1_incre)))
-    print("median trans female to female accuracy f1 is {:.1%}".format(np.median(trans_female_female_f1_incre)))
+    print("average trans source to source accuracy increment is {:.1%}".format(np.mean(trans_source_source_accuracy_incre)))
+    print("median trans source to source accuracy increment is {:.1%}".format(np.median(trans_source_source_accuracy_incre)))
+    print("average trans source to source accuracy f1 is {:.1%}".format(np.mean(trans_source_source_f1_incre)))
+    print("median trans source to source accuracy f1 is {:.1%}".format(np.median(trans_source_source_f1_incre)))
 
     fig = plt.figure(figsize=(16,16))
     flierprops={'marker': 'o', 'markersize': 4, 'markerfacecolor': 'fuchsia'}
 
-    # female to male accuracy
-    female_male_accuracy = [i / j for i, j in zip(female_accuracy, male_accuracy)]
+    # source to target accuracy
+    source_target_accuracy = [i / j for i, j in zip(source_accuracy, target_accuracy)]
 
-    # transported female to male accuracy
-    trans_female_male_accuracy = [i / j for i, j in zip(trans_female_accuracy, male_accuracy)]
+    # transported source to target accuracy
+    trans_source_target_accuracy = [i / j for i, j in zip(trans_source_accuracy, target_accuracy)]
 
-    # transported female to female accuracy
-    trans_female_female_accuracy = [i / j for i, j in zip(trans_female_accuracy, female_accuracy)]
+    # transported source to source accuracy
+    trans_source_source_accuracy = [i / j for i, j in zip(trans_source_accuracy, source_accuracy)]
 
 
-    # female to male accuracy
-    female_male_f1 = [i / j for i, j in zip(female_f1, male_f1)]
+    # source to target accuracy
+    source_target_f1 = [i / j for i, j in zip(source_f1, target_f1)]
 
-    # transported female to male accuracy
-    trans_female_male_f1 = [i / j for i, j in zip(trans_female_f1, male_f1)]
+    # transported source to target accuracy
+    trans_source_target_f1 = [i / j for i, j in zip(trans_source_f1, target_f1)]
 
-    # transported female to female accuracy
-    trans_female_female_f1 = [i / j for i, j in zip(trans_female_f1, female_f1)]
+    # transported source to source accuracy
+    trans_source_source_f1 = [i / j for i, j in zip(trans_source_f1, source_f1)]
 
     bin_width = 0.01
     plt.subplot(3, 3, 1)
-    plt.hist(trans_female_female_accuracy_incre, \
-        bins=np.arange(min(trans_female_female_accuracy_incre), max(trans_female_female_accuracy_incre) + bin_width, bin_width))
-    plt.title("trans female to female accuracy increment histogram")
+    plt.hist(trans_source_source_accuracy_incre, \
+        bins=np.arange(min(trans_source_source_accuracy_incre), max(trans_source_source_accuracy_incre) + bin_width, bin_width))
+    plt.title("trans source to source accuracy increment histogram")
 
     
     plt.subplot(3, 3, 2)
-    plt.hist(trans_female_female_f1_incre , \
-        bins=np.arange(min(trans_female_female_f1_incre), max(trans_female_female_f1_incre) + bin_width, bin_width))
-    plt.title("trans female to female f1 increment histogram")
+    plt.hist(trans_source_source_f1_incre , \
+        bins=np.arange(min(trans_source_source_f1_incre), max(trans_source_source_f1_incre) + bin_width, bin_width))
+    plt.title("trans source to source f1 increment histogram")
 
     plt.tight_layout()
     plt.show()
