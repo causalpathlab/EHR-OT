@@ -20,7 +20,7 @@ from sklearn.metrics import f1_score
 Transport source representations to target representations
 """
 
-def trans_source2target(target_reps, source_reps, type="balanced"):
+def trans_source2target(source_reps, target_reps, type="balanced", max_iter = None):
     """ 
     Optimal transport (without entropy regularization) source representations \
         to target representations
@@ -31,6 +31,8 @@ def trans_source2target(target_reps, source_reps, type="balanced"):
     trans_source_reps = None
     if type == "balanced":
         ot_emd = ot.da.SinkhornTransport(reg_e=1e-1)
+        if max_iter is not None:
+            ot_emd = ot.da.SinkhornTransport(reg_e=1e-1, max_iter=max_iter)
         ot_emd.fit(Xs=source_reps, Xt=target_reps)
         trans_source_reps = ot_emd.transform(Xs=source_reps)
 
@@ -161,7 +163,7 @@ def entire_proc_binary(sim_func, custom_train_reps, model_func):
     """
     target_seqs, target_labels, source_seqs, source_labels = sim_func(num_patient = 50)
     target_reps, source_reps = custom_train_reps(target_seqs, source_seqs)
-    trans_source_reps = trans_source2target(target_reps, source_reps)
+    trans_source_reps = trans_source2target(source_reps, target_reps)
     
     target_accuracy, target_precision, target_recall, target_f1, \
         source_accuracy, source_precision, source_recall, source_f1, \
@@ -192,7 +194,7 @@ def entire_proc_cts(sim_func, custom_train_reps, model_func):
     """
     target_seqs, target_labels, source_seqs, source_labels = sim_func(num_patient = 50)
     target_reps, source_reps = custom_train_reps(target_seqs, source_seqs)
-    trans_source_reps = trans_source2target(target_reps, source_reps)
+    trans_source_reps = trans_source2target(source_reps, target_reps)
     
     target_mae, target_mse, target_rmse, source_mae, source_mse, source_rmse, \
         trans_source_mae, trans_source_mse, trans_source_rmse = \

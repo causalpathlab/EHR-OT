@@ -76,8 +76,12 @@ class DA(object):
             data = data[idx, :]
             print('resized data: using %d samples' % (data.shape[0]))
 
+        print("data is:", data)
         print('(*) preprocessing: normalize features')
         data = self.normalizer.fit_transform(data)
+        print("normalized data is:", data)
+        print("normalizer params are:", self.normalizer.get_params())
+        print("normalizer is:", self.normalizer)
 
         dt = theano.shared(value=data.astype(
             theano.config.floatX), borrow=True)
@@ -87,11 +91,11 @@ class DA(object):
         idx = T.lscalar()
         x = T.matrix(name='dt')
 
-        cost, update = self._compute_cost_update(x)
+        cost_combined, update = self._compute_cost_update(x)
 
         train_da = theano.function(
             [idx],
-            cost,
+            cost_combined,
             updates=update,
             givens={x: dt[idx * self.batch_size: (idx + 1) * self.batch_size]},
         )
@@ -101,9 +105,12 @@ class DA(object):
         pcost = 0.0
         for epc in range(self.epochs):
             c = []
-
+   
             for bidx in range(int(nbatch)):
-                c.append(train_da(bidx))
+                res = train_da(bidx)
+                c.append(res[2])
+                print("x is:", res[0])
+                print("z is:", res[1])
 
             ccost = np.mean(c)
             print('(*) epoch %d, cost %.3f' % (epc + 1, ccost))
@@ -143,6 +150,8 @@ class DA(object):
         """
         Compute the reconstrcuted data given the hidden representation
         """
+        print("wp is:", self.wp.eval())
+        print("bp is:", self.bp.eval())
         return T.nnet.sigmoid(T.dot(h, self.wp) + self.bp)
 
     def _corrupted_input(self, x):
@@ -174,7 +183,7 @@ class DA(object):
         update = [(p, p - self.learn_rate * g)
                   for p, g in zip(self.param, gparam)]
 
-        return (cost, update)
+        return [x, z, cost], update
 
     def _init_w(self, rng):
         """
