@@ -71,17 +71,17 @@ class DA(object):
 
         if data.shape[0] > max_sample:
             idx = [i for i in range(data.shape[0])]
-            random.shuffle(idx)
+            # random.shuffle(idx)
             idx = idx[:max_sample]
             data = data[idx, :]
             print('resized data: using %d samples' % (data.shape[0]))
 
-        print("data is:", data)
+        # print("data is:", data)
         print('(*) preprocessing: normalize features')
         data = self.normalizer.fit_transform(data)
-        print("normalized data is:", data)
-        print("normalizer params are:", self.normalizer.get_params())
-        print("normalizer is:", self.normalizer)
+        # print("normalized data is:", data)
+        # print("normalizer params are:", self.normalizer.get_params())
+        # print("normalizer is:", self.normalizer)
 
         dt = theano.shared(value=data.astype(
             theano.config.floatX), borrow=True)
@@ -109,13 +109,14 @@ class DA(object):
             for bidx in range(int(nbatch)):
                 res = train_da(bidx)
                 c.append(res[2])
-                print("x is:", res[0])
-                print("z is:", res[1])
+                # print("x is:", res[0])
+                # print("z is:", res[1])
 
             ccost = np.mean(c)
             print('(*) epoch %d, cost %.3f' % (epc + 1, ccost))
 
-            if abs(ccost - pcost) < 10e-1:
+            if abs(ccost - pcost) < 1e-2:
+                # print("enter break")
                 break
             else:
                 pcost = ccost
@@ -150,8 +151,8 @@ class DA(object):
         """
         Compute the reconstrcuted data given the hidden representation
         """
-        print("wp is:", self.wp.eval())
-        print("bp is:", self.bp.eval())
+        # print("wp is:", self.wp.eval())
+        # print("bp is:", self.bp.eval())
         return T.nnet.sigmoid(T.dot(h, self.wp) + self.bp)
 
     def _corrupted_input(self, x):
