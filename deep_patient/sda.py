@@ -74,6 +74,19 @@ class SDA(object):
             dt = self.sda[i].apply(dt)
 
         return dt
+    
+    def reconstructed_input(self, h):
+        """
+        Compute the reconstrcuted data given the hidden representation
+        """
+
+        dt = h
+
+        for i in range(self.nlayer):
+            print('(*) applying: DA [layer: %d]' % self.sda[i].layer)
+            dt = self.sda[i].reconstructed_input(dt)
+        
+        return dt
 
 
     # private functions

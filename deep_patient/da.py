@@ -138,6 +138,14 @@ class DA(object):
         hrepr = self._hidden_representation(dt)
 
         return hrepr.eval()
+    
+    def reconstructed_input(self, h):
+        """
+        Compute the reconstrcuted data given the hidden representation
+        """
+        # print("wp is:", self.wp.eval())
+        # print("bp is:", self.bp.eval())
+        return T.nnet.sigmoid(T.dot(h, self.wp) + self.bp)
 
     # private functions
 
