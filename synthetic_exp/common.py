@@ -151,7 +151,7 @@ def cal_stats_cts(target_reps, target_labels, source_reps, source_labels, \
 Wrap up everything for binary labels
 """
 
-def entire_proc_binary(sim_func, custom_train_reps, model_func):
+def entire_proc_binary(sim_func, custom_train_reps, model_func, max_iter):
     """ 
     Executes the entire procedure including
         - generate target sequences, target labels, source sequences and source labels
@@ -163,11 +163,12 @@ def entire_proc_binary(sim_func, custom_train_reps, model_func):
     :param function sim_func: simulation function
     :param function custom_train_reps: customized deep patient function for training representations
     :param function model_func: the function to model the relationship bewteen representations and response
+    :param int max_iter: maximum number of iteration for Sinkhorn transport
     :returns: the accuracy scores
     """
     target_seqs, target_labels, source_seqs, source_labels = sim_func()
     target_reps, source_reps = custom_train_reps(target_seqs, source_seqs)
-    trans_source_reps = trans_source2target(source_reps, target_reps)
+    trans_source_reps = trans_source2target(source_reps, target_reps, max_iter=max_iter)
     
     target_accuracy, target_precision, target_recall, target_f1, \
         source_accuracy, source_precision, source_recall, source_f1, \
@@ -212,13 +213,14 @@ Run entire procedure on multiple simulations and print accuracy statistics, \
     for binary labels
 """
 
-def run_proc_multi(sim_func, custom_train_reps, model_func, n_times = 100):
+def run_proc_multi(sim_func, custom_train_reps, model_func, max_iter = None, n_times = 100):
     """ 
     Run the entire procedure (entire_proc) multiple times (default 100 times), \
         for binary labels
 
     :param function model_func: the function to model the relationship between representations and responses
     :param bool filter: whether to filter out source accuracies > 0.7
+    :param int max_iter: maximum number of iterations for Sinkhorn transport
 
     :returns: vectors of accuracy statistics of multiple rounds
     """
@@ -255,7 +257,7 @@ def run_proc_multi(sim_func, custom_train_reps, model_func, n_times = 100):
             target_accuracy, target_precision, target_recall, target_f1, \
             source_accuracy, source_precision, source_recall, source_f1, \
             trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1 = \
-                    entire_proc_binary(sim_func, custom_train_reps, model_func)
+                    entire_proc_binary(sim_func, custom_train_reps, model_func, max_iter=max_iter)
 
         except Exception: # most likely only one label is generated for the examples
             print("exception 1")
@@ -685,37 +687,6 @@ def hist_plot(scores_path, filter = True):
     plt.tight_layout()
     plt.show()
 
-def vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_labels, trans_source_reps):
-    """ 
-    Visualize the embedding space of dimension 2 of the target data, source data and transported source data \
-        for unordered reponse (categorical response)
-    """
-
-    pl.figure(1, figsize=(15, 5))
-    pl.subplot(1, 3, 1)
-    pl.scatter(source_reps[:, 0], source_reps[:, 1], c=source_labels, marker='+', label='Source samples')
-    # pl.xticks([])
-    # pl.yticks([])
-    pl.legend(loc=0)
-    pl.title('Source  samples')
-
-    pl.subplot(1, 3, 2)
-    pl.scatter(target_reps[:, 0], target_reps[:, 1], c=target_labels, marker='o', label='Target samples')
-    # pl.xticks([])
-    # pl.yticks([])
-    pl.legend(loc=0)
-    pl.title('Target samples')
-    pl.tight_layout()
-
-    pl.subplot(1, 3, 3)
-    pl.scatter(trans_source_reps[:, 0], trans_source_reps[:, 1], c=source_labels, marker='+', label='Transported source samples')
-    # pl.xticks([])
-    # pl.yticks([])
-    pl.legend(loc=0)
-    pl.title('Transported source samples')
-    pl.tight_layout()
-    pl.show()
-
 
 def vis_emb_dim2_ordered(target_reps, target_labels, source_reps, source_labels, trans_source_reps, model):
     """ 
@@ -740,3 +711,35 @@ def vis_emb_dim2_ordered(target_reps, target_labels, source_reps, source_labels,
     ax.scatter(trans_source_reps[:, 0], trans_source_reps[:, 1], source_labels, marker='+', color="blue", label='Transported source samples')
     plt.legend()
     plt.show()
+
+
+def vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_labels, trans_source_reps):
+    """ 
+    Visualize the embedding space of dimension 2 of the target data, source data and transported source data \
+        for unordered reponse (categorical response)
+    """
+    pl.figure(1, figsize=(15, 5))
+    pl.subplot(1, 3, 1)
+    pl.scatter(source_reps[:, 0], source_reps[:, 1], c=source_labels, alpha = 0.5, marker='o')
+    pl.xticks([])
+    pl.yticks([])
+    # pl.legend(loc=0)
+    pl.title('Source embedding')
+
+    pl.figure(1, figsize=(15, 5))
+    pl.subplot(1, 3, 2)
+    pl.scatter(target_reps[:, 0], target_reps[:, 1], c=target_labels, marker='+')
+    pl.xticks([])
+    pl.yticks([])
+    # pl.legend(loc=0)
+    pl.title('Target embedding')
+
+    pl.figure(1, figsize=(15, 5))
+    pl.subplot(1, 3, 3)
+    pl.scatter(trans_source_reps[:, 0], trans_source_reps[:, 1],c=target_labels, alpha = 0.5, marker='o')
+    pl.xticks([])
+    pl.yticks([])
+    # pl.legend(loc=0)
+    pl.title('Transported embedding')
+    pl.tight_layout()
+    pl.show()
