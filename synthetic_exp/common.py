@@ -713,6 +713,39 @@ def vis_emb_dim2_ordered(target_reps, target_labels, source_reps, source_labels,
     plt.show()
 
 
+def vis_boundary(reps, labels, model):
+    # construct colors
+    colors = []
+    unique_colors = list(set(labels))
+    for label in labels:
+        if label == unique_colors[0]:
+            colors.append('red')
+        else:
+            colors.append('blue')
+    
+    class_1_indices = [i for i,val in enumerate(colors) if val=="red"]
+    class_2_indices = [i for i,val in enumerate(colors) if val=="blue"]
+
+    fig = plt.figure(figsize=(15, 15))
+    ax = Axes3D(fig)
+    ax.scatter(reps[class_1_indices, 0], reps[class_1_indices, 1], reps[class_1_indices, 2], edgecolors="red", alpha = 0.5, s=30, facecolors='none', label="class 1")
+    ax.scatter(reps[class_2_indices, 0], reps[class_2_indices, 1], reps[class_2_indices, 2], edgecolors="blue", alpha = 0.5, s=10, facecolors='none', label = "class 2")
+    
+    x_pred = np.linspace(-0.6, 1.4, num=100)
+    y_pred = np.linspace(-0.4, 1, num=100)
+    z_pred = np.linspace(-0.6, 1.4, num=100)
+
+    xx_pred, yy_pred, zz_pred = np.meshgrid(x_pred, y_pred, z_pred)
+    model_viz = np.array([xx_pred.flatten(), yy_pred.flatten(), zz_pred.flatten()]).T
+    predicted = model.predict(model_viz)
+    ax.scatter(xx_pred.flatten(), yy_pred.flatten(), predicted, facecolor=(0,0,0,0), s=5, edgecolor='#70b3f0')
+
+    plt.legend()
+    plt.show()
+
+
+
+
 def vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_labels, trans_source_reps):
     """ 
     Visualize the embedding space of dimension 2 of the target data, source data and transported source data \
@@ -743,3 +776,57 @@ def vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_label
     pl.title('Transported source embedding')
     pl.tight_layout()
     pl.show()
+
+def vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_labels, trans_source_reps):
+    """ 
+    Visualize the embedding space of dimension 2 of the target data, source data and transported source data \
+        for unordered reponse (binary response)
+    """
+
+    # construct colors
+    source_colors = []
+    unique_colors = list(set(target_labels))
+    for label in target_labels:
+        if label == unique_colors[0]:
+            source_colors.append('red')
+        else:
+            source_colors.append('blue')
+    
+    source_class_1_indices = [i for i,val in enumerate(source_colors) if val=="red"]
+    source_class_2_indices = [i for i,val in enumerate(source_colors) if val=="blue"]
+
+    # construct colors
+    target_colors = []
+    for label in target_labels:
+        if label == unique_colors[0]:
+            target_colors.append('red')
+        else:
+            target_colors.append('blue')
+    
+    target_class_1_indices = [i for i,val in enumerate(target_colors) if val=="red"]
+    target_class_2_indices = [i for i,val in enumerate(target_colors) if val=="blue"]
+
+    fig = plt.figure(figsize=(15, 8))
+
+    ax = fig.add_subplot(131, projection='3d')
+    ax.scatter(source_reps[source_class_1_indices, 0], source_reps[source_class_1_indices, 1], source_reps[source_class_1_indices, 2], edgecolors="red", alpha = 0.5, s=30, facecolors='none', label="class 1")
+    ax.scatter(source_reps[source_class_2_indices, 0], source_reps[source_class_2_indices, 1], source_reps[source_class_2_indices, 2], edgecolors="blue", alpha = 0.5, s=10, facecolors='none', label = "class 2")
+    ax.set_title('Source embedding')
+    ax.set_xlabel('emb dim 1')
+    ax.set_ylabel('emb dim 2')
+    ax.set_zlabel('emb dim 3')
+    ax.legend()
+
+    ax = fig.add_subplot(132, projection='3d')
+    ax.scatter(target_reps[target_class_1_indices, 0], target_reps[target_class_1_indices, 1], target_reps[target_class_1_indices, 2], edgecolors="red", alpha = 0.5, s=30, facecolors='none', label="class 1")
+    ax.scatter(target_reps[target_class_2_indices, 0], target_reps[target_class_2_indices, 1], target_reps[target_class_2_indices, 2], edgecolors="blue", alpha = 0.5, s=10, facecolors='none', label = "class 2")
+    ax.set_title('Target embedding')
+    ax.legend()
+
+    ax = fig.add_subplot(133, projection='3d')
+    ax.scatter(trans_source_reps[source_class_1_indices, 0], trans_source_reps[source_class_1_indices, 1], trans_source_reps[source_class_1_indices, 2], edgecolors="red", alpha = 0.5, s=30, facecolors='none', label="class 1")
+    ax.scatter(trans_source_reps[source_class_2_indices, 0], trans_source_reps[source_class_2_indices, 1], trans_source_reps[source_class_2_indices, 2], edgecolors="blue", alpha = 0.5, s=10, facecolors='none', label = "class 2")
+    ax.set_title('Transported source embedding')
+    ax.legend()
+    plt.tight_layout()
+    plt.show()
