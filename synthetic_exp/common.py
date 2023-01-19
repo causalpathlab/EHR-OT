@@ -197,7 +197,7 @@ def entire_proc_cts(sim_func, custom_train_reps, model_func):
     :param function model_func: the function to model the relationship bewteen representations and response
     :returns: the accuracy scores
     """
-    target_seqs, target_labels, source_seqs, source_labels = sim_func(num_patient = 50)
+    target_seqs, target_labels, source_seqs, source_labels = sim_func()
     target_reps, source_reps = custom_train_reps(target_seqs, source_seqs)
     trans_source_reps = trans_source2target(source_reps, target_reps)
     
