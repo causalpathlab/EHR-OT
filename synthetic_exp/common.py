@@ -740,6 +740,6 @@ def vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_label
     pl.xticks([])
     pl.yticks([])
     # pl.legend(loc=0)
-    pl.title('Transported embedding')
+    pl.title('Transported source embedding')
     pl.tight_layout()
     pl.show()
