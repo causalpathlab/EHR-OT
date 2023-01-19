@@ -1,10 +1,14 @@
 """ 
 Common functions for synthetic datasets
 """
+
+
 import sys
 sys.path.append("/home/wanxinli/deep_patient")
 
 import numpy as np
+import matplotlib.pylab as pl
+from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import ot
 import pandas as pd
@@ -161,7 +165,7 @@ def entire_proc_binary(sim_func, custom_train_reps, model_func):
     :param function model_func: the function to model the relationship bewteen representations and response
     :returns: the accuracy scores
     """
-    target_seqs, target_labels, source_seqs, source_labels = sim_func(num_patient = 1000)
+    target_seqs, target_labels, source_seqs, source_labels = sim_func()
     target_reps, source_reps = custom_train_reps(target_seqs, source_seqs)
     trans_source_reps = trans_source2target(source_reps, target_reps)
     
@@ -681,4 +685,58 @@ def hist_plot(scores_path, filter = True):
     plt.tight_layout()
     plt.show()
 
+def vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_labels, trans_source_reps):
+    """ 
+    Visualize the embedding space of dimension 2 of the target data, source data and transported source data \
+        for unordered reponse (categorical response)
+    """
 
+    pl.figure(1, figsize=(15, 5))
+    pl.subplot(1, 3, 1)
+    pl.scatter(source_reps[:, 0], source_reps[:, 1], c=source_labels, marker='+', label='Source samples')
+    # pl.xticks([])
+    # pl.yticks([])
+    pl.legend(loc=0)
+    pl.title('Source  samples')
+
+    pl.subplot(1, 3, 2)
+    pl.scatter(target_reps[:, 0], target_reps[:, 1], c=target_labels, marker='o', label='Target samples')
+    # pl.xticks([])
+    # pl.yticks([])
+    pl.legend(loc=0)
+    pl.title('Target samples')
+    pl.tight_layout()
+
+    pl.subplot(1, 3, 3)
+    pl.scatter(trans_source_reps[:, 0], trans_source_reps[:, 1], c=source_labels, marker='+', label='Transported source samples')
+    # pl.xticks([])
+    # pl.yticks([])
+    pl.legend(loc=0)
+    pl.title('Transported source samples')
+    pl.tight_layout()
+    pl.show()
+
+
+def vis_emb_dim2_ordered(target_reps, target_labels, source_reps, source_labels, trans_source_reps, model):
+    """ 
+    Visualize the embedding space of dimension 2 of the target data, source data and transported source data \
+        for ordered response (continuous and discrete response)
+    
+    :param function model: the trained model
+    """
+
+    fig = plt.figure(figsize=(15, 15))
+    ax = Axes3D(fig)
+    ax.scatter(source_reps[:, 0], source_reps[:, 1], source_labels, marker='+', color='red', label="Source Samples")
+    ax.scatter(target_reps[:, 0], target_reps[:, 1], target_labels, marker='o', color = "green", label='Target samples')
+    x_pred = np.linspace(-0.6, 1.4, num=100)
+    y_pred = np.linspace(-0.4, 1, num=100)
+    z_pred = np.linspace(-0.6, 1.4, num=100)
+    xx_pred, yy_pred, zz_pred = np.meshgrid(x_pred, y_pred, z_pred)
+    model_viz = np.array([xx_pred.flatten(), yy_pred.flatten(), zz_pred.flatten()]).T
+    predicted = model.predict(model_viz)
+    ax.scatter(xx_pred.flatten(), yy_pred.flatten(), predicted, facecolor=(0,0,0,0), s=20, edgecolor='#70b3f0')
+
+    ax.scatter(trans_source_reps[:, 0], trans_source_reps[:, 1], source_labels, marker='+', color="blue", label='Transported source samples')
+    plt.legend()
+    plt.show()
