@@ -776,24 +776,59 @@ def vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_label
     pl.show()
 
 
-def vis_emb_dim1_ordered(target_reps, target_labels, source_reps, source_labels, trans_source_reps):
+def vis_emb_dim1_ordered(target_reps, target_labels, source_reps, source_labels, \
+    trans_source_reps, test_reps, test_labels, target_model, aug_target_model, low=0, high=200):
     """
     Visualize the embedding space of dimension 1 of the target data, source data and transported source data \
-        for ordered reponse (e.g. continuous response, discrete response)
+        for ordered reponse (e.g. continuous response, discrete response),
+        also visualize the learned functions
+    :param function target_model: the model trained by target data only
+    :param function aug_target_model: the model trained by target data and transported source data
+    :param float low: the lower bound for visualizing the two functions, default 0
+    :param float high: the upper bound for visualizing the two functions, default 200
+
     """
-    plt.figure(1, figsize=(15, 5))
-    plt.subplot(1, 3, 1)
-    plt.scatter(source_reps, source_labels,  alpha = 0.5, marker='o')
+    plt.figure(1, figsize=(20, 5))
+
+    plt.subplot(1, 4, 1)
+    plt.scatter(source_reps, source_labels,  alpha = 0.5, marker='o', c='cornflowerblue')
     plt.title('Source embedding')
 
-    plt.figure(1, figsize=(15, 5))
-    plt.subplot(1, 3, 2)
-    plt.scatter(target_reps, target_labels, marker='+')
+    plt.subplot(1, 4, 2)
+    target_points = plt.scatter(target_reps, target_labels, alpha=0.5, marker='+', c='red')
+    test_points = plt.scatter(test_reps, test_labels, alpha=0.5, marker='v', c='black')
+    # visualize functions
+    x = np.array([[low], [high]])
+    target_y = target_model.predict(x)
+    plt.plot(x, target_y, 'gold')
     plt.title('Target embedding')
+    plt.legend((target_points, test_points),
+        ('target', 'test'),
+        scatterpoints=1,
+        loc='lower right',
+        ncol=3,
+        fontsize=12)
 
-    plt.figure(1, figsize=(15, 5))
-    plt.subplot(1, 3, 3)
-    plt.scatter(trans_source_reps, source_labels, alpha = 0.5, marker='o')
+    plt.subplot(1, 4, 3)
+    plt.scatter(trans_source_reps, source_labels, alpha = 0.5, marker='o', c='cornflowerblue')
     plt.title('Transported source embedding')
+
+    plt.subplot(1, 4, 4)
+    trans_source_points = plt.scatter(trans_source_reps, source_labels, alpha = 0.5, marker='o', c='cornflowerblue')
+    target_points = plt.scatter(target_reps, target_labels, alpha=0.5, marker='+', c='red')
+    test_points = plt.scatter(test_reps, test_labels, alpha=0.5, marker='v', c='black')
+    aug_target_y = aug_target_model.predict(x)
+    plt.plot(x, aug_target_y, 'gold')
+    plt.title('Target and transported source embedding')
+    plt.legend((trans_source_points, target_points, test_points),
+           ('trans source', 'target', 'test'),
+           scatterpoints=1,
+           loc='lower right',
+           ncol=3,
+           fontsize=9)
     plt.tight_layout()
     plt.show()
+
+    
+
+    
