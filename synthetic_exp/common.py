@@ -146,6 +146,30 @@ def cal_stats_cts(target_reps, target_labels, source_reps, source_labels, \
         trans_source_mae, trans_source_mse, trans_source_rmse
 
 
+def cal_stats_emb_ordered(target_clf, aug_target_clf, test_reps, test_labels):
+    """ 
+    Calculates the accuracy statistics for embedding-based simulation with ordered reponse
+
+    :param function target_clf: the target function trained by target data
+    :param function aug_target_clf: the target function target by target data and (augmented) transported source data
+    :param list[float] test_reps: the 1D test data representations
+    :param list[float] test_labels: test labels
+
+    returns
+        - MAE, MSE, RMSE of target model/augmented target model
+    """
+    target_pred_labels = target_clf.predict(test_reps)
+    target_mae = metrics.mean_absolute_error(test_labels, target_pred_labels)
+    target_mse = metrics.mean_squared_error(test_labels, target_pred_labels)
+    target_rmse = np.sqrt(metrics.mean_squared_error(test_labels, target_pred_labels))
+    
+    aug_target_pred_labels = aug_target_clf.predict(test_reps)
+    aug_target_mae = metrics.mean_absolute_error(test_labels, aug_target_pred_labels)
+    aug_target_mse = metrics.mean_squared_error(test_labels, aug_target_pred_labels)
+    aug_target_rmse = np.sqrt(metrics.mean_squared_error(test_labels, aug_target_pred_labels))
+
+    return target_mae, target_mse, target_rmse, aug_target_mae, aug_target_mse, aug_target_rmse
+
 
 """ 
 Wrap up everything for binary labels
@@ -206,6 +230,38 @@ def entire_proc_cts(sim_func, custom_train_reps, model_func):
         cal_stats_cts(target_reps, target_labels, source_reps, source_labels, trans_source_reps, model_func)
     return target_mae, target_mse, target_rmse,  source_mae, source_mse, source_rmse, \
         trans_source_mae, trans_source_mse, trans_source_rmse
+
+
+def train_model(reps, labels): # TODO: add a parameter accepting more complicated model
+    """ 
+    Train a linear model by representations reps and labels
+
+    returns:
+        - the learned linear model
+    """
+    clf = linear_model.LinearRegression()
+    clf.fit(reps, labels)
+    return clf
+
+
+def entire_proc_emb_ordered(sim_func, custom_train_reps, max_iter):
+    """ 
+    Run the entire procedure for embedding simulated and ordered response
+    """
+
+
+    target_features, target_labels, test_features, test_labels, source_features, source_labels = sim_func()
+    target_reps, source_reps, test_reps = custom_train_reps(target_features, source_features, test_features)
+    trans_source_reps = trans_source2target(source_reps, target_reps, max_iter=max_iter)
+
+    target_clf = train_model(target_reps, target_labels)
+    aug_target_clf = \
+        train_model(np.append(target_reps, trans_source_reps, axis = 0), np.append(target_labels, source_labels, axis=0))
+
+    target_mae, target_mse, target_rmse, aug_target_mae, aug_target_mse, aug_target_rmse = \
+        cal_stats_emb_ordered(target_clf, aug_target_clf, test_reps, test_labels)
+
+    return target_mae, target_mse, target_rmse, aug_target_mae, aug_target_mse, aug_target_rmse
 
 
 """ 
@@ -367,6 +423,42 @@ def run_proc_multi_cts(sim_func, custom_train_reps, model_func, n_times = 100):
         trans_source_maes, trans_source_mses, trans_source_rmses
 
 
+def run_proc_multi_emb_ordered(sim_func, custom_train_reps, max_iter, n_times = 100):
+    """ 
+    Run the entire procedure (entire_proc) multiple times (default 100 times), \
+        for embedding-based ordered response
+
+    :returns: vectors of accuracy statistics of multiple rounds
+    """
+
+    target_maes = []
+    target_mses = [] 
+    target_rmses = [] 
+    aug_target_maes = []
+    aug_target_mses = [] 
+    aug_target_rmses = [] 
+
+    for _ in range(n_times):
+        # init accuracies
+        target_mae = None
+        target_mse = None
+        target_rmse = None 
+        aug_target_mae = None
+        aug_target_mse = None
+        aug_target_rmse = None 
+
+        target_mae, target_mse, target_rmse, aug_target_mae, aug_target_mse, aug_target_rmse = \
+            entire_proc_emb_ordered(sim_func, custom_train_reps, max_iter)
+
+        target_maes.append(target_mae)
+        target_mses.append(target_mse)
+        target_rmses.append(target_rmse)
+        aug_target_maes.append(aug_target_mae)
+        aug_target_mses.append(aug_target_mse)
+        aug_target_rmses.append(aug_target_rmse)
+     
+    return target_maes, target_mses, target_rmses,  aug_target_maes, aug_target_mses, aug_target_rmses
+
 
 """ 
 Constructs a dataframe to demonstrate the accuracy statistics for binary labels
@@ -420,6 +512,28 @@ def save_scores_cts(target_maes, target_mses, target_rmses,  source_maes, source
 
     # save
     score_df.to_csv(file_path, index=None, header=True)
+
+
+""" 
+Constructs a dataframe to demonstrate the accuracy statistics for embedding-based ordered response
+"""
+
+def save_scores_emb_ordered(target_maes, target_mses, target_rmses,  aug_target_maes, aug_target_mses, aug_target_rmses, file_path):
+    """ 
+    Save accuracy statistics to file path
+    """
+    # construct dataframe
+    score_df = pd.DataFrame()
+    score_df['target_mae'] = target_maes
+    score_df['target_mse'] = target_mses
+    score_df['target_rmse'] = target_rmses
+    score_df['aug_target_mae'] = aug_target_maes
+    score_df['aug_target_mse'] = aug_target_mses
+    score_df['aug_target_rmse'] = aug_target_rmses
+
+    # save
+    score_df.to_csv(file_path, index=None, header=True)
+
 
 
 """ 
@@ -542,7 +656,6 @@ def box_plot(scores_path, filter = True):
     plt.show()
 
 
-
 """ 
 Histogram plot of simulation result statistics for continuous labels
 """
@@ -599,7 +712,6 @@ def hist_plot_cts(scores_path):
 
     plt.tight_layout()
     plt.show()
-
 
 
 """ 
@@ -829,6 +941,55 @@ def vis_emb_dim1_ordered(target_reps, target_labels, source_reps, source_labels,
     plt.tight_layout()
     plt.show()
 
-    
+
+""" 
+Histogram plot of simulation result statistics for embedding-based ordered labels
+"""
+def hist_plot_ordered_emb(scores_path):
+    """ 
+    histogram plot of the scores in score dataframe stored in scores_path for ordered labels generated by embeddings. \
+        Specifically, we plot the box plots of 
+        - mae/mse/rmse of source over mae/mse/rmse of target
+        - mae/mse/rmse of source over mae/mse/rmse of augmented target
+ 
+
+    :param str scores_path: the path to scores.csv
+    """
+
+    scores_df = pd.read_csv(scores_path, index_col=None, header=0)
+
+    target_mae = scores_df['target_mae']
+    target_rmse = scores_df['target_rmse']
+
+    aug_target_mae = scores_df['aug_target_mae']
+    aug_target_rmse = scores_df['aug_target_rmse']
+
+
+    fig = plt.figure(figsize=(16,16))
+    flierprops={'marker': 'o', 'markersize': 4, 'markerfacecolor': 'fuchsia'}
+
+    # transported source to source mae
+    aug_target_target_mae = [i / j for i, j in zip(aug_target_mae, target_mae)]
+
+    # transported source to source rmse
+    aug_target_target_rmse = [i / j for i, j in zip(aug_target_rmse, target_rmse)]
+
+    bin_width = 0.01
+    plt.subplot(3, 3, 1)
+    plt.hist(aug_target_target_mae, \
+        bins=np.arange(min(aug_target_target_mae), max(aug_target_target_mae) + bin_width, bin_width))
+    plt.title("aug target to target mae ratio histogram")
 
     
+    plt.subplot(3, 3, 2)
+    plt.hist(aug_target_target_rmse , \
+        bins=np.arange(min(aug_target_target_rmse), max(aug_target_target_rmse) + bin_width, bin_width))
+    plt.title("aug target to target rmse ratio histogram")
+
+    print("average trans source to source mae is {:.1%}".format(np.mean(aug_target_target_mae)))
+    print("median trans source to source mae is {:.1%}".format(np.median(aug_target_target_mae)))
+    print("average trans source to source rmse is {:.1%}".format(np.mean(aug_target_target_rmse)))
+    print("median trans source to source rmse f1 is {:.1%}".format(np.median(aug_target_target_rmse)))
+
+    plt.tight_layout()
+    plt.show()
