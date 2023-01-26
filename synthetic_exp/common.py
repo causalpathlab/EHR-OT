@@ -907,6 +907,8 @@ def vis_emb_dim1_ordered(target_reps, target_labels, source_reps, source_labels,
     plt.subplot(1, 4, 1)
     plt.scatter(source_reps, source_labels,  alpha = 0.5, marker='o', c='cornflowerblue')
     plt.title('Source embedding')
+    plt.xlabel("embedding dim")
+    plt.ylabel("response")
 
     plt.subplot(1, 4, 2)
     target_points = plt.scatter(target_reps, target_labels, alpha=0.5, marker='+', c='red')
@@ -916,6 +918,8 @@ def vis_emb_dim1_ordered(target_reps, target_labels, source_reps, source_labels,
     target_y = target_model.predict(x)
     plt.plot(x, target_y, 'gold')
     plt.title('Target embedding')
+    plt.xlabel("embedding dim")
+    plt.ylabel("response")
     plt.legend((target_points, test_points),
         ('target', 'test'),
         scatterpoints=1,
@@ -926,6 +930,8 @@ def vis_emb_dim1_ordered(target_reps, target_labels, source_reps, source_labels,
     plt.subplot(1, 4, 3)
     plt.scatter(trans_source_reps, source_labels, alpha = 0.5, marker='o', c='cornflowerblue')
     plt.title('Transported source embedding')
+    plt.xlabel("embedding dim")
+    plt.ylabel("response")
 
     plt.subplot(1, 4, 4)
     trans_source_points = plt.scatter(trans_source_reps, source_labels, alpha = 0.5, marker='o', c='cornflowerblue')
@@ -940,6 +946,8 @@ def vis_emb_dim1_ordered(target_reps, target_labels, source_reps, source_labels,
            loc='lower right',
            ncol=3,
            fontsize=9)
+    plt.xlabel("embedding dim")
+    plt.ylabel("response")
     plt.tight_layout()
     plt.show()
 
