@@ -207,7 +207,7 @@ def entire_proc_binary(sim_func, custom_train_reps, model_func, max_iter):
 Wrap up everything for continuous labels
 """
 
-def entire_proc_cts(sim_func, custom_train_reps, model_func):
+def entire_proc_cts(sim_func, custom_train_reps, model_func, max_iter):
     """ 
     Executes the entire procedure including
         - generate target sequences, target labels, source sequences and source labels
@@ -219,11 +219,12 @@ def entire_proc_cts(sim_func, custom_train_reps, model_func):
     :param function sim_func: simulation function
     :param function custom_train_reps: customized deep patient function for training representations
     :param function model_func: the function to model the relationship bewteen representations and response
+    :param int max_iter: maximum number of iterations for Sinkhorn OT
     :returns: the accuracy scores
     """
     target_seqs, target_labels, source_seqs, source_labels = sim_func()
     target_reps, source_reps = custom_train_reps(target_seqs, source_seqs)
-    trans_source_reps = trans_source2target(source_reps, target_reps)
+    trans_source_reps = trans_source2target(source_reps, target_reps, max_iter=max_iter)
     
     target_mae, target_mse, target_rmse, source_mae, source_mse, source_rmse, \
         trans_source_mae, trans_source_mse, trans_source_rmse = \
@@ -362,12 +363,13 @@ Run entire procedure on multiple simulations and print accuracy statistics, \
     for continuous labels
 """
 
-def run_proc_multi_cts(sim_func, custom_train_reps, model_func, n_times = 100):
+def run_proc_multi_cts(sim_func, custom_train_reps, model_func, max_iter = None, n_times = 100):
     """ 
     Run the entire procedure (entire_proc) multiple times (default 100 times), \
         for continuous labels
 
     :param function model_func: the function to model the relationship between representations and responses
+    :param int max_iter: maximum number of iterations for Sinkhorn OT
 
     :returns: vectors of accuracy statistics of multiple rounds
     """
@@ -398,7 +400,7 @@ def run_proc_multi_cts(sim_func, custom_train_reps, model_func, n_times = 100):
         try:
             target_mae, target_mse, target_rmse, source_mae, source_mse, source_rmse, \
                 trans_source_mae, trans_source_mse, trans_source_rmse = \
-                    entire_proc_cts(sim_func, custom_train_reps, model_func)
+                    entire_proc_cts(sim_func, custom_train_reps, model_func, max_iter)
                     
         except Exception: # most likely only one label is generated for the examples
             print("exception 1")
