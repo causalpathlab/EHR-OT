@@ -681,7 +681,7 @@ def hist_plot_cts(scores_path):
     trans_source_mae = scores_df['trans_source_mae']
     trans_source_rmse = scores_df['trans_source_rmse']
 
-    fig = plt.figure(figsize=(16,16))
+    fig = plt.figure(figsize=(16,10))
     flierprops={'marker': 'o', 'markersize': 4, 'markerfacecolor': 'fuchsia'}
 
 
@@ -694,13 +694,13 @@ def hist_plot_cts(scores_path):
 
 
     bin_width = 0.01
-    plt.subplot(3, 3, 1)
+    plt.subplot(1, 2, 1)
     plt.hist(trans_source_source_mae, \
         bins=np.arange(min(trans_source_source_mae), max(trans_source_source_mae) + bin_width, bin_width))
     plt.title("trans source to source accuracy ratio histogram")
 
     
-    plt.subplot(3, 3, 2)
+    plt.subplot(1, 2, 2)
     plt.hist(trans_source_source_rmse , \
         bins=np.arange(min(trans_source_source_rmse), max(trans_source_source_rmse) + bin_width, bin_width))
     plt.title("trans source to source rmse ratio histogram")
