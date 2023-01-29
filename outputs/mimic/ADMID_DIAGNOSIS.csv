@@ -1,4 +1,4 @@
-admid,gender,ICD codes,duration,diagnosis,indicator
+admid,gender,ICD codes,duration,diagnosis,label
 172335,F,"[2, 6, 10]",530460.0,LEG PAIN,0
 173633,F,[10],574560.0,ABDOMINAL PAIN,0
 174105,M,"[27, 28]",425460.0,GASTROINTESTINAL BLEED,0
