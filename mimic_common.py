@@ -42,7 +42,6 @@ def plot_code_distn(df):
     """
 
     df, _ = update_codes(df)
-    # print(admid_diagnosis_df)
     female_1_df = df.loc[(df['label'] == 1) & (df['gender'] == 'F')]
     male_1_df = df.loc[(df['label'] == 1) & (df['gender'] == 'M')]
     female_0_df = df.loc[(df['label'] == 0) & (df['gender'] == 'F')]
@@ -162,7 +161,6 @@ def select_df(df, label_code, male_count, female_count):
     # sample the same number of label 0s and label 1s
     delete_female_0_indices = random.sample(female_0_indices, len(female_0_indices)-female_count)
     delete_male_0_indices = random.sample(male_0_indices, len(male_0_indices)-male_count)
-    print("female_1_indices length is:", len(female_1_indices))
     delete_female_1_indices = random.sample(female_1_indices, len(female_1_indices)-female_count)
     delete_male_1_indices = random.sample(male_1_indices, len(male_1_indices)-male_count)
 
@@ -175,7 +173,7 @@ def select_df(df, label_code, male_count, female_count):
     # remove label_code from ICD code features
     for index, row in df_copy.iterrows():
         if label_code in row['ICD codes']:
-            new_codes = row['ICD codes']
+            new_codes = copy.deepcopy(row['ICD codes'])
             new_codes.remove(label_code)
             df_copy.at[index, 'ICD codes'] = new_codes
     
@@ -194,12 +192,9 @@ def entire_proc(n_components, label_code, full_df, custom_train_reps, male_count
     :param int female_count: the number of samples with label 1s and label 0s for source (female)
     """
     
-    print("full_df shape is:", full_df.shape)
     selected_df = select_df(full_df, label_code, male_count=male_count, female_count=female_count)
-    print("after select_df, full_df shape is:", full_df.shape)
 
     target_features, target_labels, source_features, source_labels = gen_features_labels(selected_df)
-    print("after gen_features_labels, full_df shape is:", full_df.shape)
 
     target_reps, source_reps = custom_train_reps(target_features, source_features, n_components)
 
