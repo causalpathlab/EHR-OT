@@ -1,0 +1,6 @@
+transferrable
+4111
+LUNG CA in text description
+
+untransferable:
+45620

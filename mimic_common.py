@@ -180,7 +180,7 @@ def select_df(df, label_code, male_count, female_count):
     return df_copy
 
 
-def entire_proc(n_components, label_code, full_df, custom_train_reps, male_count = 120, female_count = 100):
+def entire_proc(n_components, label_code, full_df, custom_train_reps, male_count = 120, female_count = 100, pca_explain=False):
     """
     Wrap up the entire procedure
 
@@ -190,13 +190,14 @@ def entire_proc(n_components, label_code, full_df, custom_train_reps, male_count
     :param function custom_train_reps: the customized function for learning representations
     :param int male_count: the number of samples with label 1s and label 0s for target (male)
     :param int female_count: the number of samples with label 1s and label 0s for source (female)
+    :param bool pca_explain: print the variance explained by the PCA, if True. Default False
     """
     
     selected_df = select_df(full_df, label_code, male_count=male_count, female_count=female_count)
 
     target_features, target_labels, source_features, source_labels = gen_features_labels(selected_df)
 
-    target_reps, source_reps = custom_train_reps(target_features, source_features, n_components)
+    target_reps, source_reps = custom_train_reps(target_features, source_features, n_components, pca_explain=pca_explain)
 
     clf = LogisticRegression()
     clf.fit(target_reps, target_labels)
