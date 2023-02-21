@@ -1,6 +1,8 @@
 transferrable
-4111
+4111, Intermed coronary synd,Intermediate coronary syndrome
 LUNG CA in text description
+99591, Sepsis,Sepsis
+99592, severe sepsis
 
 untransferable:
-45620
+45620, Bleed esoph var oth dis,"Esophageal varices in diseases classified elsewhere, with bleeding"

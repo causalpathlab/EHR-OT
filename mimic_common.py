@@ -5,6 +5,7 @@ import copy
 from common import *
 from ast import literal_eval
 import matplotlib.pyplot as plt
+from multiprocess import Pool
 import random
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score
@@ -238,3 +239,27 @@ def multi_proc(score_path, n_components, label_code, full_df, custom_train_reps,
     res_df.to_csv(score_path, index=False, header=True)
     return res
     
+
+
+
+def multi_proc_parallel(score_path, n_components, label_code, custom_train_reps, \
+        male_count, female_count, iteration=20):
+    """ 
+    Code cannot be parallized when passing the dataframe (full_df) as a parameter
+    """
+    
+    p = Pool(10)
+    def iteration_wrapper(iter):
+        """ 
+        Wrapper function for one iteration, returns result statistics, for parallel computing
+
+        :param int iter: the current iteration
+        """
+        print("iteration:", iter)
+        cur_res = entire_proc(n_components, label_code, admid_diagnosis_df, custom_train_reps, male_count, female_count)
+        return cur_res
+
+    res = p.map(iteration_wrapper, np.arange(0, iteration, 1))
+    res_df = pd.DataFrame(res, columns = ['target_accuracy', 'target_f1', 'source_accuracy', 'source_f1', 'trans_source_accuracy', 'trans_source_f1'])
+    res_df.to_csv(score_path, index=False, header=True)
+    return res
