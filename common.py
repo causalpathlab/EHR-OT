@@ -678,6 +678,14 @@ def box_plot_short(scores_path, label_code):
         - the medians of trans source to source f1
     """
 
+    def special_div(x, y):
+        """ 
+        Special division operation
+        """
+        if y == 0:
+            y = 1e-5
+        return x/y
+
     scores_df = pd.read_csv(scores_path, index_col=None, header=0)
 
     source_accuracy = scores_df['source_accuracy']
@@ -687,11 +695,10 @@ def box_plot_short(scores_path, label_code):
     trans_source_f1 = scores_df['trans_source_f1']
 
     # transported source to source accuracy
-    trans_source_source_accuracy = [i / j for i, j in zip(trans_source_accuracy, source_accuracy)]
+    trans_source_source_accuracy = [special_div(i, j) for i, j in zip(trans_source_accuracy, source_accuracy)]
 
     # transported source to source accuracy
-    trans_source_source_f1 = [i / j for i, j in zip(trans_source_f1, source_f1)]
-
+    trans_source_source_f1 = [special_div(i, j) for i, j in zip(trans_source_f1, source_f1)]
 
     # Set the figure size
     plt.figure()

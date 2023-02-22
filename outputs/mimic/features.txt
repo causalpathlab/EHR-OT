@@ -6,3 +6,5 @@ LUNG CA in text description
 
 untransferable:
 45620, Bleed esoph var oth dis,"Esophageal varices in diseases classified elsewhere, with bleeding"
+
+https://en.wikipedia.org/wiki/List_of_ICD-9_codes_E_and_V_codes:_external_causes_of_injury_and_supplemental_classification
