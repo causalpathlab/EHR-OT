@@ -658,6 +658,58 @@ def box_plot(scores_path, filter = True):
     plt.show()
 
 
+
+""" 
+Shorter version of box plot of simulation result statistics
+"""
+
+def box_plot_short(scores_path, label_code):
+    """ 
+    Box plot of the scores in score dataframe stored in scores_path for binary labels. \
+        Specifically, we plot the box plots of 
+        - accuracy/f1 of transported source over accuracy/precision/recall of source
+
+    :param str scores_path: the path to scores.csv
+    :param str label_code: the ICD code as the response
+    """
+
+    scores_df = pd.read_csv(scores_path, index_col=None, header=0)
+
+    source_accuracy = scores_df['source_accuracy']
+    source_f1 = scores_df['source_f1']
+
+    trans_source_accuracy = scores_df['trans_source_accuracy']
+    trans_source_f1 = scores_df['trans_source_f1']
+
+    # transported source to source accuracy
+    trans_source_source_accuracy = [i / j for i, j in zip(trans_source_accuracy, source_accuracy)]
+
+    # transported source to source accuracy
+    trans_source_source_f1 = [i / j for i, j in zip(trans_source_f1, source_f1)]
+
+
+    # Set the figure size
+    plt.figure()
+    plt.rcParams["figure.figsize"] = [7.50, 3.50]
+    plt.rcParams["figure.autolayout"] = True
+
+    # Pandas dataframe
+    data = pd.DataFrame({
+        'accuracy': trans_source_source_accuracy,
+        'f1': trans_source_source_f1
+    })
+
+    # Plot the dataframe
+    ax = data[['accuracy', 'f1']].plot(kind='box', title=f'transported source to source for {label_code}')
+
+    # Plot the baseline
+    plt.axhline(y = 1, color = 'r', linestyle = '-')
+
+    # Display the plot
+    plt.show()
+
+
+
 """ 
 Histogram plot of simulation result statistics for continuous labels
 """
