@@ -19,6 +19,7 @@ from sklearn.metrics import f1_score
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import f1_score
+from statistics import median
 
 """ 
 Transport source representations to target representations
@@ -671,6 +672,10 @@ def box_plot_short(scores_path, label_code):
 
     :param str scores_path: the path to scores.csv
     :param str label_code: the ICD code as the response
+
+    Returns:
+        - the medians of trans source to source accuracy
+        - the medians of trans source to source f1
     """
 
     scores_df = pd.read_csv(scores_path, index_col=None, header=0)
@@ -707,6 +712,7 @@ def box_plot_short(scores_path, label_code):
 
     # Display the plot
     plt.show()
+    return median(trans_source_source_accuracy), median(trans_source_source_f1)
 
 
 
