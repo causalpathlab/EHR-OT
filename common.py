@@ -234,14 +234,16 @@ def entire_proc_cts(sim_func, custom_train_reps, model_func, max_iter):
         trans_source_mae, trans_source_mse, trans_source_rmse
 
 
-def train_model(reps, labels): # TODO: add a parameter accepting more complicated model
+def train_model(reps, labels, model_func = linear_model.LinearRegression): 
     """ 
-    Train a linear model by representations reps and labels
+    Train a model using a model function and by representations reps and labels
 
-    returns:
+    :param function model_func: the model function, e.g. linear_model.LinearRegression
+
+    :returns:
         - the learned linear model
     """
-    clf = linear_model.LinearRegression()
+    clf = model_func()
     clf.fit(reps, labels)
     return clf
 
@@ -543,19 +545,19 @@ def save_scores_emb_ordered(target_maes, target_mses, target_rmses,  aug_target_
 Box plot of simulation result statistics
 """
 
-def box_plot(scores_path, filter = True):
+def box_plot_binary(score_path, filter = True):
     """ 
-    Box plot of the scores in score dataframe stored in scores_path for binary labels. \
+    Box plot of the scores in score dataframe stored in score_path for binary labels. \
         Specifically, we plot the box plots of 
         - precision/recall of source over accuracy/precision/recall of target
         - precision/recall of transported source over accuracy/precision/recall of target
         - precision/recall of transported source over accuracy/precision/recall of source
 
-    :param str scores_path: the path to scores.csv
+    :param str score_path: the path to scores.csv
     :param bool filter: filter out scores where source accuracy is greater than > 0.7 (small room for improvement)
     """
 
-    scores_df = pd.read_csv(scores_path, index_col=None, header=0)
+    scores_df = pd.read_csv(score_path, index_col=None, header=0)
 
     target_accuracy = scores_df['target_accuracy']
     target_f1 = scores_df['target_f1']
@@ -664,13 +666,13 @@ def box_plot(scores_path, filter = True):
 Shorter version of box plot of simulation result statistics
 """
 
-def box_plot_short(scores_path, label_code):
+def box_plot_binary_short(score_path, label_code):
     """ 
-    Box plot of the scores in score dataframe stored in scores_path for binary labels. \
+    Box plot of the scores in score dataframe stored in score_path for binary labels. \
         Specifically, we plot the box plots of 
         - accuracy/f1 of transported source over accuracy/precision/recall of source
 
-    :param str scores_path: the path to scores.csv
+    :param str score_path: the path to scores.csv
     :param str label_code: the ICD code as the response
 
     Returns:
@@ -686,7 +688,7 @@ def box_plot_short(scores_path, label_code):
             y = 1e-5
         return x/y
 
-    scores_df = pd.read_csv(scores_path, index_col=None, header=0)
+    scores_df = pd.read_csv(score_path, index_col=None, header=0)
 
     source_accuracy = scores_df['source_accuracy']
     source_f1 = scores_df['source_f1']
@@ -722,22 +724,82 @@ def box_plot_short(scores_path, label_code):
     return median(trans_source_source_accuracy), median(trans_source_source_f1)
 
 
+""" 
+Shorter version of box plot of simulation result statistics, for continuous response
+"""
+
+def box_plot_cts_short(score_path):
+    """ 
+    Box plot of the scores in score dataframe stored in score_path for binary labels. \
+        Specifically, we plot the box plots of 
+        - mae/rmse of transported source over accuracy/precision/recall of source
+
+    :param str score_path: the path to scores.csv
+
+    Returns:
+        - the medians of trans source to source mae
+        - the medians of trans source to source rmse
+    """
+
+    def special_div(x, y):
+        """ 
+        Special division operation
+        """
+        if y == 0:
+            y = 1e-5
+        return x/y
+
+    scores_df = pd.read_csv(score_path, index_col=None, header=0)
+
+    source_mae = scores_df['source_mae']
+    source_rmse = scores_df['source_rmse']
+
+    trans_source_mae = scores_df['trans_source_mae']
+    trans_source_rmse = scores_df['trans_source_rmse']
+
+    # transported source to source mae
+    trans_source_source_mae = [special_div(i, j) for i, j in zip(trans_source_mae, source_mae)]
+
+    # transported source to source rmse
+    trans_source_source_rmse = [special_div(i, j) for i, j in zip(trans_source_rmse, source_rmse)]
+
+    # Set the figure size
+    plt.figure()
+    plt.rcParams["figure.figsize"] = [7.50, 3.50]
+    plt.rcParams["figure.autolayout"] = True
+
+    # Pandas dataframe
+    data = pd.DataFrame({
+        'mae': trans_source_source_mae,
+        'rmse': trans_source_source_rmse
+    })
+
+    # Plot the dataframe
+    ax = data[['mae', 'rmse']].plot(kind='box', title=f'transported source to source for duration')
+
+    # Plot the baseline
+    plt.axhline(y = 1, color = 'r', linestyle = '-')
+
+    # Display the plot
+    plt.show()
+    return median(trans_source_source_mae), median(trans_source_source_rmse)
+
 
 """ 
 Histogram plot of simulation result statistics for continuous labels
 """
-def hist_plot_cts(scores_path):
+def hist_plot_cts(score_path):
     """ 
-    histogram plot of the scores in score dataframe stored in scores_path for binary labels. \
+    histogram plot of the scores in score dataframe stored in score_path for binary labels. \
         Specifically, we plot the box plots of 
         - mae/mse/rmse of source over mae/mse/rmse of target
         - mae/mse/rmse of transported source over mae/mse/rmse of target
         - mae/mse/rmse of transported source over mae/mse/rmse of source
 
-    :param str scores_path: the path to scores.csv
+    :param str score_path: the path to scores.csv
     """
 
-    scores_df = pd.read_csv(scores_path, index_col=None, header=0)
+    scores_df = pd.read_csv(score_path, index_col=None, header=0)
 
     target_mae = scores_df['target_mae']
     target_rmse = scores_df['target_rmse']
@@ -784,19 +846,19 @@ def hist_plot_cts(scores_path):
 """ 
 Histogram plot of simulation result statistics
 """
-def hist_plot(scores_path, filter = True):
+def hist_plot(score_path, filter = True):
     """ 
-    histogram plot of the scores in score dataframe stored in scores_path for binary labels. \
+    histogram plot of the scores in score dataframe stored in score_path for binary labels. \
         Specifically, we plot the box plots of 
         - precision/recall of source over accuracy/precision/recall of target
         - precision/recall of transported source over accuracy/precision/recall of target
         - precision/recall of transported source over accuracy/precision/recall of source
 
-    :param str scores_path: the path to scores.csv
+    :param str score_path: the path to scores.csv
     :param bool filter: filter out scores where source accuracy is greater than > 0.7 (small room for improvement)
     """
 
-    scores_df = pd.read_csv(scores_path, index_col=None, header=0)
+    scores_df = pd.read_csv(score_path, index_col=None, header=0)
 
     target_accuracy = scores_df['target_accuracy']
     target_f1 = scores_df['target_f1']
@@ -1020,18 +1082,18 @@ def vis_emb_dim1_ordered(target_reps, target_labels, source_reps, source_labels,
 """ 
 Histogram plot of simulation result statistics for embedding-based ordered labels
 """
-def hist_plot_ordered_emb(scores_path):
+def hist_plot_ordered_emb(score_path):
     """ 
-    histogram plot of the scores in score dataframe stored in scores_path for ordered labels generated by embeddings. \
+    histogram plot of the scores in score dataframe stored in score_path for ordered labels generated by embeddings. \
         Specifically, we plot the box plots of 
         - mae/mse/rmse of source over mae/mse/rmse of target
         - mae/mse/rmse of source over mae/mse/rmse of augmented target
  
 
-    :param str scores_path: the path to scores.csv
+    :param str score_path: the path to scores.csv
     """
 
-    scores_df = pd.read_csv(scores_path, index_col=None, header=0)
+    scores_df = pd.read_csv(score_path, index_col=None, header=0)
 
     target_mae = scores_df['target_mae']
     target_rmse = scores_df['target_rmse']
