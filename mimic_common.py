@@ -286,13 +286,20 @@ def entire_proc_binary(n_components, label_code, full_df, custom_train_reps, mal
     trans_source_reps = trans_source2target(source_reps, target_reps)
     trans_source_preds = clf.predict(trans_source_reps)
     target_accuracy = accuracy_score(target_labels, target_preds)
+    target_precision = precision_score(target_labels, target_preds)
+    target_recall = recall_score(target_labels, target_preds)
     target_f1 = f1_score(target_labels, target_preds)
     source_accuracy = accuracy_score(source_labels, source_preds)
+    source_precision = precision_score(source_labels, source_preds)
+    source_recall = recall_score(source_labels, source_preds)
     source_f1 = f1_score(source_labels, source_preds)
     trans_source_accuracy = accuracy_score(source_labels, trans_source_preds)
+    trans_source_precision = precision_score(source_labels, trans_source_preds)
+    trans_source_recall = recall_score(source_labels, trans_source_preds)
     trans_source_f1 = f1_score(source_labels, trans_source_preds)
-    return target_accuracy, target_f1, source_accuracy, source_f1, \
-        trans_source_accuracy, trans_source_f1
+    return target_accuracy, target_precision, target_recall, target_f1, \
+        source_accuracy, source_precision, source_recall, source_f1, \
+        trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1
 
 
 def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, male_count = 120, female_count = 100, pca_explain=False):
@@ -350,7 +357,10 @@ def multi_proc_binary(score_path, n_components, label_code, full_df, custom_trai
         print("iteration:", i)
         cur_res = entire_proc_binary(n_components, label_code, full_df, custom_train_reps, male_count, female_count)
         res[i] = cur_res
-    res_df = pd.DataFrame(res, columns = ['target_accuracy', 'target_f1', 'source_accuracy', 'source_f1', 'trans_source_accuracy', 'trans_source_f1'])
+    res_df = pd.DataFrame(res, \
+                          columns = ['target_accuracy', 'target_precision', 'target_recall', 'target_f1', \
+                                     'source_accuracy', 'source_precision', 'source_recall', 'source_f1', \
+                                        'trans_source_accuracy', 'trans_source_precision', 'trans_source_recall', 'trans_source_f1'])
     res_df.to_csv(score_path, index=False, header=True)
     return res
 

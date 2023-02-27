@@ -775,7 +775,7 @@ def box_plot_cts_short(score_path):
     })
 
     # Plot the dataframe
-    ax = data[['mae', 'rmse']].plot(kind='box', title=f'transported source to source for duration')
+    ax = data[['mae', 'rmse']].plot(kind='box', title=f'transported source stat to source stat with response being duration')
 
     # Plot the baseline
     plt.axhline(y = 1, color = 'r', linestyle = '-')

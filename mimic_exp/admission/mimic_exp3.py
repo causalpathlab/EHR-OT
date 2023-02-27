@@ -17,7 +17,7 @@ In this notebook, we want to run over all responses
 
 
 from IPython.display import Image
-# Image(filename='../../outputs/pipeline_figs/EHR_MIMIC_pipeline.png')
+Image(filename='../../outputs/pipeline_figs/EHR_MIMIC_pipeline.png')
 
 
 # In[ ]:
@@ -117,11 +117,13 @@ def multi_proc_parallel(score_path, n_components, label_code, custom_train_reps,
         :param int iter: the current iteration
         """
         # print(f"iteration: {iter}\n")
-        cur_res = entire_proc(n_components, label_code, admid_diagnosis_df, custom_train_reps, male_count, female_count)
+        cur_res = entire_proc_binary(n_components, label_code, admid_diagnosis_df, custom_train_reps, male_count, female_count)
         return cur_res
 
     res = p.map(iteration_wrapper, np.arange(0, iteration, 1))
-    res_df = pd.DataFrame(res, columns = ['target_accuracy', 'target_f1', 'source_accuracy', 'source_f1', 'trans_source_accuracy', 'trans_source_f1'])
+    res_df = pd.DataFrame(res, columns = ['target_accuracy', 'target_precision', 'target_recall', 'target_f1', \
+                                          'source_accuracy', 'source_precision', 'source_recall', 'source_f1', \
+                                            'trans_source_accuracy', 'trans_source_precision', 'trans_source_recall', 'trans_source_f1'])
     res_df.to_csv(score_path, index=False, header=True)
     return res
 
@@ -140,8 +142,7 @@ male_count = 120
 female_count = 100
 label_code_path = os.path.join(output_dir, "selected_summary_mimic.csv")
 label_code_df = pd.read_csv(label_code_path, header=0, index_col=None)
-# label_codes = list(label_code_df['ICD code'])[151:177]
-label_codes = ["34982", "5712"]
+label_codes = list(label_code_df['ICD code'])[50:100]
 for label_code in label_codes:
     start_time = time.time()
     print(f"label code {label_code} started")
