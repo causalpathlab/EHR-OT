@@ -236,11 +236,16 @@ def select_df_binary(df, label_code, male_count, female_count):
             female_1_indices.append(index)
         elif row['label'] == 1 and row['gender'] == 'M':
             male_1_indices.append(index)
+    print("female 0 counts are:", len(female_0_indices))
+    print("female 1 counts are:", len(female_1_indices))
+    print("male 0 counts are:", len(male_0_indices))
+    print("male 1 counts are:", len(male_1_indices))
     
     # indices to delete from the dataframe
     # sample the same number of label 0s and label 1s
     delete_female_0_indices = random.sample(female_0_indices, len(female_0_indices)-female_count)
     delete_male_0_indices = random.sample(male_0_indices, len(male_0_indices)-male_count)
+    
     delete_female_1_indices = random.sample(female_1_indices, len(female_1_indices)-female_count)
     delete_male_1_indices = random.sample(male_1_indices, len(male_1_indices)-male_count)
 
@@ -352,7 +357,7 @@ def multi_proc_binary(score_path, n_components, label_code, full_df, custom_trai
     :param int female_count: the number of samples with label 1s and label 0s for source (female)
     :param int iteration: the number of iterations (repetitions)
     """
-    res = np.empty(shape=[iteration, 6])
+    res = np.empty(shape=[iteration, 12])
     for i in range(iteration):
         print("iteration:", i)
         cur_res = entire_proc_binary(n_components, label_code, full_df, custom_train_reps, male_count, female_count)
