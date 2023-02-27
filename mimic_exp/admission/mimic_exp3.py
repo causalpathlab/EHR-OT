@@ -134,7 +134,7 @@ male_count = 120
 female_count = 100
 label_code_path = os.path.join(output_dir, "selected_summary_mimic.csv")
 label_code_df = pd.read_csv(label_code_path, header=0, index_col=None)
-label_codes = list(label_code_df['ICD code'])[:50]
+label_codes = list(label_code_df['ICD code'])[100:]
 for label_code in label_codes:
     start_time = time.time()
     print(f"label code {label_code} started")

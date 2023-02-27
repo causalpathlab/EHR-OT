@@ -236,10 +236,10 @@ def select_df_binary(df, label_code, male_count, female_count):
             female_1_indices.append(index)
         elif row['label'] == 1 and row['gender'] == 'M':
             male_1_indices.append(index)
-    print("female 0 counts are:", len(female_0_indices))
-    print("female 1 counts are:", len(female_1_indices))
-    print("male 0 counts are:", len(male_0_indices))
-    print("male 1 counts are:", len(male_1_indices))
+    # print("female 0 counts are:", len(female_0_indices))
+    # print("female 1 counts are:", len(female_1_indices))
+    # print("male 0 counts are:", len(male_0_indices))
+    # print("male 1 counts are:", len(male_1_indices))
     
     # indices to delete from the dataframe
     # sample the same number of label 0s and label 1s

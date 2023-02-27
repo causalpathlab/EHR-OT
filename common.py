@@ -670,14 +670,14 @@ def box_plot_binary_short(score_path, label_code):
     """ 
     Box plot of the scores in score dataframe stored in score_path for binary labels. \
         Specifically, we plot the box plots of 
-        - accuracy/f1 of transported source over accuracy/precision/recall of source
+        - precision/recall of transported source over precision/recall of source
 
     :param str score_path: the path to scores.csv
     :param str label_code: the ICD code as the response
 
     Returns:
-        - the medians of trans source to source accuracy
-        - the medians of trans source to source f1
+        - the medians of trans source to source precision
+        - the medians of trans source to source recall
     """
 
     def special_div(x, y):
@@ -690,17 +690,17 @@ def box_plot_binary_short(score_path, label_code):
 
     scores_df = pd.read_csv(score_path, index_col=None, header=0)
 
-    source_accuracy = scores_df['source_accuracy']
-    source_f1 = scores_df['source_f1']
+    source_precision = scores_df['source_precision']
+    source_recall = scores_df['source_recall']
 
-    trans_source_accuracy = scores_df['trans_source_accuracy']
-    trans_source_f1 = scores_df['trans_source_f1']
+    trans_source_precision = scores_df['trans_source_precision']
+    trans_source_recall = scores_df['trans_source_recall']
 
-    # transported source to source accuracy
-    trans_source_source_accuracy = [special_div(i, j) for i, j in zip(trans_source_accuracy, source_accuracy)]
+    # transported source to source precision
+    trans_source_source_precision = [special_div(i, j) for i, j in zip(trans_source_precision, source_precision)]
 
-    # transported source to source accuracy
-    trans_source_source_f1 = [special_div(i, j) for i, j in zip(trans_source_f1, source_f1)]
+    # transported source to source recall
+    trans_source_source_recall = [special_div(i, j) for i, j in zip(trans_source_recall, source_recall)]
 
     # Set the figure size
     plt.figure()
@@ -709,19 +709,19 @@ def box_plot_binary_short(score_path, label_code):
 
     # Pandas dataframe
     data = pd.DataFrame({
-        'accuracy': trans_source_source_accuracy,
-        'f1': trans_source_source_f1
+        'precision': trans_source_source_precision,
+        'recall': trans_source_source_recall
     })
 
     # Plot the dataframe
-    ax = data[['accuracy', 'f1']].plot(kind='box', title=f'transported source to source for {label_code}')
+    ax = data[['precision', 'recall']].plot(kind='box', title=f'transported source to source for {label_code}')
 
     # Plot the baseline
     plt.axhline(y = 1, color = 'r', linestyle = '-')
 
     # Display the plot
     plt.show()
-    return median(trans_source_source_accuracy), median(trans_source_source_f1)
+    return median(trans_source_source_precision), median(trans_source_source_recall)
 
 
 """ 
