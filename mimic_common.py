@@ -1,6 +1,7 @@
 import sys
 sys.path.append("/home/wanxinli/deep_patient/")
 
+from datetime import datetime
 import copy
 from common import *
 from ast import literal_eval
@@ -392,3 +393,63 @@ def multi_proc_cts(score_path, n_components, full_df, custom_train_reps, \
     res_df = pd.DataFrame(res, columns = ['target_mae', 'target_rmse', 'source_mae', 'source_rmse', 'trans_source_mae', 'trans_source_rmse'])
     res_df.to_csv(score_path, index=False, header=True)
     return res
+
+
+def build_maps(admission_file, diagnosis_file, patient_file):
+    """ 
+    Building pid-admission mapping, pid-gender mapping, admission-date mapping, admission-code mapping and pid-sorted visits mapping
+    :param str admission_file: path to ADMISSIONS.csv
+    :param str diagnosis_file: path to DIAGNOSES_ICD.csv
+    :param str patient_file: path to PATIENTS.csv
+    """
+
+    # Building pid-admissions mapping and pid-date mapping
+    pid_adms = {}
+    adm_date = {}
+    infd = open(admission_file, 'r')
+    infd.readline()
+    for line in infd:
+        tokens = line.strip().split(',')
+        pid = int(tokens[1])
+        admid = int(tokens[2])
+        adm_time = datetime.strptime(tokens[3], '%Y-%m-%d %H:%M:%S')
+        adm_date[admid] = adm_time
+        if pid in pid_adms: pid_adms[pid].append(admid)
+        else: pid_adms[pid] = [admid]
+    infd.close()
+
+    # Bulding admission-codes mapping
+    admid_codes = {}
+    infd = open(diagnosis_file, 'r')
+    infd.readline()
+    for line in infd: # read ADMISSIONS.CSV in order
+        tokens = line.strip().split(',')
+        admid = int(tokens[2])
+        code = tokens[4][1:-1]
+
+        if admid in admid_codes: 
+            admid_codes[admid].append(code)
+        else: 
+            admid_codes[admid] = [code]
+    infd.close()
+    
+    # Building pid-sorted visits mapping, a visit consists of (time, codes)
+    pid_visits = {}
+    for pid, adms in pid_adms.items():
+        if len(adms) < 2: continue
+
+        # sort by date
+        sorted_visit = sorted([(adm_date[admid], admid_codes[admid]) for admid in adms])
+        pid_visits[pid] = sorted_visit
+    
+    pid_gender = {}
+    infd = open(patient_file, 'r')
+    infd.readline()
+    for line in infd:
+        tokens = line.strip().split(',')
+        pid = int(tokens[1])
+        gender = str(tokens[2])
+        pid_gender[pid] = gender[1] # remove quotes
+    infd.close()
+                
+    return pid_adms, pid_gender, adm_date, admid_codes, pid_visits
