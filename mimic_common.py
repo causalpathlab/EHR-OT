@@ -388,8 +388,11 @@ def multi_proc_cts(score_path, n_components, full_df, custom_train_reps, \
     res = np.empty(shape=[iteration, 6])
     for i in range(iteration):
         print("iteration:", i)
-        cur_res = entire_proc_cts(n_components, full_df, custom_train_reps, model_func, male_count=male_count, female_count=female_count)
-        res[i] = cur_res
+        try:
+            cur_res = entire_proc_cts(n_components, full_df, custom_train_reps, model_func, male_count=male_count, female_count=female_count)
+            res[i] = cur_res
+        except:
+            print("cannot fit the regression model")
     res_df = pd.DataFrame(res, columns = ['target_mae', 'target_rmse', 'source_mae', 'source_rmse', 'trans_source_mae', 'trans_source_rmse'])
     res_df.to_csv(score_path, index=False, header=True)
     return res
