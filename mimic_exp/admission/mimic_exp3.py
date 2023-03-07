@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 """ 
@@ -13,21 +13,21 @@ In this notebook, we want to run over all responses
 """
 
 
-# In[ ]:
+# In[2]:
 
 
 from IPython.display import Image
 Image(filename='../../outputs/pipeline_figs/EHR_MIMIC_pipeline.png')
 
 
-# In[ ]:
+# In[3]:
 
 
 import sys
 sys.path.append("/home/wanxinli/deep_patient/")
 
 from ast import literal_eval
-from common import *
+# from common import *
 from mimic_common import *
 from multiprocess import Pool
 import os
@@ -39,14 +39,14 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_sc
 import time
 
 
-# In[ ]:
+# In[4]:
 
 
 output_dir = os.path.join(os.path.expanduser("~"), f"deep_patient/outputs/mimic")
 print(f"Will save outputs to {output_dir}")
 
 
-# In[ ]:
+# In[5]:
 
 
 """ 
@@ -55,8 +55,16 @@ Read in the original dataframe
 admid_diagnosis_df = pd.read_csv("../../outputs/mimic/ADMID_DIAGNOSIS.csv", index_col=0, header=0, converters={'ICD codes': literal_eval})
 print(admid_diagnosis_df)
 
+""" 
+Print number of patients for each category
+"""
+print("female label 0", admid_diagnosis_df.loc[(admid_diagnosis_df['label'] == 0) & (admid_diagnosis_df['gender'] == 'F')].shape[0])
+print("female label 1", admid_diagnosis_df.loc[(admid_diagnosis_df['label'] == 1) & (admid_diagnosis_df['gender'] == 'F')].shape[0])
+print("male label 0", admid_diagnosis_df.loc[(admid_diagnosis_df['label'] == 0) & (admid_diagnosis_df['gender'] == 'M')].shape[0])
+print("male label 1", admid_diagnosis_df.loc[(admid_diagnosis_df['label'] == 1) & (admid_diagnosis_df['gender'] == 'M')].shape[0])
 
-# In[ ]:
+
+# In[6]:
 
 
 """
@@ -87,7 +95,26 @@ def custom_train_reps(target_features, source_features, n_components, pca_explai
     return target_reps, source_reps
 
 
-# In[21]:
+# ## Run one iteration
+
+# In[7]:
+
+
+n_components = 50
+male_count = 120
+female_count = 100
+label_code = "00845"
+cur_res = entire_proc_binary(n_components, label_code, admid_diagnosis_df, \
+                            custom_train_reps, male_count = male_count, female_count = female_count, transfer_score=True)
+
+
+# In[8]:
+
+
+cur_res
+
+
+# In[9]:
 
 
 def multi_proc_parallel(score_path, n_components, label_code, custom_train_reps, \
@@ -108,20 +135,21 @@ def multi_proc_parallel(score_path, n_components, label_code, custom_train_reps,
 
         :param int iter: the current iteration
         """
-        # print(f"iteration: {iter}\n")
-        cur_res = entire_proc_binary(n_components, label_code, admid_diagnosis_df, custom_train_reps, male_count, female_count)
+        print(f"iteration: {iter}\n")
+        cur_res = entire_proc_binary(n_components, label_code, admid_diagnosis_df, custom_train_reps, \
+                                     male_count = male_count, female_count = female_count, transfer_score=True)
         return cur_res
 
     res = p.map(iteration_wrapper, np.arange(0, iteration, 1))
     res_df = pd.DataFrame(res, columns = ['target_accuracy', 'target_precision', 'target_recall', 'target_f1', \
                                           'source_accuracy', 'source_precision', 'source_recall', 'source_f1', \
-                                            'trans_source_accuracy', 'trans_source_precision', 'trans_source_recall', 'trans_source_f1'])
+                                            'trans_source_accuracy', 'trans_source_precision', 'trans_source_recall', 'trans_source_f1', 'transfer_score', 'original_score'])
     res_df.to_csv(score_path, index=False, header=True)
     return res
 
 
 
-# In[22]:
+# In[12]:
 
 
 """ 
@@ -134,7 +162,7 @@ male_count = 120
 female_count = 100
 label_code_path = os.path.join(output_dir, "selected_summary_mimic.csv")
 label_code_df = pd.read_csv(label_code_path, header=0, index_col=None)
-label_codes = list(label_code_df['ICD code'])[100:]
+label_codes = list(label_code_df['ICD code'])[4:50]
 for label_code in label_codes:
     start_time = time.time()
     print(f"label code {label_code} started")
@@ -143,30 +171,6 @@ for label_code in label_codes:
             male_count, female_count, iteration=100)
     end_time = time.time()
     print(f"runtime for {label_code} is: {end_time-start_time}")
-
-
-# In[ ]:
-
-
-# label_code = "00845"
-# n_components = 50
-# male_count = 120
-# female_count = 100
-# score_path = os.path.join(output_dir, f"exp3_{label_code}_score.csv")
-# multi_proc(score_path, n_components, label_code, admid_diagnosis_df, custom_train_reps, \
-#                  male_count, female_count, iteration=100)
-
-
-# In[ ]:
-
-
-# box_plot(score_path, filter=False)
-
-
-# In[ ]:
-
-
-# hist_plot(score_path, filter=False)
 
 
 # In[ ]:

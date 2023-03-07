@@ -18,7 +18,8 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import f1_score
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
-from sklearn.metrics import f1_score
+from sklearn.metrics import mutual_info_score
+
 from statistics import median
 
 """ 
@@ -62,14 +63,13 @@ Caculate result statistics for binary labels
 """
 
 def cal_stats_binary(target_reps, target_labels, source_reps, source_labels, \
-    trans_source_reps, model_func):
+    trans_source_reps, target_model):
     """ 
     Calculate accuracy statistics based on logistic regression between the \
         patient representations and label labels
     This function is for binary labels
 
-    :param function model_func: the function to model the relationship between \
-        representations and reponse
+    :param function target_model: the model trained by target data
     
     :returns: using the target model,\
         - accuracy for target/source/transported source
@@ -78,9 +78,6 @@ def cal_stats_binary(target_reps, target_labels, source_reps, source_labels, \
         - f1 for target/source/transported source
             
     """
-    # fit the model
-    target_model = model_func()
-    target_model.fit(target_reps, target_labels)
 
     # calculate the stats
     target_pred_labels = target_model.predict(target_reps)
@@ -172,33 +169,67 @@ def cal_stats_emb_ordered(target_clf, aug_target_clf, test_reps, test_labels):
     return target_mae, target_mse, target_rmse, aug_target_mae, aug_target_mse, aug_target_rmse
 
 
+def train_model(reps, labels, model_func):
+    """ 
+    Trains a model using reps and labels and returns the model
+    """
+    clf = model_func()
+    clf.fit(reps, labels)
+    return clf
+
+
+def compute_transfer_score(trans_source_reps, source_labels, model_func, target_model):
+    """ 
+    Computes the transfer score
+
+    :param function model_func: the function to model the relationship between transported source reps and source labels
+    :param function target_model: the model trained by target representations and target labels
+    """
+    trans_source_model = train_model(trans_source_reps, source_labels, model_func)
+    transfer_score = mutual_info_score(target_model.coef_, trans_source_model.coef_)
+    return transfer_score
+
+
+
 """ 
 Wrap up everything for binary labels
 """
 
-def entire_proc_binary(sim_func, custom_train_reps, model_func, max_iter):
+def entire_proc_binary(sim_func, custom_train_reps, model_func, max_iter, transfer_score=False):
     """ 
     Executes the entire procedure including
         - generate target sequences, target labels, source sequences and source labels
         - generate target representations and source representations
         - transport source representations to target representations
         - train logistic regression model using target representations and target expires
-        - calculate accuracy statistics for targets, sources and transported sources
+        - calculate the transferability score by computing the KL divergence between the two model weights
+        - calculate accuracy statistics for targets, sources and transported sources 
 
     :param function sim_func: simulation function
     :param function custom_train_reps: customized deep patient function for training representations
     :param function model_func: the function to model the relationship bewteen representations and response
     :param int max_iter: maximum number of iteration for Sinkhorn transport
-    :returns: the accuracy scores
+    :param bool transfer_score: wheter to compute transferability score, default False
+    :returns: the accuracy scores, and the transferability score
     """
     target_seqs, target_labels, source_seqs, source_labels = sim_func()
     target_reps, source_reps = custom_train_reps(target_seqs, source_seqs)
     trans_source_reps = trans_source2target(source_reps, target_reps, max_iter=max_iter)
-    
+
+    target_model = train_model(target_reps, target_labels, model_func)
+
     target_accuracy, target_precision, target_recall, target_f1, \
         source_accuracy, source_precision, source_recall, source_f1, \
         trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1 = \
-        cal_stats_binary(target_reps, target_labels, source_reps, source_labels, trans_source_reps, model_func)
+        cal_stats_binary(target_reps, target_labels, source_reps, source_labels, trans_source_reps, target_model)
+
+    if transfer_score:
+        transfer_score = compute_transfer_score(trans_source_reps, source_labels, model_func)
+        return target_accuracy, target_precision, target_recall, target_f1, \
+            source_accuracy, source_precision, source_recall, source_f1, \
+            trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1, \
+            transfer_score
+    
     return target_accuracy, target_precision, target_recall, target_f1, \
         source_accuracy, source_precision, source_recall, source_f1, \
         trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1
@@ -696,32 +727,39 @@ def box_plot_binary_short(score_path, label_code):
     trans_source_precision = scores_df['trans_source_precision']
     trans_source_recall = scores_df['trans_source_recall']
 
+    transfer_score = scores_df['transfer_score']
+    original_score = scores_df['original_score']
+
     # transported source to source precision
-    trans_source_source_precision = [special_div(i, j) for i, j in zip(trans_source_precision, source_precision)]
+    trans_source2source_precision = [special_div(i, j) for i, j in zip(trans_source_precision, source_precision)]
 
     # transported source to source recall
-    trans_source_source_recall = [special_div(i, j) for i, j in zip(trans_source_recall, source_recall)]
+    trans_source2source_recall = [special_div(i, j) for i, j in zip(trans_source_recall, source_recall)]
+
+    # transfer score to original score
+    transfer2original_score = [special_div(i, j) for i, j in zip(transfer_score, original_score)]
 
     # Set the figure size
     plt.figure()
-    plt.rcParams["figure.figsize"] = [7.50, 3.50]
+    plt.rcParams["figure.figsize"] = [12, 3.50]
     plt.rcParams["figure.autolayout"] = True
 
     # Pandas dataframe
     data = pd.DataFrame({
-        'precision': trans_source_source_precision,
-        'recall': trans_source_source_recall
+        'precision': trans_source2source_precision,
+        'recall': trans_source2source_recall,
+        'transferability': transfer2original_score
     })
 
     # Plot the dataframe
-    ax = data[['precision', 'recall']].plot(kind='box', title=f'transported source to source for {label_code}')
+    ax = data[['precision', 'recall', 'transferability']].plot(kind='box', title=f'transported source to source for {label_code}')
 
     # Plot the baseline
     plt.axhline(y = 1, color = 'r', linestyle = '-')
 
     # Display the plot
     plt.show()
-    return median(trans_source_source_precision), median(trans_source_source_recall)
+    return median(trans_source2source_precision), median(trans_source2source_recall), median(transfer2original_score)
 
 
 """ 

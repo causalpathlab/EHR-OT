@@ -8,9 +8,12 @@ from ast import literal_eval
 import matplotlib.pyplot as plt
 from multiprocess import Pool
 import random
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import precision_score, recall_score, accuracy_score, \
-    f1_score, mean_absolute_error, mean_squared_error
+    f1_score, mean_absolute_error, mean_squared_error, \
+    mutual_info_score, normalized_mutual_info_score
+from scipy.stats import entropy
+
+
 
 
 def update_codes(df):
@@ -266,7 +269,42 @@ def select_df_binary(df, label_code, male_count, female_count):
     return df_copy
 
 
-def entire_proc_binary(n_components, label_code, full_df, custom_train_reps, male_count = 120, female_count = 100, pca_explain=False):
+def train_model(reps, labels, model_func):
+    """ 
+    Trains a model using reps and labels and returns the model
+    """
+    clf = model_func()
+    clf.fit(reps, labels)
+    return clf
+
+
+def compute_transfer_score(source_reps, trans_source_reps, source_labels, model_func, target_model):
+    """ 
+    Computes the transfer score
+
+    :param function model_func: the function to model the relationship between transported source reps and source labels
+    :param function target_model: the model trained by target representations and target labels
+    """
+
+    def sigmoid(z):
+        """
+        Sigmoid function
+        """
+        return 1/(1 + np.exp(-z))
+    
+    source_model = train_model(source_reps, source_labels, model_func)
+    source_weights = [sigmoid(w) for w in source_model.coef_[0]]
+    trans_source_model = train_model(trans_source_reps, source_labels, model_func)
+    trans_source_weights = [sigmoid(w) for w in trans_source_model.coef_[0]]
+    target_weights = [sigmoid(w) for w in target_model.coef_[0]]
+
+    old_score = entropy(target_weights, source_weights)
+    transfer_score = entropy(target_weights, trans_source_weights)
+    return transfer_score, old_score
+
+
+def entire_proc_binary(n_components, label_code, full_df, custom_train_reps, model_func=linear_model.LogisticRegression, \
+                       male_count = 120, female_count = 100, pca_explain=False, transfer_score=False):
     """
     Wrap up the entire procedure
 
@@ -274,9 +312,11 @@ def entire_proc_binary(n_components, label_code, full_df, custom_train_reps, mal
     :param str label_code: the ICD code to determine labels
     :param dataframe full_df: the full dataframe
     :param function custom_train_reps: the customized function for learning representations
+    :param function model_func: the function to model the relationship between target reps and target labels
     :param int male_count: the number of samples with label 1s and label 0s for target (male)
     :param int female_count: the number of samples with label 1s and label 0s for source (female)
     :param bool pca_explain: print the variance explained by the PCA, if True. Default False
+    :param bool transfer_score: whether to compute transferability score. Default False. Returns the scores if True.
     """
     
     selected_df = select_df_binary(full_df, label_code, male_count=male_count, female_count=female_count)
@@ -285,12 +325,11 @@ def entire_proc_binary(n_components, label_code, full_df, custom_train_reps, mal
 
     target_reps, source_reps = custom_train_reps(target_features, source_features, n_components, pca_explain=pca_explain)
 
-    clf = LogisticRegression() # TODO: make this a parameter
-    clf.fit(target_reps, target_labels)
-    target_preds = clf.predict(target_reps)
-    source_preds = clf.predict(source_reps)
+    target_model = train_model(target_reps, target_labels, model_func)
+    target_preds = target_model.predict(target_reps)
+    source_preds = target_model.predict(source_reps)
     trans_source_reps = trans_source2target(source_reps, target_reps)
-    trans_source_preds = clf.predict(trans_source_reps)
+    trans_source_preds = target_model.predict(trans_source_reps)
     target_accuracy = accuracy_score(target_labels, target_preds)
     target_precision = precision_score(target_labels, target_preds)
     target_recall = recall_score(target_labels, target_preds)
@@ -303,6 +342,14 @@ def entire_proc_binary(n_components, label_code, full_df, custom_train_reps, mal
     trans_source_precision = precision_score(source_labels, trans_source_preds)
     trans_source_recall = recall_score(source_labels, trans_source_preds)
     trans_source_f1 = f1_score(source_labels, trans_source_preds)
+        
+    if transfer_score:
+        transfer_score, original_score = compute_transfer_score(source_reps, trans_source_reps, source_labels, model_func, target_model)
+        return target_accuracy, target_precision, target_recall, target_f1, \
+            source_accuracy, source_precision, source_recall, source_f1, \
+            trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1,\
+            transfer_score, original_score
+
     return target_accuracy, target_precision, target_recall, target_f1, \
         source_accuracy, source_precision, source_recall, source_f1, \
         trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1
