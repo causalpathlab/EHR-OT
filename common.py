@@ -707,8 +707,10 @@ def box_plot_binary_short(score_path, label_code):
     :param str label_code: the ICD code as the response
 
     Returns:
-        - the medians of trans source to source precision
-        - the medians of trans source to source recall
+        - the median of trans source to source precision
+        - the median of trans source to source recall
+        - the median of original score to transferability score
+        - the median of the transferability score
     """
 
     def special_div(x, y):
@@ -759,7 +761,7 @@ def box_plot_binary_short(score_path, label_code):
 
     # Display the plot
     plt.show()
-    return median(trans_source2source_precision), median(trans_source2source_recall), median(transfer2original_score)
+    return median(trans_source2source_precision), median(trans_source2source_recall), median(transfer2original_score), median(transfer_score)
 
 
 """ 
