@@ -5,6 +5,7 @@ from datetime import datetime
 import copy
 from common import *
 from ast import literal_eval
+import numpy as np
 import matplotlib.pyplot as plt
 from multiprocess import Pool
 import random
@@ -240,10 +241,6 @@ def select_df_binary(df, label_code, male_count, female_count):
             female_1_indices.append(index)
         elif row['label'] == 1 and row['gender'] == 'M':
             male_1_indices.append(index)
-    # print("female 0 counts are:", len(female_0_indices))
-    # print("female 1 counts are:", len(female_1_indices))
-    # print("male 0 counts are:", len(male_0_indices))
-    # print("male 1 counts are:", len(male_1_indices))
     
     # indices to delete from the dataframe
     # sample the same number of label 0s and label 1s
@@ -278,29 +275,31 @@ def train_model(reps, labels, model_func):
     return clf
 
 
-def compute_transfer_score(source_reps, trans_source_reps, source_labels, model_func, target_model):
+def compute_transfer_score(source_reps, trans_source_reps, source_labels, model_func):
     """ 
-    Computes the transfer score
+    Computes the transfer score using label, and without label (how?)
 
     :param function model_func: the function to model the relationship between transported source reps and source labels
-    :param function target_model: the model trained by target representations and target labels
     """
 
-    def sigmoid(z):
-        """
-        Sigmoid function
-        """
-        return 1/(1 + np.exp(-z))
+    def KL(a, b):
+        a = np.asarray(a, dtype=np.float)
+        b = np.asarray(b, dtype=np.float)
+
+        return np.sum(np.where(a != 0, a * np.log(a / b), 0))
     
     source_model = train_model(source_reps, source_labels, model_func)
-    source_weights = [sigmoid(w) for w in source_model.coef_[0]]
-    trans_source_model = train_model(trans_source_reps, source_labels, model_func)
-    trans_source_weights = [sigmoid(w) for w in trans_source_model.coef_[0]]
-    target_weights = [sigmoid(w) for w in target_model.coef_[0]]
+    source_pred_probs = source_model.predict_proba(source_reps)
 
-    old_score = entropy(target_weights, source_weights)
-    transfer_score = entropy(target_weights, trans_source_weights)
-    return transfer_score, old_score
+    trans_source_model = train_model(trans_source_reps, source_labels, model_func)
+    trans_source_pred_probs = trans_source_model.predict_proba(trans_source_reps)
+
+    transfer_score = 0
+    for source_pred_prob, trans_source_pred_prob in zip(source_pred_probs, trans_source_pred_probs):
+        transfer_score += entropy(source_pred_prob, trans_source_pred_prob)
+
+    return transfer_score/source_pred_prob.shape[0]
+
 
 
 def entire_proc_binary(n_components, label_code, full_df, custom_train_reps, model_func=linear_model.LogisticRegression, \
@@ -344,11 +343,11 @@ def entire_proc_binary(n_components, label_code, full_df, custom_train_reps, mod
     trans_source_f1 = f1_score(source_labels, trans_source_preds)
         
     if transfer_score:
-        transfer_score, original_score = compute_transfer_score(source_reps, trans_source_reps, source_labels, model_func, target_model)
+        transfer_score = compute_transfer_score(source_reps, trans_source_reps, source_labels, model_func)
         return target_accuracy, target_precision, target_recall, target_f1, \
             source_accuracy, source_precision, source_recall, source_f1, \
             trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1,\
-            transfer_score, original_score
+            transfer_score
 
     return target_accuracy, target_precision, target_recall, target_f1, \
         source_accuracy, source_precision, source_recall, source_f1, \
