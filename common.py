@@ -709,7 +709,6 @@ def box_plot_binary_short(score_path, label_code):
     Returns:
         - the median of trans source to source precision
         - the median of trans source to source recall
-        - the median of original score to transferability score
         - the median of the transferability score
     """
 
@@ -730,7 +729,8 @@ def box_plot_binary_short(score_path, label_code):
     trans_source_recall = scores_df['trans_source_recall']
 
     transfer_score = scores_df['transfer_score']
-    original_score = scores_df['original_score']
+
+    # original_score = scores_df['original_score']
 
     # transported source to source precision
     trans_source2source_precision = [special_div(i, j) for i, j in zip(trans_source_precision, source_precision)]
@@ -738,30 +738,29 @@ def box_plot_binary_short(score_path, label_code):
     # transported source to source recall
     trans_source2source_recall = [special_div(i, j) for i, j in zip(trans_source_recall, source_recall)]
 
-    # transfer score to original score
-    transfer2original_score = [special_div(i, j) for i, j in zip(transfer_score, original_score)]
+    # # transfer score to original score
+    # transfer2original_score = [special_div(i, j) for i, j in zip(transfer_score, original_score)]
 
     # Set the figure size
     plt.figure()
-    plt.rcParams["figure.figsize"] = [12, 3.50]
+    plt.rcParams["figure.figsize"] = [10, 5]
     plt.rcParams["figure.autolayout"] = True
 
     # Pandas dataframe
     data = pd.DataFrame({
         'precision': trans_source2source_precision,
         'recall': trans_source2source_recall,
-        'transferability': transfer2original_score
     })
 
     # Plot the dataframe
-    ax = data[['precision', 'recall', 'transferability']].plot(kind='box', title=f'transported source to source for {label_code}')
+    ax = data[['precision', 'recall']].plot(kind='box', title=f'transported source to source for {label_code}')
 
     # Plot the baseline
     plt.axhline(y = 1, color = 'r', linestyle = '-')
 
     # Display the plot
     plt.show()
-    return median(trans_source2source_precision), median(trans_source2source_recall), median(transfer2original_score), median(transfer_score)
+    return median(trans_source2source_precision), median(trans_source2source_recall), median(transfer_score)
 
 
 """ 
