@@ -329,7 +329,8 @@ def run_proc_multi(sim_func, custom_train_reps, model_func, max_iter = None, n_t
     trans_source_recalls = []
     trans_source_f1s = []
 
-    for _ in range(n_times):
+    for i in range(n_times):
+        print(f"iteration: {i}")
         # init accuracies
         target_accuracy = None
         target_precision = None
@@ -576,7 +577,7 @@ def save_scores_emb_ordered(target_maes, target_mses, target_rmses,  aug_target_
 Box plot of simulation result statistics
 """
 
-def box_plot_binary(score_path, filter = True):
+def box_plot_binary(score_path):
     """ 
     Box plot of the scores in score dataframe stored in score_path for binary labels. \
         Specifically, we plot the box plots of 
@@ -585,107 +586,95 @@ def box_plot_binary(score_path, filter = True):
         - precision/recall of transported source over accuracy/precision/recall of source
 
     :param str score_path: the path to scores.csv
-    :param bool filter: filter out scores where source accuracy is greater than > 0.7 (small room for improvement)
     """
 
     scores_df = pd.read_csv(score_path, index_col=None, header=0)
 
-    target_accuracy = scores_df['target_accuracy']
-    target_f1 = scores_df['target_f1']
+    target_precision = scores_df['target_precision']
+    target_recall = scores_df['target_recall']
 
-    source_accuracy = scores_df['source_accuracy']
-    source_f1 = scores_df['source_f1']
+    source_precision = scores_df['source_precision']
+    source_recall = scores_df['source_recall']
 
-    trans_source_accuracy = scores_df['trans_source_accuracy']
-    trans_source_f1 = scores_df['trans_source_f1']
+    trans_source_precision = scores_df['trans_source_precision']
+    trans_source_recall = scores_df['trans_source_recall']
 
-    if filter:
-        delete_indices = []
-        high_acc_thres = 0.7
-        for i in range(len(source_accuracy)):
-            if source_accuracy[i] > high_acc_thres:
-                delete_indices.append(i)
-        target_accuracy = np.delete(list(target_accuracy), delete_indices)
-        target_f1 = np.delete(list(target_f1), delete_indices)
-        source_accuracy = np.delete(list(source_accuracy), delete_indices)
-        source_f1 = np.delete(list(source_f1), delete_indices)
-        trans_source_accuracy = np.delete(list(trans_source_accuracy), delete_indices)
-        trans_source_f1 = np.delete(list(trans_source_f1), delete_indices)
     
 
-    trans_source_source_accuracy_incre =  [i - j for i, j in zip(trans_source_accuracy, source_accuracy)]
-    trans_source_source_f1_incre =  [i - j for i, j in zip(trans_source_f1, source_f1)]
-    print("number of stats is:", len(trans_source_source_accuracy_incre))
-    print("number of 0 in incre is:", trans_source_source_accuracy_incre.count(0))
-    print("number of elements > 0 is:", np.sum(np.array(trans_source_source_accuracy_incre) > 0, axis=0))
-    print("number of elements < 0 is:", np.sum(np.array(trans_source_source_accuracy_incre) < 0, axis=0))
-    print("average trans source to source accuracy increment is:", np.mean(trans_source_source_accuracy_incre))
-    print("median trans source to source accuracy increment is:", np.median(trans_source_source_accuracy_incre))
-    print("average trans source to source accuracy f1 is:", np.mean(trans_source_source_f1_incre ))
-    print("median trans source to source accuracy f1 is:", np.median(trans_source_source_f1_incre))
+    # trans_source_source_precision_incre =  [i - j for i, j in zip(trans_source_precision, source_precision)]
+    # trans_source_source_recall_incre =  [i - j for i, j in zip(trans_source_recall, source_recall)]
+    # print("number of stats is:", len(trans_source_source_accuracy_incre))
+    # print("number of 0 in incre is:", trans_source_source_accuracy_incre.count(0))
+    # print("number of elements > 0 is:", np.sum(np.array(trans_source_source_accuracy_incre) > 0, axis=0))
+    # print("number of elements < 0 is:", np.sum(np.array(trans_source_source_accuracy_incre) < 0, axis=0))
+    # print("average trans source to source accuracy increment is:", np.mean(trans_source_source_accuracy_incre))
+    # print("median trans source to source accuracy increment is:", np.median(trans_source_source_accuracy_incre))
+    # print("average trans source to source accuracy f1 is:", np.mean(trans_source_source_f1_incre ))
+    # print("median trans source to source accuracy f1 is:", np.median(trans_source_source_f1_incre))
 
-    fig = plt.figure(figsize=(16,16))
+    fig = plt.figure(figsize=(16,10))
+
     flierprops={'marker': 'o', 'markersize': 4, 'markerfacecolor': 'fuchsia'}
 
-    # source to target accuracy
-    source_target_accuracy = [i / j for i, j in zip(source_accuracy, target_accuracy)]
+    # source to target precision
+    source_target_precision = [i / j for i, j in zip(source_precision, target_precision)]
 
-    # transported source to target accuracy
-    trans_source_target_accuracy = [i / j for i, j in zip(trans_source_accuracy, target_accuracy)]
+    # transported source to target precision
+    trans_source_target_precision = [i / j for i, j in zip(trans_source_precision, target_precision)]
 
-    # transported source to source accuracy
-    trans_source_source_accuracy = [i / j for i, j in zip(trans_source_accuracy, source_accuracy)]
-    print("average trans source to source accuracy is:", np.mean(trans_source_source_accuracy))
-    print("median trans source to source accuracy is:", np.median(trans_source_source_accuracy))
-
-
-    # source to target accuracy
-    source_target_f1 = [i / j for i, j in zip(source_f1, target_f1)]
-
-    # transported source to target accuracy
-    trans_source_target_f1 = [i / j for i, j in zip(trans_source_f1, target_f1)]
-
-    # transported source to source accuracy
-    trans_source_source_f1 = [i / j for i, j in zip(trans_source_f1, source_f1)]
-    print("average trans source to source f1 is:", np.mean(trans_source_source_f1))
-    print("median trans source to source f1 is:", np.median(trans_source_source_f1))
+    # transported source to source precision
+    trans_source_source_precision = [i / j for i, j in zip(trans_source_precision, source_precision)]
+    print("average trans source to source precision is:", np.mean(trans_source_source_precision))
+    print("median trans source to source precision is:", np.median(trans_source_source_precision))
 
 
-    plt.subplot(3, 3, 1)
-    plt.boxplot(source_target_accuracy, flierprops=flierprops)
-    # plt.ylim(y_min, y_max)
-    plt.title("source accuracy to \n target accuracy")
+    # source to target recall
+    source_target_recall = [i / j for i, j in zip(source_recall, target_recall)]
 
-    
-    plt.subplot(3, 3, 2)
-    plt.boxplot(trans_source_target_accuracy, flierprops=flierprops)
-    # plt.ylim(y_min, y_max)
-    plt.title("transported source \n accuracy to \n target accuracy")
+    # transported source to target recall
+    trans_source_target_recall = [i / j for i, j in zip(trans_source_recall, target_recall)]
+
+    # transported source to source recall
+    trans_source_source_recall = [i / j for i, j in zip(trans_source_recall, source_recall)]
+    print("average trans source to source recall is:", np.mean(trans_source_source_recall))
+    print("median trans source to source recall is:", np.median(trans_source_source_recall))
+
+
+    # plt.subplot(3, 3, 1)
+    # plt.boxplot(source_target_precision, flierprops=flierprops)
+    # # plt.ylim(y_min, y_max)
+    # plt.title("target precision to \n source precision")
 
     
-    plt.subplot(3, 3, 3)
-    plt.boxplot(trans_source_source_accuracy, flierprops=flierprops)
+    # plt.subplot(3, 3, 2)
+    # plt.boxplot(trans_source_target_precision, flierprops=flierprops)
+    # # plt.ylim(y_min, y_max)
+    # plt.title("transported target \n precision to \n source precision")
+
+    
+    plt.subplot(1, 2, 1)
+    plt.boxplot(trans_source_source_precision, flierprops=flierprops)
     # plt.ylim(y_min, y_max)
     plt.axhline(y = 1, color = 'b', linestyle = '-')
-    plt.title("transported source \n accuracy to \n source accuracy")
+    plt.title("transported target \n precision to \n target precision")
 
-    plt.subplot(3, 3, 4)
-    plt.boxplot(source_target_f1, flierprops=flierprops)
-    # plt.ylim(y_min, y_max)
-    plt.title("source precision to \n target f1")
-
-    
-    plt.subplot(3, 3, 5)
-    plt.boxplot(trans_source_target_f1, flierprops=flierprops)
-    # plt.ylim(y_min, y_max)
-    plt.title("transported source \n precision to \n target f1")
+    # plt.subplot(3, 3, 4)
+    # plt.boxplot(source_target_recall, flierprops=flierprops)
+    # # plt.ylim(y_min, y_max)
+    # plt.title("target precision to \n source recall")
 
     
-    plt.subplot(3, 3, 6)
-    plt.boxplot(trans_source_source_f1, flierprops=flierprops)
+    # plt.subplot(3, 3, 5)
+    # plt.boxplot(trans_source_target_recall, flierprops=flierprops)
+    # # plt.ylim(y_min, y_max)
+    # plt.title("transported target \n recall to \n target recall")
+
+    
+    plt.subplot(1, 2, 2)
+    plt.boxplot(trans_source_source_recall, flierprops=flierprops)
     # plt.ylim(y_min, y_max)
     plt.axhline(y = 1, color = 'b', linestyle = '-')
-    plt.title("transported source \n precision to \n source f1")
+    plt.title("transported target \n recall to \n target recall")
 
     
     plt.tight_layout()
@@ -753,7 +742,7 @@ def box_plot_binary_short(score_path, label_code):
     })
 
     # Plot the dataframe
-    ax = data[['precision', 'recall']].plot(kind='box', title=f'transported source to source for {label_code}')
+    ax = data[['precision', 'recall']].plot(kind='box', title=f'transported target to target for {label_code}')
 
     # Plot the baseline
     plt.axhline(y = 1, color = 'r', linestyle = '-')
@@ -767,13 +756,14 @@ def box_plot_binary_short(score_path, label_code):
 Shorter version of box plot of simulation result statistics, for continuous response
 """
 
-def box_plot_cts_short(score_path):
+def box_plot_cts_short(score_path, response_name, save_path=None):
     """ 
     Box plot of the scores in score dataframe stored in score_path for binary labels. \
         Specifically, we plot the box plots of 
         - mae/rmse of transported source over accuracy/precision/recall of source
 
     :param str score_path: the path to scores.csv
+    :param str response_name: the name of response
 
     Returns:
         - the medians of trans source to source mae
@@ -814,13 +804,18 @@ def box_plot_cts_short(score_path):
     })
 
     # Plot the dataframe
-    ax = data[['mae', 'rmse']].plot(kind='box', title=f'transported source stat to source stat with response being duration')
+    ax = data[['mae', 'rmse']].plot(kind='box', title=f'transported target stat to target stat with response being {response_name}')
 
     # Plot the baseline
     plt.axhline(y = 1, color = 'r', linestyle = '-')
 
+    if save_path is not None:
+        print("enter this")
+        plt.savefig(save_path)
+
     # Display the plot
     plt.show()
+    
     return median(trans_source_source_mae), median(trans_source_source_rmse)
 
 
@@ -925,10 +920,10 @@ def hist_plot(score_path, filter = True):
     trans_source_source_accuracy_incre =  [i - j for i, j in zip(trans_source_accuracy, source_accuracy)]
     trans_source_source_f1_incre =  [i - j for i, j in zip(trans_source_f1, source_f1)]
 
-    print("average trans source to source accuracy increment is {:.1%}".format(np.mean(trans_source_source_accuracy_incre)))
-    print("median trans source to source accuracy increment is {:.1%}".format(np.median(trans_source_source_accuracy_incre)))
-    print("average trans source to source accuracy f1 is {:.1%}".format(np.mean(trans_source_source_f1_incre)))
-    print("median trans source to source accuracy f1 is {:.1%}".format(np.median(trans_source_source_f1_incre)))
+    print("average trans target to target accuracy increment is {:.1%}".format(np.mean(trans_source_source_accuracy_incre)))
+    print("median trans target to target accuracy increment is {:.1%}".format(np.median(trans_source_source_accuracy_incre)))
+    print("average trans target to target accuracy f1 is {:.1%}".format(np.mean(trans_source_source_f1_incre)))
+    print("median trans target to target accuracy f1 is {:.1%}".format(np.median(trans_source_source_f1_incre)))
 
     fig = plt.figure(figsize=(16,16))
     flierprops={'marker': 'o', 'markersize': 4, 'markerfacecolor': 'fuchsia'}
@@ -956,13 +951,13 @@ def hist_plot(score_path, filter = True):
     plt.subplot(3, 3, 1)
     plt.hist(trans_source_source_accuracy_incre, \
         bins=np.arange(min(trans_source_source_accuracy_incre), max(trans_source_source_accuracy_incre) + bin_width, bin_width))
-    plt.title("trans source to source accuracy increment histogram")
+    plt.title("trans target to target accuracy increment histogram")
 
     
     plt.subplot(3, 3, 2)
     plt.hist(trans_source_source_f1_incre , \
         bins=np.arange(min(trans_source_source_f1_incre), max(trans_source_source_f1_incre) + bin_width, bin_width))
-    plt.title("trans source to source f1 increment histogram")
+    plt.title("trans target to target f1 increment histogram")
 
     plt.tight_layout()
     plt.show()
@@ -1035,7 +1030,7 @@ def vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_label
     pl.xticks([])
     pl.yticks([])
     # pl.legend(loc=0)
-    pl.title('Source embedding')
+    pl.title('Target embedding')
 
     pl.figure(1, figsize=(15, 5))
     pl.subplot(1, 3, 2)
@@ -1043,7 +1038,7 @@ def vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_label
     pl.xticks([])
     pl.yticks([])
     # pl.legend(loc=0)
-    pl.title('Target embedding')
+    pl.title('Source embedding')
 
     pl.figure(1, figsize=(15, 5))
     pl.subplot(1, 3, 3)
@@ -1051,7 +1046,7 @@ def vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_label
     pl.xticks([])
     pl.yticks([])
     # pl.legend(loc=0)
-    pl.title('Transported source embedding')
+    pl.title('Transported target embedding')
     pl.tight_layout()
     pl.show()
 

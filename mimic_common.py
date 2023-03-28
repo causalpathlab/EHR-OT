@@ -200,12 +200,15 @@ def select_df_cts(df, male_count, female_count):
     return df_copy
 
 
-def select_df_binary(df, label_code, male_count, female_count):
+def select_df_binary(df, group_name, group_1, group_2, label_code, male_count, female_count):
     """ 
     Select row in the dataframe df with balanced number of labels for males and females
     Specifically, we want to reduce the number of rows with label 0 for males and females
 
     :param Dataframe df: the dataframe to select samples with label 0 and label 1
+    :param str group_name: the criteria for dividing groups, e.g., "gender", "adm_type"
+    :param str group_1: group 1 label for group_name
+    :param str group_2: group 2 label for group_name
     :param str label_code: the ICD code for determining labels. This code should be removed from ICD codes.
     :param int target_count: the number of samples with label 1s and label 0s for target (male). 
     :param int source_count: the number of samples with label 1s and label 0s for source (female). 
@@ -233,14 +236,18 @@ def select_df_binary(df, label_code, male_count, female_count):
     df_copy['label'] = labels
 
     for index, row in df_copy.iterrows():
-        if row['label'] == 0 and row['gender'] == 'F':
+        if row['label'] == 0 and row[group_name] == group_1:
             female_0_indices.append(index)
-        elif row['label'] == 0 and row['gender'] == 'M':
+        elif row['label'] == 0 and row[group_name] == group_2:
             male_0_indices.append(index)
-        elif row['label'] == 1 and row['gender'] == 'F':
+        elif row['label'] == 1 and row[group_name] == group_1:
             female_1_indices.append(index)
-        elif row['label'] == 1 and row['gender'] == 'M':
+        elif row['label'] == 1 and row[group_name] == group_2:
             male_1_indices.append(index)
+    # print("group 1 with label 0 length is:", len(female_0_indices))
+    # print("group 2 with label 0 length is:", len(male_0_indices))
+    # print("group 1 with label 1 length is:", len(female_1_indices))
+    # print("group 2 with label 1 length is:", len(male_1_indices))
     
     # indices to delete from the dataframe
     # sample the same number of label 0s and label 1s
@@ -302,12 +309,15 @@ def compute_transfer_score(source_reps, trans_source_reps, source_labels, model_
 
 
 
-def entire_proc_binary(n_components, label_code, full_df, custom_train_reps, model_func=linear_model.LogisticRegression, \
+def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, full_df, custom_train_reps, model_func=linear_model.LogisticRegression, \
                        male_count = 120, female_count = 100, pca_explain=False, transfer_score=False):
     """
     Wrap up the entire procedure
 
     :param int n_components: the number of components for PCA learning
+    :param str group_name: group name to divide groups
+    :param str group_1: group 1 name
+    :param str group_2: group 2 name
     :param str label_code: the ICD code to determine labels
     :param dataframe full_df: the full dataframe
     :param function custom_train_reps: the customized function for learning representations
@@ -318,7 +328,8 @@ def entire_proc_binary(n_components, label_code, full_df, custom_train_reps, mod
     :param bool transfer_score: whether to compute transferability score. Default False. Returns the scores if True.
     """
     
-    selected_df = select_df_binary(full_df, label_code, male_count=male_count, female_count=female_count)
+    selected_df = select_df_binary(full_df, group_name, group_1, group_2, \
+                label_code, male_count, female_count)
 
     target_features, target_labels, source_features, source_labels = gen_features_labels(selected_df)
 
