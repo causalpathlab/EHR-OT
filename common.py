@@ -19,6 +19,7 @@ from sklearn.metrics import f1_score
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import mutual_info_score
+from scipy.stats import wasserstein_distance
 
 from statistics import median
 
@@ -26,36 +27,45 @@ from statistics import median
 Transport source representations to target representations
 """
 
-def trans_source2target(source_reps, target_reps, type="balanced", max_iter = None):
+def trans_source2target(source_reps, target_reps, type="balanced", max_iter = None, ret_cost=False):
     """ 
     Optimal transport (without entropy regularization) source representations \
         to target representations
 
     :param str type: balanced or unbalanced
-    :returns: transported source representations
+    :param bool ret_cost: return OT cost or not
+    :returns: transported source representations and the optimized Wasserstein distance (if cost is True), default False
+
+    TODO: the unbalanced case has not been implemented 
     """
     trans_source_reps = None
-    if type == "balanced":
-        ot_emd = ot.da.SinkhornTransport(reg_e=1e-1)
-        if max_iter is not None:
-            ot_emd = ot.da.SinkhornTransport(reg_e=1e-1, max_iter=max_iter)
-        ot_emd.fit(Xs=source_reps, Xt=target_reps)
-        trans_source_reps = ot_emd.transform(Xs=source_reps)
+    # if type == "balanced":
+    ot_emd = ot.da.SinkhornTransport(reg_e=1e-1, log=True)
+    if max_iter is not None:
+        ot_emd = ot.da.SinkhornTransport(reg_e=1e-1, max_iter=max_iter, log=True)
+    ot_emd.fit(Xs=source_reps, Xt=target_reps)
+    trans_source_reps = ot_emd.transform(Xs=source_reps)
+    if not ret_cost:
+        return trans_source_reps
+    wa_dist = ot_emd.log_['err'][-1]
 
-    elif type == "unbalanced":
-        reg = 0.005
-        reg_m_kl = 0.5
-        n = source_reps.shape[0]
 
-        a, b = np.ones((n,)) / n, np.ones((n,)) / n  # uniform distribution on samples
+    return trans_source_reps, wa_dist
 
-        M = ot.dist(source_reps, target_reps)
-        M /= M.max()
 
-        coupling = ot.unbalanced.sinkhorn_unbalanced(a, b, M, reg, reg_m_kl)
-        trans_source_reps = np.matmul(coupling, source_reps)
+    # elif type == "unbalanced":
+    #     reg = 0.005
+    #     reg_m_kl = 0.5
+    #     n = source_reps.shape[0]
 
-    return trans_source_reps
+    #     a, b = np.ones((n,)) / n, np.ones((n,)) / n  # uniform distribution on samples
+
+    #     M = ot.dist(source_reps, target_reps)
+    #     M /= M.max()
+
+    #     coupling = ot.unbalanced.sinkhorn_unbalanced(a, b, M, reg, reg_m_kl)
+    #     trans_source_reps = np.matmul(coupling, source_reps)
+
 
 
 """ 
@@ -178,16 +188,17 @@ def train_model(reps, labels, model_func):
     return clf
 
 
-def compute_transfer_score(trans_source_reps, source_labels, model_func, target_model):
-    """ 
-    Computes the transfer score
+# def compute_transfer_score(trans_source_reps, source_labels, model_func, target_model):
+#     """ 
+#     deprecated 
+#     Computes the transfer score
 
-    :param function model_func: the function to model the relationship between transported source reps and source labels
-    :param function target_model: the model trained by target representations and target labels
-    """
-    trans_source_model = train_model(trans_source_reps, source_labels, model_func)
-    transfer_score = mutual_info_score(target_model.coef_, trans_source_model.coef_)
-    return transfer_score
+#     :param function model_func: the function to model the relationship between transported source reps and source labels
+#     :param function target_model: the model trained by target representations and target labels
+#     """
+#     trans_source_model = train_model(trans_source_reps, source_labels, model_func)
+#     transfer_score = mutual_info_score(target_model.coef_, trans_source_model.coef_)
+#     return transfer_score
 
 
 
@@ -577,7 +588,7 @@ def save_scores_emb_ordered(target_maes, target_mses, target_rmses,  aug_target_
 Box plot of simulation result statistics
 """
 
-def box_plot_binary(score_path):
+def box_plot_binary_short(score_path, save_path = None):
     """ 
     Box plot of the scores in score dataframe stored in score_path for binary labels. \
         Specifically, we plot the box plots of 
@@ -586,18 +597,23 @@ def box_plot_binary(score_path):
         - precision/recall of transported source over accuracy/precision/recall of source
 
     :param str score_path: the path to scores.csv
+    :param str save_path: the path to save plot
     """
 
     scores_df = pd.read_csv(score_path, index_col=None, header=0)
 
     target_precision = scores_df['target_precision']
     target_recall = scores_df['target_recall']
+    target_f1 = scores_df['target_f1']
 
     source_precision = scores_df['source_precision']
     source_recall = scores_df['source_recall']
+    source_f1 = scores_df['source_f1']
 
     trans_source_precision = scores_df['trans_source_precision']
     trans_source_recall = scores_df['trans_source_recall']
+    trans_source_f1 = scores_df['trans_source_f1']
+
 
     
 
@@ -612,7 +628,7 @@ def box_plot_binary(score_path):
     # print("average trans source to source accuracy f1 is:", np.mean(trans_source_source_f1_incre ))
     # print("median trans source to source accuracy f1 is:", np.median(trans_source_source_f1_incre))
 
-    fig = plt.figure(figsize=(16,10))
+    fig = plt.figure(figsize=(15,6))
 
     flierprops={'marker': 'o', 'markersize': 4, 'markerfacecolor': 'fuchsia'}
 
@@ -639,6 +655,11 @@ def box_plot_binary(score_path):
     print("average trans source to source recall is:", np.mean(trans_source_source_recall))
     print("median trans source to source recall is:", np.median(trans_source_source_recall))
 
+    # transported source to source f1
+    trans_source_source_f1 = [i / j for i, j in zip(trans_source_f1, source_f1)]
+    print("average trans source to source f1 is:", np.mean(trans_source_source_f1))
+    print("median trans source to source f1 is:", np.median(trans_source_source_f1))
+
 
     # plt.subplot(3, 3, 1)
     # plt.boxplot(source_target_precision, flierprops=flierprops)
@@ -652,11 +673,12 @@ def box_plot_binary(score_path):
     # plt.title("transported target \n precision to \n source precision")
 
     
-    plt.subplot(1, 2, 1)
+    plt.subplot(1, 3, 1)
     plt.boxplot(trans_source_source_precision, flierprops=flierprops)
     # plt.ylim(y_min, y_max)
     plt.axhline(y = 1, color = 'b', linestyle = '-')
     plt.title("transported target \n precision to \n target precision")
+    
 
     # plt.subplot(3, 3, 4)
     # plt.boxplot(source_target_recall, flierprops=flierprops)
@@ -670,15 +692,25 @@ def box_plot_binary(score_path):
     # plt.title("transported target \n recall to \n target recall")
 
     
-    plt.subplot(1, 2, 2)
+    plt.subplot(1, 3, 2)
     plt.boxplot(trans_source_source_recall, flierprops=flierprops)
     # plt.ylim(y_min, y_max)
     plt.axhline(y = 1, color = 'b', linestyle = '-')
     plt.title("transported target \n recall to \n target recall")
 
+    plt.subplot(1, 3, 3)
+    plt.boxplot(trans_source_source_f1, flierprops=flierprops)
+    # plt.ylim(y_min, y_max)
+    plt.axhline(y = 1, color = 'b', linestyle = '-')
+    plt.title("transported target \n f1 to \n f1 recall")
     
+    if save_path is not None:
+        plt.savefig(save_path)
+
     plt.tight_layout()
     plt.show()
+
+
 
 
 
@@ -686,9 +718,9 @@ def box_plot_binary(score_path):
 Shorter version of box plot of simulation result statistics
 """
 
-def box_plot_binary_short(score_path, label_code):
+def box_plot_label_binary_short(score_path, label_code):
     """ 
-    Box plot of the scores in score dataframe stored in score_path for binary labels. \
+    Box plot of the scores in score dataframe stored in score_path for binary labels with respect to the label_code. \
         Specifically, we plot the box plots of 
         - precision/recall of transported source over precision/recall of source
 

@@ -353,43 +353,6 @@ def custom_train_reps(target_features, source_features):
     return target_reps, source_reps
 
 
-# In[12]:
-
-
-target_accuracies, target_precisions, target_recalls, target_f1s, \
-    source_accuracies, source_precisions, source_recalls, source_f1s, \
-    trans_source_accuracies, trans_source_precisions, trans_source_recalls, trans_source_f1s  = \
-    run_proc_multi(simulate_wrapper, custom_train_reps, svm.SVC, max_iter=100000, n_times=100)
-
-
-# In[13]:
-
-
-score_path = "../outputs/synthetic/sim7_svm_scores.csv"
-save_scores(target_accuracies, target_precisions, target_recalls, target_f1s, \
-        source_accuracies, source_precisions, source_recalls, source_f1s, \
-        trans_source_accuracies, trans_source_precisions, trans_source_recalls, trans_source_f1s, score_path)
-
-
-# In[14]:
-
-
-""" 
-Larger is better (>0)
-"""
-hist_plot(score_path, filter=False)
-
-
-# In[15]:
-
-
-score_path = "../outputs/synthetic/sim7_svm_scores.csv"
-box_plot_binary(score_path)
-
-
-# In[13]:
-
-
 """ 
 One run with embedding space visualization
 """
@@ -423,8 +386,8 @@ trans_source_desired_reps = ot_sinkhorn.transform(Xs=source_desired_reps)
 Visualize the desired embedding space
 """
 
-print(source_desired_reps.shape)
-vis_emb_dim2_unordered(target_desired_reps, target_labels, source_desired_reps, source_labels, trans_source_desired_reps)
+# print(source_desired_reps.shape)
+# vis_emb_dim2_unordered(target_desired_reps, target_labels, source_desired_reps, source_labels, trans_source_desired_reps)
 
 
 # In[17]:
@@ -450,7 +413,7 @@ trans_source_reps = ot_sinkhorn.transform(Xs=source_reps)
 """ 
 Visualize the actual embedding space
 """
-vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_labels, trans_source_reps)
+# vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_labels, trans_source_reps)
 
 
 # In[19]:

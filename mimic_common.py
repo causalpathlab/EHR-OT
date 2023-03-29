@@ -282,30 +282,24 @@ def train_model(reps, labels, model_func):
     return clf
 
 
-def compute_transfer_score(source_reps, trans_source_reps, source_labels, model_func):
+def compute_transfer_score(source_reps, source_labels, target_reps, target_labels, model_func):
     """ 
-    Computes the transfer score using label, and without label (how?)
+    Computes the transfer score using the third term in Theorem 1: \mathbb{E}_{x\sim D_T}[|f_T(x)-f_S(x)|]
+    where f_T is the labeling function for target domain, f_S is the labeling function for the source domain
 
     :param function model_func: the function to model the relationship between transported source reps and source labels
     """
 
-    def KL(a, b):
-        a = np.asarray(a, dtype=np.float)
-        b = np.asarray(b, dtype=np.float)
-
-        return np.sum(np.where(a != 0, a * np.log(a / b), 0))
-    
     source_model = train_model(source_reps, source_labels, model_func)
-    source_pred_probs = source_model.predict_proba(source_reps)
+    source_pred_probs = source_model.predict_proba(target_reps)
 
-    trans_source_model = train_model(trans_source_reps, source_labels, model_func)
-    trans_source_pred_probs = trans_source_model.predict_proba(trans_source_reps)
+    target_model = train_model(target_reps, target_labels, model_func)
+    target_pred_probs = target_model.predict_proba(target_reps)
 
-    transfer_score = 0
-    for source_pred_prob, trans_source_pred_prob in zip(source_pred_probs, trans_source_pred_probs):
-        transfer_score += entropy(source_pred_prob, trans_source_pred_prob)
+    diff_probs = np.subtract(source_pred_probs, target_pred_probs)
+    diff_probs = [abs(prob) for prob in diff_probs]
 
-    return transfer_score/source_pred_prob.shape[0]
+    return np.sum(diff_probs)
 
 
 
@@ -326,6 +320,8 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     :param int female_count: the number of samples with label 1s and label 0s for source (female)
     :param bool pca_explain: print the variance explained by the PCA, if True. Default False
     :param bool transfer_score: whether to compute transferability score. Default False. Returns the scores if True.
+
+    :returns accuracy statistics and optimized Wasserstein distance
     """
     
     selected_df = select_df_binary(full_df, group_name, group_1, group_2, \
@@ -338,7 +334,9 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     target_model = train_model(target_reps, target_labels, model_func)
     target_preds = target_model.predict(target_reps)
     source_preds = target_model.predict(source_reps)
-    trans_source_reps = trans_source2target(source_reps, target_reps)
+    trans_source_reps, cost = trans_source2target(source_reps, target_reps, ret_cost=True)
+    
+    # TODO: get Wasserstein distance here 
     trans_source_preds = target_model.predict(trans_source_reps)
     target_accuracy = accuracy_score(target_labels, target_preds)
     target_precision = precision_score(target_labels, target_preds)
@@ -354,15 +352,15 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     trans_source_f1 = f1_score(source_labels, trans_source_preds)
         
     if transfer_score:
-        transfer_score = compute_transfer_score(source_reps, trans_source_reps, source_labels, model_func)
+        transfer_score = compute_transfer_score(source_reps, source_labels, target_reps, target_labels, model_func)
         return target_accuracy, target_precision, target_recall, target_f1, \
             source_accuracy, source_precision, source_recall, source_f1, \
             trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1,\
-            transfer_score
+            transfer_score, cost
 
     return target_accuracy, target_precision, target_recall, target_f1, \
         source_accuracy, source_precision, source_recall, source_f1, \
-        trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1
+        trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1, cost
 
 
 def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, male_count = 120, female_count = 100, pca_explain=False):

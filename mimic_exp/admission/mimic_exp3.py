@@ -117,20 +117,24 @@ def multi_proc_parallel(score_path, n_components, label_code, custom_train_reps,
         :param int iter: the current iteration
         """
         print(f"iteration: {iter}\n")
-        cur_res = entire_proc_binary(n_components, label_code, admid_diagnosis_df, custom_train_reps, \
+        cur_res = entire_proc_binary(n_components, "gender", 'M', 'F', label_code, admid_diagnosis_df, custom_train_reps, \
                                      male_count = male_count, female_count = female_count, transfer_score=True)
+        
+        # entire_proc_binary(n_components, group_name, group_1, group_2, label_code, full_df, custom_train_reps, model_func=linear_model.LogisticRegression, \
+        #                male_count = 120, female_count = 100, pca_explain=False, transfer_score=False)
         return cur_res
 
     res = p.map(iteration_wrapper, np.arange(0, iteration, 1))
     res_df = pd.DataFrame(res, columns = ['target_accuracy', 'target_precision', 'target_recall', 'target_f1', \
                                           'source_accuracy', 'source_precision', 'source_recall', 'source_f1', \
-                                            'trans_source_accuracy', 'trans_source_precision', 'trans_source_recall', 'trans_source_f1', 'transfer_score'])
+                                            'trans_source_accuracy', 'trans_source_precision', 'trans_source_recall', 'trans_source_f1', \
+                                            'transfer_score', 'w_dist'])
     res_df.to_csv(score_path, index=False, header=True)
     return res
 
 
 
-# In[12]:
+# In[10]:
 
 
 """ 
@@ -143,14 +147,14 @@ male_count = 120
 female_count = 100
 label_code_path = os.path.join(output_dir, "selected_summary_mimic.csv")
 label_code_df = pd.read_csv(label_code_path, header=0, index_col=None)
-label_codes = list(label_code_df['ICD code'])[200:]
+label_codes = list(label_code_df['ICD code'])[:1]
 print("label_codes are:", label_codes)
 for label_code in label_codes:
     start_time = time.time()
     print(f"label code {label_code} started")
     score_path = os.path.join(output_dir, f"exp3_{label_code}_score.csv")
     multi_proc_parallel(score_path, n_components, label_code, custom_train_reps, \
-            male_count, female_count, iteration=100)
+            male_count, female_count, iteration=10)
     end_time = time.time()
     print(f"runtime for {label_code} is: {end_time-start_time}")
 
