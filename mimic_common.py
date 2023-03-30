@@ -310,8 +310,8 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
 
     :param int n_components: the number of components for PCA learning
     :param str group_name: group name to divide groups
-    :param str group_1: group 1 name
-    :param str group_2: group 2 name
+    :param str group_1: group 1 name, the target in transfer learning (e.g. female)
+    :param str group_2: group 2 name, the source in transfer learning (e.g. male)
     :param str label_code: the ICD code to determine labels
     :param dataframe full_df: the full dataframe
     :param function custom_train_reps: the customized function for learning representations
