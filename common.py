@@ -614,24 +614,6 @@ def box_plot_binary_short(score_path, save_path = None):
     trans_source_recall = scores_df['trans_source_recall']
     trans_source_f1 = scores_df['trans_source_f1']
 
-
-    
-
-    # trans_source_source_precision_incre =  [i - j for i, j in zip(trans_source_precision, source_precision)]
-    # trans_source_source_recall_incre =  [i - j for i, j in zip(trans_source_recall, source_recall)]
-    # print("number of stats is:", len(trans_source_source_accuracy_incre))
-    # print("number of 0 in incre is:", trans_source_source_accuracy_incre.count(0))
-    # print("number of elements > 0 is:", np.sum(np.array(trans_source_source_accuracy_incre) > 0, axis=0))
-    # print("number of elements < 0 is:", np.sum(np.array(trans_source_source_accuracy_incre) < 0, axis=0))
-    # print("average trans source to source accuracy increment is:", np.mean(trans_source_source_accuracy_incre))
-    # print("median trans source to source accuracy increment is:", np.median(trans_source_source_accuracy_incre))
-    # print("average trans source to source accuracy f1 is:", np.mean(trans_source_source_f1_incre ))
-    # print("median trans source to source accuracy f1 is:", np.median(trans_source_source_f1_incre))
-
-    fig = plt.figure(figsize=(15,6))
-
-    flierprops={'marker': 'o', 'markersize': 4, 'markerfacecolor': 'fuchsia'}
-
     # source to target precision
     source_target_precision = [i / j for i, j in zip(source_precision, target_precision)]
 
@@ -661,53 +643,34 @@ def box_plot_binary_short(score_path, save_path = None):
     print("median trans source to source f1 is:", np.median(trans_source_source_f1))
 
 
-    # plt.subplot(3, 3, 1)
-    # plt.boxplot(source_target_precision, flierprops=flierprops)
-    # # plt.ylim(y_min, y_max)
-    # plt.title("target precision to \n source precision")
-
-    
-    # plt.subplot(3, 3, 2)
-    # plt.boxplot(trans_source_target_precision, flierprops=flierprops)
-    # # plt.ylim(y_min, y_max)
-    # plt.title("transported target \n precision to \n source precision")
-
-    
-    plt.subplot(1, 3, 1)
-    plt.boxplot(trans_source_source_precision, flierprops=flierprops)
-    # plt.ylim(y_min, y_max)
-    plt.axhline(y = 1, color = 'b', linestyle = '-')
-    plt.title("transported target \n precision to \n target precision")
     
 
-    # plt.subplot(3, 3, 4)
-    # plt.boxplot(source_target_recall, flierprops=flierprops)
-    # # plt.ylim(y_min, y_max)
-    # plt.title("target precision to \n source recall")
 
-    
-    # plt.subplot(3, 3, 5)
-    # plt.boxplot(trans_source_target_recall, flierprops=flierprops)
-    # # plt.ylim(y_min, y_max)
-    # plt.title("transported target \n recall to \n target recall")
 
-    
-    plt.subplot(1, 3, 2)
-    plt.boxplot(trans_source_source_recall, flierprops=flierprops)
-    # plt.ylim(y_min, y_max)
-    plt.axhline(y = 1, color = 'b', linestyle = '-')
-    plt.title("transported target \n recall to \n target recall")
+    # Set the figure size
+    plt.figure()
+    plt.rcParams["figure.figsize"] = [7.50, 3.50]
+    plt.rcParams["figure.autolayout"] = True
 
-    plt.subplot(1, 3, 3)
-    plt.boxplot(trans_source_source_f1, flierprops=flierprops)
-    # plt.ylim(y_min, y_max)
-    plt.axhline(y = 1, color = 'b', linestyle = '-')
-    plt.title("transported target \n f1 to \n f1 recall")
-    
+    # Pandas dataframe
+    data = pd.DataFrame({
+        'precision': trans_source_source_precision,
+        'recall': trans_source_source_recall,
+        'f1': trans_source_source_f1
+    })
+
+    # Plot the dataframe
+    ax = data[['precision', 'recall', 'f1']].plot(kind='box')
+
+    # Plot the baseline
+    plt.axhline(y = 1, color = 'r', linestyle = '-')
+
+    plt.tight_layout()
+
     if save_path is not None:
         plt.savefig(save_path)
 
-    plt.tight_layout()
+
     plt.show()
 
 
@@ -788,7 +751,7 @@ def box_plot_label_binary_short(score_path, label_code):
 Shorter version of box plot of simulation result statistics, for continuous response
 """
 
-def box_plot_cts_short(score_path, response_name, save_path=None):
+def box_plot_cts_short(score_path, save_path=None):
     """ 
     Box plot of the scores in score dataframe stored in score_path for binary labels. \
         Specifically, we plot the box plots of 
@@ -836,13 +799,12 @@ def box_plot_cts_short(score_path, response_name, save_path=None):
     })
 
     # Plot the dataframe
-    ax = data[['mae', 'rmse']].plot(kind='box', title=f'transported target stat to target stat with response being {response_name}')
+    ax = data[['mae', 'rmse']].plot(kind='box')
 
     # Plot the baseline
     plt.axhline(y = 1, color = 'r', linestyle = '-')
 
     if save_path is not None:
-        print("enter this")
         plt.savefig(save_path)
 
     # Display the plot
