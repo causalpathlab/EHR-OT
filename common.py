@@ -47,7 +47,8 @@ def trans_source2target(source_reps, target_reps, type="balanced", max_iter = No
     trans_source_reps = ot_emd.transform(Xs=source_reps)
     if not ret_cost:
         return trans_source_reps
-    wa_dist = ot_emd.log_['err'][-1]
+    # wa_dist = ot_emd.log_['err'][-1]
+    wa_dist = wasserstein_distance(source_reps, target_reps)
 
 
     return trans_source_reps, wa_dist

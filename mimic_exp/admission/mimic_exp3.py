@@ -145,14 +145,14 @@ male_count = 120
 female_count = 100
 label_code_path = os.path.join(output_dir, "selected_summary_mimic.csv")
 label_code_df = pd.read_csv(label_code_path, header=0, index_col=None)
-label_codes = list(label_code_df['ICD code'])[200:]
+label_codes = list(label_code_df['ICD code'])[:1]
 print("label_codes are:", label_codes)
 for label_code in label_codes:
     start_time = time.time()
     print(f"label code {label_code} started")
     score_path = os.path.join(output_dir, f"exp3_{label_code}_score.csv")
     multi_proc_parallel(score_path, n_components, label_code, custom_train_reps, \
-            male_count, female_count, iteration=100)
+            male_count, female_count, iteration=5)
     end_time = time.time()
     print(f"runtime for {label_code} is: {end_time-start_time}")
 

@@ -334,9 +334,8 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     target_model = train_model(target_reps, target_labels, model_func)
     target_preds = target_model.predict(target_reps)
     source_preds = target_model.predict(source_reps)
-    trans_source_reps, cost = trans_source2target(source_reps, target_reps, ret_cost=True)
+    trans_source_reps, wa_dist = trans_source2target(source_reps, target_reps, ret_cost=True)
     
-    # TODO: get Wasserstein distance here 
     trans_source_preds = target_model.predict(trans_source_reps)
     target_accuracy = accuracy_score(target_labels, target_preds)
     target_precision = precision_score(target_labels, target_preds)
@@ -356,7 +355,7 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
         return target_accuracy, target_precision, target_recall, target_f1, \
             source_accuracy, source_precision, source_recall, source_f1, \
             trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1,\
-            transfer_score, cost
+            transfer_score, wa_dist
 
     return target_accuracy, target_precision, target_recall, target_f1, \
         source_accuracy, source_precision, source_recall, source_f1, \
