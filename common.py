@@ -790,25 +790,28 @@ def box_plot_cts_short(score_path, save_path=None):
 
     # Set the figure size
     plt.figure()
-    plt.rcParams["figure.figsize"] = [7.50, 3.50]
-    plt.rcParams["figure.autolayout"] = True
+    # plt.rcParams["figure.figsize"] = [7.50, 3.50]
+    # plt.rcParams["figure.autolayout"] = True
 
     # Pandas dataframe
     data = pd.DataFrame({
-        'mae': trans_source_source_mae,
-        'rmse': trans_source_source_rmse
+        'MAE': trans_source_source_mae,
+        'RMSE': trans_source_source_rmse
     })
 
     # Plot the dataframe
-    ax = data[['mae', 'rmse']].plot(kind='box')
+    ax = data[['MAE', 'RMSE']].plot(kind='box')
 
     # Plot the baseline
     plt.axhline(y = 1, color = 'r', linestyle = '-')
+    
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
 
     if save_path is not None:
-        plt.savefig(save_path)
+        plt.savefig(save_path, bbox_inches='tight')
 
-    # Display the plot
+
     plt.show()
     
     return median(trans_source_source_mae), median(trans_source_source_rmse)
