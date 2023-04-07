@@ -47,8 +47,8 @@ def trans_source2target(source_reps, target_reps, type="balanced", max_iter = No
     trans_source_reps = ot_emd.transform(Xs=source_reps)
     if not ret_cost:
         return trans_source_reps
-    # wa_dist = ot_emd.log_['err'][-1]
-    wa_dist = wasserstein_distance(source_reps, target_reps)
+    wa_dist = ot_emd.log_['err'][-1]
+    # wa_dist = wasserstein_distance(source_reps, target_reps)
 
 
     return trans_source_reps, wa_dist
@@ -1017,18 +1017,21 @@ def vis_boundary(reps, labels, model):
     plt.show()
 
 
-def vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_labels, trans_source_reps):
+def vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_labels, trans_source_reps, save_path = None):
     """ 
     Visualize the embedding space of dimension 2 of the target data, source data and transported source data \
         for unordered reponse (categorical response)
+    
+        :param str save_path: path to save the figure
     """
+    
     pl.figure(1, figsize=(15, 5))
     pl.subplot(1, 3, 1)
     pl.scatter(source_reps[:, 0], source_reps[:, 1], c=source_labels, alpha = 0.5, marker='o')
     pl.xticks([])
     pl.yticks([])
     # pl.legend(loc=0)
-    pl.title('Target embedding')
+    pl.title('(a) Target embedding', fontweight='bold', loc='left', fontsize=20)
 
     pl.figure(1, figsize=(15, 5))
     pl.subplot(1, 3, 2)
@@ -1036,7 +1039,7 @@ def vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_label
     pl.xticks([])
     pl.yticks([])
     # pl.legend(loc=0)
-    pl.title('Source embedding')
+    pl.title('(b) Source embedding', fontweight='bold', loc='left', fontsize=20)
 
     pl.figure(1, figsize=(15, 5))
     pl.subplot(1, 3, 3)
@@ -1044,8 +1047,11 @@ def vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_label
     pl.xticks([])
     pl.yticks([])
     # pl.legend(loc=0)
-    pl.title('Transported target embedding')
+    pl.title('(c) Transported target embedding', fontweight='bold', loc='left', fontsize=20)
     pl.tight_layout()
+
+    if save_path is not None:
+        pl.savefig(save_path, bbox_inches = 'tight')
     pl.show()
 
 
