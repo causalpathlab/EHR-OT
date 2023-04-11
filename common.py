@@ -207,7 +207,7 @@ def train_model(reps, labels, model_func):
 Wrap up everything for binary labels
 """
 
-def entire_proc_binary(sim_func, custom_train_reps, model_func, max_iter, transfer_score=False):
+def entire_proc_binary(sim_func, custom_train_reps, model_func, max_iter):
     """ 
     Executes the entire procedure including
         - generate target sequences, target labels, source sequences and source labels
@@ -234,13 +234,6 @@ def entire_proc_binary(sim_func, custom_train_reps, model_func, max_iter, transf
         source_accuracy, source_precision, source_recall, source_f1, \
         trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1 = \
         cal_stats_binary(target_reps, target_labels, source_reps, source_labels, trans_source_reps, target_model)
-
-    if transfer_score:
-        transfer_score = compute_transfer_score(trans_source_reps, source_labels, model_func)
-        return target_accuracy, target_precision, target_recall, target_f1, \
-            source_accuracy, source_precision, source_recall, source_f1, \
-            trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1, \
-            transfer_score
     
     return target_accuracy, target_precision, target_recall, target_f1, \
         source_accuracy, source_precision, source_recall, source_f1, \
@@ -431,7 +424,8 @@ def run_proc_multi_cts(sim_func, custom_train_reps, model_func, max_iter = None,
     trans_source_mses = []
     trans_source_rmses = []
 
-    for _ in range(n_times):
+    for i in range(n_times):
+        print("iteration:", i)
         # init accuracies
         target_mae = None
         target_mse = None
