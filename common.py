@@ -1139,3 +1139,66 @@ def box_plot_cts_short(score_path, save_path=None):
 
 #     plt.tight_layout()
 #     plt.show()
+
+
+def box_plot_cts_tca_short(ot_score_path, tca_score_path, save_path=None):
+    """ 
+    Box plot of the scores in score dataframe stored in score_path for ordered. \
+        Specifically, we plot the box plots of 
+        - mae/rmse of EHR-OT over TCA
+
+    :param str ot_score_path: the path to EHR-OT scores
+    :param str tca_score_path: the path to TCA scores
+
+    Returns:
+        - the medians of trans source to source mae
+        - the medians of trans source to source rmse
+    """
+
+    def special_div(x, y):
+        """ 
+        Special division operation
+        """
+        if y == 0:
+            y = 1e-5
+        return x/y
+
+    ot_score_df = pd.read_csv(ot_score_path, index_col=None, header=0)
+    tca_score_df = pd.read_csv(tca_score_path, index_col=None, header=0)
+
+    target_mae = tca_score_df['trans_target_mae']
+    target_rmse = tca_score_df['trans_target_rmse']
+
+    trans_target_mae = ot_score_df['trans_target_mae']
+    trans_target_rmse = ot_score_df['trans_target_rmse']
+
+    # transported source to source mae
+    trans_target_target_mae = [special_div(i, j) for i, j in zip(trans_target_mae, target_mae)]
+
+    # transported source to source rmse
+    trans_target_target_rmse = [special_div(i, j) for i, j in zip(trans_target_rmse, target_rmse)]
+
+    # Set the figure size
+    plt.figure()
+
+    # Pandas dataframe
+    data = pd.DataFrame({
+        'MAE ratio': trans_target_target_mae,
+        'RMSE ratio': trans_target_target_rmse
+    })
+
+    # Plot the dataframe
+    ax = data[['MAE ratio', 'RMSE ratio']].plot(kind='box')
+
+    # Plot the baseline
+    plt.axhline(y = 1, color = 'r', linestyle = '-')
+    
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+
+    if save_path is not None:
+        plt.savefig(save_path, bbox_inches='tight')
+    plt.show()
+    
+    return median(trans_target_target_mae), median(trans_target_target_rmse)
+
