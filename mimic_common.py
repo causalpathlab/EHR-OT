@@ -378,7 +378,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, male_c
     
     selected_df = select_df_cts(full_df, male_count=male_count, female_count=female_count)
 
-    target_features, target_labels, source_features, source_labels = gen_features_duration(selected_df)
+    source_features, source_labels, target_features, target_labels = gen_features_duration(selected_df)
 
     target_reps, source_reps = custom_train_reps(target_features, source_features, n_components, pca_explain=pca_explain)
 
