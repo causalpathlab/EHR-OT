@@ -620,3 +620,75 @@ def custom_train_reps_default(source_features, target_features, n_components):
     target_reps = target_pca.fit_transform(target_features)
     source_reps = source_pca.fit_transform(source_features)
     return source_reps, target_reps
+
+
+def decide_ICD_chapter(code):
+    """ 
+    Decide ICD code chapter based on 
+    https://en.wikipedia.org/wiki/List_of_ICD-9_codes_E_and_V_codes:_external_causes_of_injury_and_supplemental_classification 
+
+    Rules:
+    Chapter	Block	Title
+    1	001–139	Infectious and Parasitic Diseases
+    2	140–239	Neoplasms
+    3	240–279	Endocrine, Nutritional and Metabolic Diseases, and Immunity Disorders
+    4	280–289	Diseases of the Blood and Blood-forming Organs
+    5	290–319	Mental Disorders
+    6	320–389	Diseases of the Nervous System and Sense Organs
+    7	390–459	Diseases of the Circulatory System
+    8	460–519	Diseases of the Respiratory System
+    9	520–579	Diseases of the Digestive System
+    10	580–629	Diseases of the Genitourinary System
+    11	630–679	Complications of Pregnancy, Childbirth, and the Puerperium
+    12	680–709	Diseases of the Skin and Subcutaneous Tissue
+    13	710–739	Diseases of the Musculoskeletal System and Connective Tissue
+    14	740–759	Congenital Anomalies
+    15	760–779	Certain Conditions originating in the Perinatal Period
+    16	780–799	Symptoms, Signs and Ill-defined Conditions
+    17	800–999	Injury and Poisoning
+    18  E800–E999   Supplementary Classification of External Causes of Injury and Poisoning
+    19  V01–V82	Supplementary Classification of Factors influencing Health Status and Contact with Health Services
+    20  M8000–M9970	Morphology of Neoplasms
+    """
+
+    block = code.split(".")[0]
+    if block.startswith("E"):
+        return 18, "Supplementary Classification of External Causes of Injury and Poisoning"
+    if block.startswith("V"):
+        return 19, "Supplementary Classification of Factors influencing Health Status and Contact with Health Services"
+    if block.startswith("M"):
+        return 20, "Morphology of Neoplasms"
+    
+    # otherwise, numerical code
+    block_segs = [1, 140, 240, 280, 290, 320, 390, 460, 520, 580, 630, 680, 710, 740, 760, 780, 800, 1000]
+    titles = ["Infectious and Parasitic Diseases", 
+              "Neoplasms", 
+              "Endocrine, Nutritional and Metabolic Diseases, and Immunity Disorders", \
+        "Diseases of the Blood and Blood-forming Organs", 
+        "Mental Disorders", 
+        "Diseases of the Nervous System and Sense Organs", \
+        "Diseases of the Circulatory System", 
+        "Diseases of the Respiratory System", 
+        "Diseases of the Digestive System", \
+        "Diseases of the Genitourinary System", 
+        "Complications of Pregnancy, Childbirth, and the Puerperium", 
+        "Diseases of the Skin and Subcutaneous Tissue",\
+        "Diseases of the Musculoskeletal System and Connective Tissue", 
+        "Congenital Anomalies", 
+        "Certain Conditions originating in the Perinatal Period", \
+        "Symptoms, Signs and Ill-defined Conditions", 
+        "Injury and Poisoning" ]
+    block = int(block)
+    for chapter_index in range(len(block_segs)):
+        left = block_segs[chapter_index]
+        right = block_segs[chapter_index+1]
+        if left <= block and block < right:
+            return chapter_index+1, titles[chapter_index]
+
+
+def decide_all_ICD_chapters(codes):
+    chapters = []
+    for code in codes:
+        chapter, _ = decide_ICD_chapter(code)
+        chapters.append(chapter)
+    return chapters
