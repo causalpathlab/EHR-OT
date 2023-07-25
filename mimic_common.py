@@ -16,25 +16,38 @@ from scipy.stats import entropy
 from tca import *
 
 
-def update_codes(df):
-    """ 
-    Update code in dataframe, the new code starts from 0.
-    We use -1 to denote NA code in later analysis
+# def update_codes(df):
+#     """ 
+#     Update code in dataframe, the new code starts from 0.
+#     We use -1 to denote NA code in later analysis
 
-    returns
-        - a new dataframe with the updated codes
-        - total number of unique codes in df
+#     returns
+#         - a new dataframe with the updated codes
+#         - total number of unique codes in df
+#     """
+#     new_code_dict = {} # mapping from old code to new code
+#     for index, row in df.iterrows():
+#         cur_codes = row['ICD codes']
+#         new_codes = []
+#         for code in cur_codes:
+#             if code not in new_code_dict:
+#                 new_code_dict[code] = len(new_code_dict) # add a new entry
+#             new_codes.append(new_code_dict[code])
+#         # df.at[index, 'ICD codes'] = new_codes
+#     return df, len(new_code_dict)
+
+def find_unique_code(df):
+    """ 
+    Find all unique codes in df, and returns the number of unique codes
     """
-    new_code_dict = {} # mapping from old code to new code
-    for index, row in df.iterrows():
-        cur_codes = row['ICD codes']
-        new_codes = []
-        for code in cur_codes:
-            if code not in new_code_dict:
-                new_code_dict[code] = len(new_code_dict) # add a new entry
-            new_codes.append(new_code_dict[code])
-        df.at[index, 'ICD codes'] = new_codes
-    return df, len(new_code_dict)
+    all_codes = list(df['ICD codes'])
+    all_codes = [item for sublist in all_codes for item in sublist]
+    unique_codes = list(set(all_codes))
+    unique_code_dict = {}
+    for index, code in enumerate(unique_codes):
+        unique_code_dict[code] = index
+    return unique_code_dict, len(unique_codes) 
+    
 
 
 # def plot_code_distn(df):
@@ -86,7 +99,7 @@ def update_codes(df):
 #     plt.show()
 
 
-def gen_features_labels(df):
+def gen_features_labels(df, label_code):
     """ 
     Generate source features, source labels, target features and target labels from dataframe df
 
@@ -94,18 +107,24 @@ def gen_features_labels(df):
 
     """
 
-    _, num_codes = update_codes(df)
+    unique_code_dict, num_codes = find_unique_code(df)
+    print("number of unique code is:", num_codes)
+    print("label code in unique_code_dict is:", unique_code_dict[label_code])
 
-    target_df = df.loc[df['gender'] == 'F']
     source_df = df.loc[df['gender'] == 'M']
+    target_df = df.loc[df['gender'] == 'F']
 
     # Prepare source
     source_features = np.empty(shape=[source_df.shape[0], num_codes])
     feature_index = 0
-    for _, row in target_df.iterrows():
+    for _, row in source_df.iterrows():
         code_ind = np.zeros(num_codes)
         for code in row["ICD codes"]:
-            code_ind[code] += 1
+            # print("label code is:", label_code, "code is:", code)
+            if code == label_code:
+                print("code is the label code")
+            if code != label_code:
+                code_ind[unique_code_dict[code]] = 1
         source_features[feature_index] = code_ind
         feature_index += 1
     source_labels = np.array(list(source_df['label']))
@@ -116,7 +135,8 @@ def gen_features_labels(df):
     for _, row in target_df.iterrows():
         code_ind = np.zeros(num_codes)
         for code in row["ICD codes"]:
-            code_ind[code] += 1
+            if code != label_code:
+                code_ind[unique_code_dict[code]] = 1
         target_features[feature_index] = code_ind
         feature_index += 1
     target_labels = np.array(list(target_df['label']))
@@ -244,10 +264,10 @@ def select_df_binary(df, group_name, group_1, group_2, label_code, male_count, f
             female_1_indices.append(index)
         elif row['label'] == 1 and row[group_name] == group_2:
             male_1_indices.append(index)
-    # print("group 1 with label 0 length is:", len(female_0_indices))
-    # print("group 2 with label 0 length is:", len(male_0_indices))
-    # print("group 1 with label 1 length is:", len(female_1_indices))
-    # print("group 2 with label 1 length is:", len(male_1_indices))
+    print("group 1 with label 0 length is:", len(female_0_indices))
+    print("group 2 with label 0 length is:", len(male_0_indices))
+    print("group 1 with label 1 length is:", len(female_1_indices))
+    print("group 2 with label 1 length is:", len(male_1_indices))
     
     # indices to delete from the dataframe
     # sample the same number of label 0s and label 1s
@@ -263,12 +283,12 @@ def select_df_binary(df, group_name, group_1, group_2, label_code, male_count, f
     
     df_copy = df_copy.drop(delete_female_0_indices, axis=0, inplace=False)
 
-    # remove label_code from ICD code features
-    for index, row in df_copy.iterrows():
-        if label_code in row['ICD codes']:
-            new_codes = copy.deepcopy(row['ICD codes'])
-            new_codes.remove(label_code)
-            df_copy.at[index, 'ICD codes'] = new_codes
+    # # remove label_code from ICD code features
+    # for index, row in df_copy.iterrows():
+    #     if label_code in row['ICD codes']:
+    #         new_codes = copy.deepcopy(row['ICD codes'])
+    #         new_codes.remove(label_code)
+    #         df_copy.at[index, 'ICD codes'] = new_codes
     
     return df_copy
 
@@ -327,75 +347,79 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     selected_df = select_df_binary(full_df, group_name, group_1, group_2, \
                 label_code, male_count, female_count)
 
-    target_features, target_labels, source_features, source_labels = gen_features_labels(selected_df)
+    source_features, source_labels, target_features, target_labels = gen_features_labels(selected_df, label_code)
 
-    target_reps, source_reps = custom_train_reps(target_features, source_features, n_components, pca_explain=pca_explain)
+    source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
 
-    target_model = train_model(target_reps, target_labels, model_func)
-    target_preds = target_model.predict(target_reps)
-    source_preds = target_model.predict(source_reps)
-    trans_source_reps, wa_dist = trans_target2source(source_reps, target_reps, ret_cost=True)
+    source_model = train_model(source_reps, source_labels, model_func)
+    source_preds = source_model.predict(source_reps)
+    target_preds = source_model.predict(target_reps)
+    trans_target_reps, wa_dist = trans_target2source(target_reps, source_reps, ret_cost=True)
     
-    trans_source_preds = target_model.predict(trans_source_reps)
-    target_accuracy = accuracy_score(target_labels, target_preds)
-    target_precision = precision_score(target_labels, target_preds)
-    target_recall = recall_score(target_labels, target_preds)
-    target_f1 = f1_score(target_labels, target_preds)
+    trans_target_preds = source_model.predict(trans_target_reps)
+
+    # Compute accuracies
     source_accuracy = accuracy_score(source_labels, source_preds)
     source_precision = precision_score(source_labels, source_preds)
     source_recall = recall_score(source_labels, source_preds)
     source_f1 = f1_score(source_labels, source_preds)
-    trans_source_accuracy = accuracy_score(source_labels, trans_source_preds)
-    trans_source_precision = precision_score(source_labels, trans_source_preds)
-    trans_source_recall = recall_score(source_labels, trans_source_preds)
-    trans_source_f1 = f1_score(source_labels, trans_source_preds)
+
+    target_accuracy = accuracy_score(target_labels, target_preds)
+    target_precision = precision_score(target_labels, target_preds)
+    target_recall = recall_score(target_labels, target_preds)
+    target_f1 = f1_score(target_labels, target_preds)
+
+    trans_target_accuracy = accuracy_score(target_labels, trans_target_preds)
+    trans_target_precision = precision_score(target_labels, trans_target_preds)
+    trans_target_recall = recall_score(target_labels, trans_target_preds)
+    trans_target_f1 = f1_score(target_labels, trans_target_preds)
         
     if transfer_score:
         transfer_score = compute_transfer_score(source_reps, source_labels, target_reps, target_labels, model_func)
-        return target_accuracy, target_precision, target_recall, target_f1, \
-            source_accuracy, source_precision, source_recall, source_f1, \
-            trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1,\
+        return source_accuracy, source_precision, source_recall, source_f1, \
+            target_accuracy, target_precision, target_recall, target_f1, \
+            trans_target_accuracy, trans_target_precision, trans_target_recall, trans_target_f1,\
             transfer_score, wa_dist
 
-    return target_accuracy, target_precision, target_recall, target_f1, \
-        source_accuracy, source_precision, source_recall, source_f1, \
-        trans_source_accuracy, trans_source_precision, trans_source_recall, trans_source_f1, cost
+    return source_accuracy, source_precision, source_recall, source_f1, \
+        target_accuracy, target_precision, target_recall, target_f1, \
+        trans_target_accuracy, trans_target_precision, trans_target_recall, trans_target_f1
 
 
-def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, male_count = 120, female_count = 100, pca_explain=False):
-    """
-    Wrap up the entire procedure
+# def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, male_count = 120, female_count = 100, pca_explain=False):
+#     """
+#     Wrap up the entire procedure
 
-    :param int n_components: the number of components for PCA learning
-    :param str label_code: the ICD code to determine labels
-    :param dataframe full_df: the full dataframe
-    :param function custom_train_reps: the customized function for learning representations
-    :param function model_func: the function the model the relationship between target representations and target response
-    :param int male_count: the number of samples with label 1s and label 0s for target (male). Default 120.
-    :param int female_count: the number of samples with label 1s and label 0s for source (female). Default 100.
-    :param bool pca_explain: print the variance explained by the PCA, if True. Default False.
-    """
+#     :param int n_components: the number of components for PCA learning
+#     :param str label_code: the ICD code to determine labels
+#     :param dataframe full_df: the full dataframe
+#     :param function custom_train_reps: the customized function for learning representations
+#     :param function model_func: the function the model the relationship between target representations and target response
+#     :param int male_count: the number of samples with label 1s and label 0s for target (male). Default 120.
+#     :param int female_count: the number of samples with label 1s and label 0s for source (female). Default 100.
+#     :param bool pca_explain: print the variance explained by the PCA, if True. Default False.
+#     """
     
-    selected_df = select_df_cts(full_df, male_count=male_count, female_count=female_count)
+#     selected_df = select_df_cts(full_df, male_count=male_count, female_count=female_count)
 
-    source_features, source_labels, target_features, target_labels = gen_features_duration(selected_df)
+#     source_features, source_labels, target_features, target_labels = gen_features_duration(selected_df)
 
-    target_reps, source_reps = custom_train_reps(target_features, source_features, n_components, pca_explain=pca_explain)
+#     target_reps, source_reps = custom_train_reps(target_features, source_features, n_components, pca_explain=pca_explain)
 
-    clf = train_model(target_reps, target_labels, model_func) 
-    target_preds = clf.predict(target_reps)
-    source_preds = clf.predict(source_reps)
-    trans_source_reps = trans_target2source(source_reps, target_reps)
-    trans_source_preds = clf.predict(trans_source_reps)
+#     clf = train_model(target_reps, target_labels, model_func) 
+#     target_preds = clf.predict(target_reps)
+#     source_preds = clf.predict(source_reps)
+#     trans_source_reps = trans_target2source(source_reps, target_reps)
+#     trans_source_preds = clf.predict(trans_source_reps)
 
-    target_mae = metrics.mean_absolute_error(target_labels, target_preds)
-    target_rmse = np.sqrt(metrics.mean_squared_error(target_labels, target_preds))
-    source_mae = metrics.mean_absolute_error(source_labels, source_preds)
-    source_rmse = np.sqrt(metrics.mean_squared_error(source_labels, source_preds))
-    trans_source_mae = metrics.mean_absolute_error(source_labels, trans_source_preds)
-    trans_source_rmse = np.sqrt(metrics.mean_squared_error(source_labels, trans_source_preds))
+#     target_mae = metrics.mean_absolute_error(target_labels, target_preds)
+#     target_rmse = np.sqrt(metrics.mean_squared_error(target_labels, target_preds))
+#     source_mae = metrics.mean_absolute_error(source_labels, source_preds)
+#     source_rmse = np.sqrt(metrics.mean_squared_error(source_labels, source_preds))
+#     trans_source_mae = metrics.mean_absolute_error(source_labels, trans_source_preds)
+#     trans_source_rmse = np.sqrt(metrics.mean_squared_error(source_labels, trans_source_preds))
 
-    return target_mae, target_rmse, source_mae, source_rmse, trans_source_mae, trans_source_rmse
+#     return target_mae, target_rmse, source_mae, source_rmse, trans_source_mae, trans_source_rmse
 
 
 def multi_proc_binary(score_path, n_components, label_code, full_df, custom_train_reps, \
@@ -418,9 +442,9 @@ def multi_proc_binary(score_path, n_components, label_code, full_df, custom_trai
         cur_res = entire_proc_binary(n_components, label_code, full_df, custom_train_reps, male_count, female_count)
         res[i] = cur_res
     res_df = pd.DataFrame(res, \
-                          columns = ['target_accuracy', 'target_precision', 'target_recall', 'target_f1', \
-                                     'source_accuracy', 'source_precision', 'source_recall', 'source_f1', \
-                                        'trans_source_accuracy', 'trans_source_precision', 'trans_source_recall', 'trans_source_f1'])
+                          columns = ['source_accuracy', 'source_precision', 'source_recall', 'source_f1', \
+                                     'target_accuracy', 'target_precision', 'target_recall', 'target_f1', \
+                                        'trans_target_accuracy', 'trans_target_precision', 'trans_target_recall', 'trans_target_f1'])
     res_df.to_csv(score_path, index=False, header=True)
     return res
 
@@ -512,33 +536,33 @@ def build_maps(admission_file, diagnosis_file, patient_file):
     return pid_adms, pid_gender, adm_date, admid_codes, pid_visits
 
 
-def entire_proc_cts_tca(df, custom_train_reps, male_count, female_count, model_func, n_components):
-    """ 
-    Run the entire procedure on ordered response using TCA
+# def entire_proc_cts_tca(df, custom_train_reps, male_count, female_count, model_func, n_components):
+#     """ 
+#     Run the entire procedure on ordered response using TCA
 
-    :param DataFrame df: the complete dataframe to select males and females from
-    """
-    selected_df = select_df_cts(df, male_count, female_count)
-    target_features, target_labels, source_features, source_labels = gen_features_duration(selected_df)
-    source_embs, target_embs = custom_train_reps(source_features, target_features, n_components)
-    trans_source_embs, trans_target_embs = TCA2(source_embs, target_embs, n_components)
-    clf = model_func()
-    clf.fit(trans_source_embs, source_labels)
-    trans_target_pred = clf.predict(trans_target_embs)
-    target_pred = clf.predict(target_embs)
-    trans_source_pred = clf.predict(trans_source_embs)
-    source_mae = mean_absolute_error(source_labels, trans_source_pred)
-    source_mse = mean_squared_error(source_labels, trans_source_pred)
-    source_rmse = np.sqrt(mean_squared_error(source_labels, trans_source_pred))
-    target_mae = mean_absolute_error(target_labels, target_pred)
-    target_mse = mean_squared_error(target_labels, target_pred)
-    target_rmse = np.sqrt(mean_squared_error(target_labels, target_pred))
-    trans_target_mae = mean_absolute_error(target_labels, trans_target_pred)
-    trans_target_mse = mean_squared_error(target_labels, trans_target_pred)
-    trans_target_rmse = np.sqrt(mean_squared_error(target_labels, trans_target_pred))
-    return source_mae, source_mse, source_rmse, \
-        target_mae, target_mse, target_rmse, \
-        trans_target_mae, trans_target_mse, trans_target_rmse
+#     :param DataFrame df: the complete dataframe to select males and females from
+#     """
+#     selected_df = select_df_cts(df, male_count, female_count)
+#     target_features, target_labels, source_features, source_labels = gen_features_duration(selected_df)
+#     source_embs, target_embs = custom_train_reps(source_features, target_features, n_components)
+#     trans_source_embs, trans_target_embs = TCA2(source_embs, target_embs, n_components)
+#     clf = model_func()
+#     clf.fit(trans_source_embs, source_labels)
+#     trans_target_pred = clf.predict(trans_target_embs)
+#     target_pred = clf.predict(target_embs)
+#     trans_source_pred = clf.predict(trans_source_embs)
+#     source_mae = mean_absolute_error(source_labels, trans_source_pred)
+#     source_mse = mean_squared_error(source_labels, trans_source_pred)
+#     source_rmse = np.sqrt(mean_squared_error(source_labels, trans_source_pred))
+#     target_mae = mean_absolute_error(target_labels, target_pred)
+#     target_mse = mean_squared_error(target_labels, target_pred)
+#     target_rmse = np.sqrt(mean_squared_error(target_labels, target_pred))
+#     trans_target_mae = mean_absolute_error(target_labels, trans_target_pred)
+#     trans_target_mse = mean_squared_error(target_labels, trans_target_pred)
+#     trans_target_rmse = np.sqrt(mean_squared_error(target_labels, trans_target_pred))
+#     return source_mae, source_mse, source_rmse, \
+#         target_mae, target_mse, target_rmse, \
+#         trans_target_mae, trans_target_mse, trans_target_rmse
         
 
 def run_proc_multi_cts_tca(df, custom_train_reps, model_func, n_times = 100):

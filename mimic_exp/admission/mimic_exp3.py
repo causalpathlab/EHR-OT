@@ -52,7 +52,7 @@ print(f"Will save outputs to {output_dir}")
 """ 
 Read in the original dataframe
 """
-admid_diagnosis_df = pd.read_csv("../../outputs/mimic/ADMID_DIAGNOSIS.csv", index_col=0, header=0, converters={'ICD codes': literal_eval})
+admid_diagnosis_df = pd.read_csv("../../outputs/mimic/ADMID_DIAGNOSIS_selected.csv", index_col=0, header=0, converters={'ICD codes': literal_eval})
 print(admid_diagnosis_df)
 
 """ 
@@ -71,7 +71,7 @@ print("male label 1", admid_diagnosis_df.loc[(admid_diagnosis_df['label'] == 1) 
 Train deep patient model and generate representations for targets and sources
 """
 
-def custom_train_reps(target_features, source_features, n_components, pca_explain=False):
+def custom_train_reps(source_features, target_features, n_components, pca_explain=False):
     """ 
     Customized training algorithm for generating target representations and source representations
 
@@ -80,9 +80,10 @@ def custom_train_reps(target_features, source_features, n_components, pca_explai
     :returns: target representations, source representations
     """
     source_pca = PCA(n_components=n_components)
+    source_reps = source_pca.fit_transform(source_features)
+
     target_pca = PCA(n_components=n_components)
     target_reps = target_pca.fit_transform(target_features)
-    source_reps = source_pca.fit_transform(source_features)
 
     if pca_explain:
         source_exp_var = source_pca.explained_variance_ratio_
@@ -92,10 +93,10 @@ def custom_train_reps(target_features, source_features, n_components, pca_explai
         print("Cummulative variance explained by the source PCA is:", source_cum_sum_var)
         print("Cummulative variance explained by the target PCA is:", target_cum_sum_var)
 
-    return target_reps, source_reps
+    return source_reps, target_reps
 
 
-# In[9]:
+# In[7]:
 
 
 def multi_proc_parallel(score_path, n_components, label_code, custom_train_reps, \
@@ -117,22 +118,24 @@ def multi_proc_parallel(score_path, n_components, label_code, custom_train_reps,
         :param int iter: the current iteration
         """
         print(f"iteration: {iter}\n")
-        cur_res = entire_proc_binary(n_components, "gender", 'F', 'M', label_code, admid_diagnosis_df, custom_train_reps, \
+        cur_res = entire_proc_binary(n_components, "gender", 'M', 'F', label_code, admid_diagnosis_df, custom_train_reps, \
                                      male_count = male_count, female_count = female_count, transfer_score=True)
         
+        # entire_proc_binary(n_components, group_name, group_1, group_2, label_code, full_df, custom_train_reps, model_func=linear_model.LogisticRegression, \
+        #                male_count = 120, female_count = 100, pca_explain=False, transfer_score=False)
         return cur_res
 
     res = p.map(iteration_wrapper, np.arange(0, iteration, 1))
-    res_df = pd.DataFrame(res, columns = ['target_accuracy', 'target_precision', 'target_recall', 'target_f1', \
-                                          'source_accuracy', 'source_precision', 'source_recall', 'source_f1', \
-                                            'trans_source_accuracy', 'trans_source_precision', 'trans_source_recall', 'trans_source_f1', \
+    res_df = pd.DataFrame(res, columns = ['source_accuracy', 'source_precision', 'source_recall', 'source_f1', \
+                                          'target_accuracy', 'target_precision', 'target_recall', 'target_f1', \
+                                            'trans_target_accuracy', 'trans_target_precision', 'trans_target_recall', 'trans_target_f1', \
                                             'transfer_score', 'w_dist'])
     res_df.to_csv(score_path, index=False, header=True)
     return res
 
 
 
-# In[10]:
+# In[8]:
 
 
 """ 
@@ -143,16 +146,18 @@ Responses are selected by select_codes.ipynb and saved in ../../outputs/mimic/se
 n_components = 50
 male_count = 120
 female_count = 100
-label_code_path = os.path.join(output_dir, "selected_summary_mimic.csv")
-label_code_df = pd.read_csv(label_code_path, header=0, index_col=None)
-label_codes = list(label_code_df['ICD code'])[:1]
+label_code_path = os.path.join(output_dir, "ADMID_DIAGNOSIS_selected.csv")
+label_code_df = pd.read_csv(label_code_path, header=0, index_col=0, converters={'ICD codes': literal_eval})
+label_codes = list(label_code_df['ICD codes'])
+label_codes = [item for sublist in label_codes for item in sublist]
 print("label_codes are:", label_codes)
+label_codes = label_codes[:1]
 for label_code in label_codes:
     start_time = time.time()
     print(f"label code {label_code} started")
     score_path = os.path.join(output_dir, f"exp3_{label_code}_score.csv")
     multi_proc_parallel(score_path, n_components, label_code, custom_train_reps, \
-            male_count, female_count, iteration=5)
+            male_count, female_count, iteration=10)
     end_time = time.time()
     print(f"runtime for {label_code} is: {end_time-start_time}")
 
