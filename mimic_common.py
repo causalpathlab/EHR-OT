@@ -324,7 +324,6 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
 
     :returns accuracy statistics and optimized Wasserstein distance
     """
-    
     selected_df = select_df_binary(full_df, group_name, group_1, group_2, \
                 label_code, male_count, female_count)
 
@@ -400,7 +399,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, male_c
 
 
 def multi_proc_binary(score_path, n_components, label_code, full_df, custom_train_reps, \
-               male_count, female_count, iteration=20):
+               male_count, female_count, iteration=20, max_iter=None):
     """ 
     Run the entire_proc function multiple times (iteration) for binary responses
 
@@ -412,11 +411,12 @@ def multi_proc_binary(score_path, n_components, label_code, full_df, custom_trai
     :param int male_count: the number of samples with label 1s and label 0s for target (male)
     :param int female_count: the number of samples with label 1s and label 0s for source (female)
     :param int iteration: the number of iterations (repetitions)
+    :param int max_iter: the maximum number of iterations for OT
     """
     res = np.empty(shape=[iteration, 12])
     for i in range(iteration):
         print("iteration:", i)
-        cur_res = entire_proc_binary(n_components, label_code, full_df, custom_train_reps, male_count, female_count, max_iter=100000)
+        cur_res = entire_proc_binary(n_components, label_code, full_df, custom_train_reps, male_count, female_count, max_iter=max_iter)
         res[i] = cur_res
     res_df = pd.DataFrame(res, \
                           columns = ['target_accuracy', 'target_precision', 'target_recall', 'target_f1', \

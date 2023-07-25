@@ -71,7 +71,7 @@ print("male label 1", admid_diagnosis_df.loc[(admid_diagnosis_df['label'] == 1) 
 Train deep patient model and generate representations for targets and sources
 """
 
-def custom_train_reps(target_features, source_features, n_components, pca_explain=False):
+def custom_train_reps(source_features, target_features, n_components, pca_explain=False):
     """ 
     Customized training algorithm for generating target representations and source representations
 
@@ -80,9 +80,10 @@ def custom_train_reps(target_features, source_features, n_components, pca_explai
     :returns: target representations, source representations
     """
     source_pca = PCA(n_components=n_components)
+    source_reps = source_pca.fit_transform(source_features)
+
     target_pca = PCA(n_components=n_components)
     target_reps = target_pca.fit_transform(target_features)
-    source_reps = source_pca.fit_transform(source_features)
 
     if pca_explain:
         source_exp_var = source_pca.explained_variance_ratio_
@@ -92,17 +93,19 @@ def custom_train_reps(target_features, source_features, n_components, pca_explai
         print("Cummulative variance explained by the source PCA is:", source_cum_sum_var)
         print("Cummulative variance explained by the target PCA is:", target_cum_sum_var)
 
-    return target_reps, source_reps
+    return source_reps, target_reps
 
 
 # In[9]:
 
 
 def multi_proc_parallel(score_path, n_components, label_code, custom_train_reps, \
-        male_count, female_count, iteration=20):
+        male_count, female_count, iteration=20, max_iter=None):
     """ 
     Code cannot be parallized when passing the dataframe (full_df) as a parameter
     Hence, cannot be put into mimic_common.py
+
+    :param int max_iter: maximum number of iterations for OT
     """
     
     p = Pool(10)
@@ -118,7 +121,7 @@ def multi_proc_parallel(score_path, n_components, label_code, custom_train_reps,
         """
         print(f"iteration: {iter}\n")
         cur_res = entire_proc_binary(n_components, "gender", 'F', 'M', label_code, admid_diagnosis_df, custom_train_reps, \
-                                     male_count = male_count, female_count = female_count, transfer_score=True)
+                                     male_count = male_count, female_count = female_count, transfer_score=True, max_iter=max_iter)
         
         return cur_res
 
@@ -152,7 +155,7 @@ for label_code in label_codes:
     print(f"label code {label_code} started")
     score_path = os.path.join(output_dir, f"exp3_{label_code}_score.csv")
     multi_proc_parallel(score_path, n_components, label_code, custom_train_reps, \
-            male_count, female_count, iteration=5)
+            male_count, female_count, iteration=100, max_iter=100000)
     end_time = time.time()
     print(f"runtime for {label_code} is: {end_time-start_time}")
 
