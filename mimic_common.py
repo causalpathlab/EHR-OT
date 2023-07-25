@@ -1,5 +1,5 @@
 import sys
-sys.path.append("/home/wanxinli/deep_patient/")
+sys.path.append("/home/wanxinli/EHR-OT/")
 
 from datetime import datetime
 import copy
@@ -304,7 +304,7 @@ def compute_transfer_score(source_reps, source_labels, target_reps, target_label
 
 
 def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, full_df, custom_train_reps, model_func=linear_model.LogisticRegression, \
-                       male_count = 120, female_count = 100, pca_explain=False, transfer_score=False):
+                       male_count = 120, female_count = 100, pca_explain=False, transfer_score=False, max_iter = None):
     """
     Wrap up the entire procedure
 
@@ -320,6 +320,7 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     :param int female_count: the number of samples with label 1s and label 0s for source (female)
     :param bool pca_explain: print the variance explained by the PCA, if True. Default False
     :param bool transfer_score: whether to compute transferability score. Default False. Returns the scores if True.
+    :param int max_iter: maximum number of iterations for OT 
 
     :returns accuracy statistics and optimized Wasserstein distance
     """
@@ -334,7 +335,7 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     target_model = train_model(target_reps, target_labels, model_func)
     target_preds = target_model.predict(target_reps)
     source_preds = target_model.predict(source_reps)
-    trans_source_reps, wa_dist = trans_target2source(source_reps, target_reps, ret_cost=True)
+    trans_source_reps, wa_dist = trans_target2source(source_reps, target_reps, ret_cost=True, max_iter=max_iter)
     
     trans_source_preds = target_model.predict(trans_source_reps)
     target_accuracy = accuracy_score(target_labels, target_preds)
@@ -415,7 +416,7 @@ def multi_proc_binary(score_path, n_components, label_code, full_df, custom_trai
     res = np.empty(shape=[iteration, 12])
     for i in range(iteration):
         print("iteration:", i)
-        cur_res = entire_proc_binary(n_components, label_code, full_df, custom_train_reps, male_count, female_count)
+        cur_res = entire_proc_binary(n_components, label_code, full_df, custom_train_reps, male_count, female_count, max_iter=100000)
         res[i] = cur_res
     res_df = pd.DataFrame(res, \
                           columns = ['target_accuracy', 'target_precision', 'target_recall', 'target_f1', \
