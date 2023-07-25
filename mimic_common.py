@@ -121,8 +121,6 @@ def gen_features_labels(df, label_code):
         code_ind = np.zeros(num_codes)
         for code in row["ICD codes"]:
             # print("label code is:", label_code, "code is:", code)
-            if code == label_code:
-                print("code is the label code")
             if code != label_code:
                 code_ind[unique_code_dict[code]] = 1
         source_features[feature_index] = code_ind
@@ -349,12 +347,14 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
 
     source_features, source_labels, target_features, target_labels = gen_features_labels(selected_df, label_code)
 
-    source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
+    # source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
+    source_reps = source_features
+    target_reps = target_features
 
     source_model = train_model(source_reps, source_labels, model_func)
     source_preds = source_model.predict(source_reps)
     target_preds = source_model.predict(target_reps)
-    trans_target_reps, wa_dist = trans_target2source(target_reps, source_reps, ret_cost=True)
+    trans_target_reps, wa_dist = trans_target2source(target_reps, source_reps, max_iter=100000, ret_cost=True)
     
     trans_target_preds = source_model.predict(trans_target_reps)
 
