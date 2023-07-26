@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[3]:
-
-
 from ast import literal_eval
 import pandas as pd
 
@@ -28,14 +22,20 @@ def construct_freq_dict_group(df, dividing_feature, group_1, group_2):
                     group_dict[code] += 1
         return group_dict
     
-    return construct_freq_dict(group_1_df), construct_freq_dict(group_2_df)
+    group_1_dict = construct_freq_dict(group_1_df)
+    group_2_dict = construct_freq_dict(group_2_df)
 
+    # add code with zero counts to each dictionary
+    for code in group_1_dict.keys():
+        if code not in group_2_dict:
+            group_2_dict[code] = 0
+    
+    for code in group_2_dict.keys():
+        if code not in group_1_dict:
+            group_1_dict[code] = 0
+    
+    return group_1_dict, group_2_dict
 
-
-# In[16]:
-
-
-# Filter out ICD codes with two few counts
 
 def select_codes(group_1_dict, group_2_dict, group_1_min_count, group_2_min_count):
     """ 
@@ -71,6 +71,15 @@ def select_codes(group_1_dict, group_2_dict, group_1_min_count, group_2_min_coun
     return selected_codes
 
 
+
+df_path = "/home/wanxinli/EHR-OT/outputs/mimic/ADMID_DIAGNOSIS.csv"
+admid_diag_df = pd.read_csv(df_path, index_col=0, header=0, converters={'ICD codes': literal_eval})
+admid_diag_df
+
+male_freq_dict, female_freq_dict = construct_freq_dict_group(admid_diag_df, 'gender', 'M', 'F')
+male_min_count = 120
+female_min_count = 100
+selected_codes = select_codes(male_freq_dict, female_freq_dict, male_min_count*2, female_min_count*2)
 
 
 

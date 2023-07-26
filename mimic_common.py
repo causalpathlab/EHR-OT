@@ -122,7 +122,7 @@ def gen_features_labels(df, label_code):
         for code in row["ICD codes"]:
             # print("label code is:", label_code, "code is:", code)
             if code != label_code:
-                code_ind[unique_code_dict[code]] = 1
+                code_ind[unique_code_dict[code]] += 1
         source_features[feature_index] = code_ind
         feature_index += 1
     source_labels = np.array(list(source_df['label']))
@@ -134,7 +134,7 @@ def gen_features_labels(df, label_code):
         code_ind = np.zeros(num_codes)
         for code in row["ICD codes"]:
             if code != label_code:
-                code_ind[unique_code_dict[code]] = 1
+                code_ind[unique_code_dict[code]] += 1
         target_features[feature_index] = code_ind
         feature_index += 1
     target_labels = np.array(list(target_df['label']))
@@ -322,7 +322,7 @@ def compute_transfer_score(source_reps, source_labels, target_reps, target_label
 
 
 def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, full_df, custom_train_reps, model_func=linear_model.LogisticRegression, \
-                       male_count = 120, female_count = 100, pca_explain=False, transfer_score=False):
+                       male_count = 120, female_count = 100, pca_explain=False, transfer_score=False, max_iter = None):
     """
     Wrap up the entire procedure
 
@@ -338,6 +338,7 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     :param int female_count: the number of samples with label 1s and label 0s for source (female)
     :param bool pca_explain: print the variance explained by the PCA, if True. Default False
     :param bool transfer_score: whether to compute transferability score. Default False. Returns the scores if True.
+    :param int max_iter: maximum number of iteration for OT
 
     :returns accuracy statistics and optimized Wasserstein distance
     """
@@ -348,13 +349,11 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     source_features, source_labels, target_features, target_labels = gen_features_labels(selected_df, label_code)
 
     source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
-    source_reps = source_features
-    target_reps = target_features
 
     source_model = train_model(source_reps, source_labels, model_func)
     source_preds = source_model.predict(source_reps)
     target_preds = source_model.predict(target_reps)
-    trans_target_reps, wa_dist = trans_target2source(target_reps, source_reps, ret_cost=True)
+    trans_target_reps, wa_dist = trans_target2source(target_reps, source_reps, ret_cost=True, max_iter=max_iter)
     
     trans_target_preds = source_model.predict(trans_target_reps)
 
@@ -423,7 +422,7 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
 
 
 def multi_proc_binary(score_path, n_components, label_code, full_df, custom_train_reps, \
-               male_count, female_count, iteration=20):
+               male_count, female_count, iteration=20, max_iter = None):
     """ 
     Run the entire_proc function multiple times (iteration) for binary responses
 
@@ -435,11 +434,12 @@ def multi_proc_binary(score_path, n_components, label_code, full_df, custom_trai
     :param int male_count: the number of samples with label 1s and label 0s for target (male)
     :param int female_count: the number of samples with label 1s and label 0s for source (female)
     :param int iteration: the number of iterations (repetitions)
+    :param int max_iter: maximum number of iterations for OT
     """
     res = np.empty(shape=[iteration, 12])
     for i in range(iteration):
         print("iteration:", i)
-        cur_res = entire_proc_binary(n_components, label_code, full_df, custom_train_reps, male_count, female_count)
+        cur_res = entire_proc_binary(n_components, label_code, full_df, custom_train_reps, male_count, female_count, max_iter=max_iter)
         res[i] = cur_res
     res_df = pd.DataFrame(res, \
                           columns = ['source_accuracy', 'source_precision', 'source_recall', 'source_f1', \
