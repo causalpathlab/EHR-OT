@@ -4,7 +4,7 @@ Common functions for synthetic datasets
 
 
 import sys
-sys.path.append("/home/wanxinli/deep_patient")
+sys.path.append("/home/wanxinli/EHR-OT")
 
 import numpy as np
 import matplotlib.pylab as pl

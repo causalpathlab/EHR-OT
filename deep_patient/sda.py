@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.append("/home/wanxinli/deep_patient/deep_patient")
+sys.path.append("/home/wanxinli/EHR-OT/EHR-OT")
 from da import DA
 # from queue import queue
 import queue as queue

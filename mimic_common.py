@@ -1,5 +1,5 @@
 import sys
-sys.path.append("/home/wanxinli/deep_patient/")
+sys.path.append("/home/wanxinli/EHR-OT/")
 
 from datetime import datetime
 import copy
@@ -347,7 +347,7 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
 
     source_features, source_labels, target_features, target_labels = gen_features_labels(selected_df, label_code)
 
-    # source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
+    source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
     source_reps = source_features
     target_reps = target_features
 

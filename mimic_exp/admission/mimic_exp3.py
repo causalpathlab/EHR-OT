@@ -24,7 +24,7 @@ Image(filename='../../outputs/pipeline_figs/EHR_MIMIC_pipeline.png')
 
 
 import sys
-sys.path.append("/home/wanxinli/deep_patient/")
+sys.path.append("/home/wanxinli/EHR-OT/")
 
 from ast import literal_eval
 # from common import *
@@ -42,7 +42,7 @@ import time
 # In[4]:
 
 
-output_dir = os.path.join(os.path.expanduser("~"), f"deep_patient/outputs/mimic")
+output_dir = os.path.join(os.path.expanduser("~"), f"EHR-OT/outputs/mimic")
 print(f"Will save outputs to {output_dir}")
 
 

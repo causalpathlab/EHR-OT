@@ -1,6 +1,6 @@
 from scipy import sparse
-from deep_patient.sda import SDA
-# import deep_patient as dp
+from EHR-OT.sda import SDA
+# import EHR-OT as dp
 import numpy as np
 
 # create fake data
