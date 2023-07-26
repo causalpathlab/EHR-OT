@@ -150,14 +150,14 @@ label_code_path = os.path.join(output_dir, "ADMID_DIAGNOSIS_selected.csv")
 label_code_df = pd.read_csv(label_code_path, header=0, index_col=0, converters={'ICD codes': literal_eval})
 label_codes = list(label_code_df['ICD codes'])
 label_codes = [item for sublist in label_codes for item in sublist]
-print("label_codes are:", label_codes)
+print("number of label_codes are:", len(label_codes))
 label_codes = label_codes[:1]
 for label_code in label_codes:
     start_time = time.time()
     print(f"label code {label_code} started")
     score_path = os.path.join(output_dir, f"exp3_{label_code}_score.csv")
     multi_proc_parallel(score_path, n_components, label_code, custom_train_reps, \
-            male_count, female_count, iteration=10)
+            male_count, female_count, iteration=100)
     end_time = time.time()
     print(f"runtime for {label_code} is: {end_time-start_time}")
 

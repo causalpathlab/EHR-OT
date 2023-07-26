@@ -354,7 +354,7 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     source_model = train_model(source_reps, source_labels, model_func)
     source_preds = source_model.predict(source_reps)
     target_preds = source_model.predict(target_reps)
-    trans_target_reps, wa_dist = trans_target2source(target_reps, source_reps, max_iter=100000, ret_cost=True)
+    trans_target_reps, wa_dist = trans_target2source(target_reps, source_reps, ret_cost=True)
     
     trans_target_preds = source_model.predict(trans_target_reps)
 
