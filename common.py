@@ -27,7 +27,7 @@ from statistics import median
 Transport source representations to target representations
 """
 
-def trans_target2source(target_reps, source_reps, reg_e = 1e-1, type="balanced", max_iter = None, ret_cost=False):
+def trans_target2source(target_reps, source_reps, reg_e = 0.1, type="balanced", max_iter = None, ret_cost=False):
     """ 
     Optimal transport (without entropy regularization) source representations \
         to target representations
@@ -49,7 +49,6 @@ def trans_target2source(target_reps, source_reps, reg_e = 1e-1, type="balanced",
         return trans_target_reps
     wa_dist = ot_emd.log_['err'][-1]
     # wa_dist = wasserstein_distance(source_reps, target_reps)
-
 
     return trans_target_reps, wa_dist
 

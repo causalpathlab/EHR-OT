@@ -14,14 +14,8 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_sc
 import time
 
 
-# In[4]:
-
-
 output_dir = os.path.join(os.path.expanduser("~"), f"EHR-OT/outputs/mimic")
 print(f"Will save outputs to {output_dir}")
-
-
-# In[5]:
 
 
 """ 
@@ -37,9 +31,6 @@ print("female label 0", admid_diagnosis_df.loc[(admid_diagnosis_df['label'] == 0
 print("female label 1", admid_diagnosis_df.loc[(admid_diagnosis_df['label'] == 1) & (admid_diagnosis_df['gender'] == 'F')].shape[0])
 print("male label 0", admid_diagnosis_df.loc[(admid_diagnosis_df['label'] == 0) & (admid_diagnosis_df['gender'] == 'M')].shape[0])
 print("male label 1", admid_diagnosis_df.loc[(admid_diagnosis_df['label'] == 1) & (admid_diagnosis_df['gender'] == 'M')].shape[0])
-
-
-# In[6]:
 
 
 """
@@ -69,9 +60,6 @@ def custom_train_reps(source_features, target_features, n_components, pca_explai
         print("Cummulative variance explained by the target PCA is:", target_cum_sum_var)
 
     return source_reps, target_reps
-
-
-# In[7]:
 
 
 def multi_proc_parallel(score_path, n_components, label_code, custom_train_reps, \
@@ -106,11 +94,6 @@ def multi_proc_parallel(score_path, n_components, label_code, custom_train_reps,
     res_df.to_csv(score_path, index=False, header=True)
     return res
 
-
-
-# In[8]:
-
-
 """ 
 Run the entire proc for all response (i.e., label_code) 
 Responses are selected by select_codes.ipynb and saved in ../../outputs/mimic/selected_summary_mimic.csv
@@ -124,19 +107,19 @@ label_code_df = pd.read_csv(label_code_path, header=0, index_col=0, converters={
 label_codes = list(label_code_df['ICD codes'])
 label_codes = list(set([item for sublist in label_codes for item in sublist]))
 print("number of label_codes are:", len(label_codes))
-label_codes = label_codes[150:]
+
+
+# label_codes = label_codes[200:]
 for label_code in label_codes:
+    score_path = os.path.join(output_dir, f"exp3_{label_code}_score.csv")
+    if os.path.exists(score_path):
+        print(f"score for {label_code} has been computed")
+        continue
     start_time = time.time()
     print(f"label code {label_code} started")
-    score_path = os.path.join(output_dir, f"exp3_{label_code}_score.csv")
     multi_proc_parallel(score_path, n_components, label_code, custom_train_reps, \
             male_count, female_count, iteration=100)
     end_time = time.time()
     print(f"runtime for {label_code} is: {end_time-start_time}")
-
-
-# In[ ]:
-
-
 
 
