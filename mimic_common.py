@@ -434,6 +434,8 @@ def multi_proc_binary(score_path, n_components, label_code, full_df, custom_trai
     :param int iteration: the number of iterations (repetitions)
     :param int max_iter: maximum number of iterations for OT
     """
+
+    random.seed(0)
     res = np.empty(shape=[iteration, 12])
     for i in range(iteration):
         print("iteration:", i)
@@ -446,6 +448,9 @@ def multi_proc_binary(score_path, n_components, label_code, full_df, custom_trai
     res_df.to_csv(score_path, index=False, header=True)
     return res
 
+# TODO: add a function for multi_proc_tca
+
+# TODO: add a function for entire_proc_binary_tca
 
 def multi_proc_cts(score_path, n_components, full_df, custom_train_reps, \
                male_count, female_count, model_func = linear_model.LinearRegression, iteration=20):
@@ -461,6 +466,7 @@ def multi_proc_cts(score_path, n_components, full_df, custom_train_reps, \
     :param int female_count: the number of samples with label 1s and label 0s for source (female)
     :param int iteration: the number of iterations (repetitions)
     """
+    random.seed(0)
     res = np.empty(shape=[iteration, 6])
     for i in range(iteration):
         print("iteration:", i)
@@ -543,7 +549,7 @@ def entire_proc_cts_tca(df, custom_train_reps, male_count, female_count, model_f
     selected_df = select_df_cts(df, male_count, female_count)
     source_features, source_labels, target_features, target_labels = gen_features_duration(selected_df)
     source_embs, target_embs = custom_train_reps(source_features, target_features, n_components)
-    trans_source_embs, trans_target_embs = TCA2(source_embs, target_embs, n_components)
+    trans_source_embs, trans_target_embs = TCA(source_embs, target_embs, n_components)
     clf = model_func()
     clf.fit(trans_source_embs, source_labels)
     trans_target_pred = clf.predict(trans_target_embs)
@@ -573,7 +579,7 @@ def multi_proc_cts_tca(df, custom_train_reps, model_func, n_times = 100):
 
     :returns: vectors of accuracy statistics of multiple rounds
     """
-
+    random.seed(0)
     source_maes = []
     source_mses = []
     source_rmses = [] 
