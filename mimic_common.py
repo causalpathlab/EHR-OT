@@ -8,6 +8,7 @@ from ast import literal_eval
 import numpy as np
 import matplotlib.pyplot as plt
 from multiprocess import Pool
+import os
 import random
 from sklearn.metrics import precision_score, recall_score, accuracy_score, \
     f1_score, mean_absolute_error, mean_squared_error, \
@@ -716,3 +717,15 @@ def decide_all_ICD_chapters(codes):
         chapter, _ = decide_ICD_chapter(code)
         chapters.append(chapter)
     return chapters
+
+
+def get_label_codes():
+    """ 
+    Get label codes (the used label codes)
+    """
+    mimic_output_dir = "/home/wanxinli/EHR-OT/outputs/mimic"
+    label_codes = []
+    for file in os.listdir(mimic_output_dir):
+        if file.endswith("_score.csv") and "exp3" in file:
+            label_codes.append(file.split("_")[1])
+    return label_codes
