@@ -121,7 +121,6 @@ def gen_features_labels(df, label_code):
     for _, row in source_df.iterrows():
         code_ind = np.zeros(num_codes)
         for code in row["ICD codes"]:
-            # print("label code is:", label_code, "code is:", code)
             if code != label_code:
                 code_ind[unique_code_dict[code]] += 1
         source_features[feature_index] = code_ind
@@ -151,11 +150,10 @@ def gen_features_duration(df):
 
     """
 
-    _, num_codes = update_codes(df)
-
-    target_df = df.loc[df['gender'] == 'F']
+    unique_code_dict, num_codes = find_unique_code(df)
 
     source_df = df.loc[df['gender'] == 'M']
+    target_df = df.loc[df['gender'] == 'F']
 
     # Prepare source
     source_features = np.empty(shape=[source_df.shape[0], num_codes])
@@ -163,7 +161,7 @@ def gen_features_duration(df):
     for _, row in source_df.iterrows():
         code_ind = np.zeros(num_codes)
         for code in row["ICD codes"]:
-            code_ind[code] += 1
+            code_ind[unique_code_dict[code]] += 1
         source_features[feature_index] = code_ind
         feature_index += 1
     source_durations = np.array(list(source_df['duration']))
@@ -174,7 +172,7 @@ def gen_features_duration(df):
     for _, row in target_df.iterrows():
         code_ind = np.zeros(num_codes)
         for code in row["ICD codes"]:
-            code_ind[code] += 1
+            code_ind[unique_code_dict[code]] += 1
         target_features[feature_index] = code_ind
         feature_index += 1
     target_durations = np.array(list(target_df['duration']))
@@ -194,7 +192,6 @@ def select_df_cts(df, male_count, female_count):
     :returns:
         - the selected dataframe
     """
-    random.seed(0)
 
     # generate label column based on label_code
     df_copy = copy.deepcopy(df)
@@ -386,40 +383,40 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
         trans_target_accuracy, trans_target_precision, trans_target_recall, trans_target_f1
 
 
-# def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, male_count = 120, female_count = 100, pca_explain=False):
-#     """
-#     Wrap up the entire procedure
+def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, male_count = 120, female_count = 100, pca_explain=False):
+    """
+    Wrap up the entire procedure
 
-#     :param int n_components: the number of components for PCA learning
-#     :param str label_code: the ICD code to determine labels
-#     :param dataframe full_df: the full dataframe
-#     :param function custom_train_reps: the customized function for learning representations
-#     :param function model_func: the function the model the relationship between target representations and target response
-#     :param int male_count: the number of samples with label 1s and label 0s for target (male). Default 120.
-#     :param int female_count: the number of samples with label 1s and label 0s for source (female). Default 100.
-#     :param bool pca_explain: print the variance explained by the PCA, if True. Default False.
-#     """
+    :param int n_components: the number of components for PCA learning
+    :param str label_code: the ICD code to determine labels
+    :param dataframe full_df: the full dataframe
+    :param function custom_train_reps: the customized function for learning representations
+    :param function model_func: the function the model the relationship between target representations and target response
+    :param int male_count: the number of samples with label 1s and label 0s for target (male). Default 120.
+    :param int female_count: the number of samples with label 1s and label 0s for source (female). Default 100.
+    :param bool pca_explain: print the variance explained by the PCA, if True. Default False.
+    """
     
-#     selected_df = select_df_cts(full_df, male_count=male_count, female_count=female_count)
+    selected_df = select_df_cts(full_df, male_count=male_count, female_count=female_count)
 
-#     source_features, source_labels, target_features, target_labels = gen_features_duration(selected_df)
+    source_features, source_labels, target_features, target_labels = gen_features_duration(selected_df)
 
-#     target_reps, source_reps = custom_train_reps(target_features, source_features, n_components, pca_explain=pca_explain)
+    source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
 
-#     clf = train_model(target_reps, target_labels, model_func) 
-#     target_preds = clf.predict(target_reps)
-#     source_preds = clf.predict(source_reps)
-#     trans_source_reps = trans_target2source(source_reps, target_reps)
-#     trans_source_preds = clf.predict(trans_source_reps)
+    clf = train_model(source_reps, source_labels, model_func) 
+    source_preds = clf.predict(source_reps)
+    target_preds = clf.predict(target_reps)
+    trans_target_reps = trans_target2source(target_reps, source_reps)
+    trans_target_preds = clf.predict(trans_target_reps)
 
-#     target_mae = metrics.mean_absolute_error(target_labels, target_preds)
-#     target_rmse = np.sqrt(metrics.mean_squared_error(target_labels, target_preds))
-#     source_mae = metrics.mean_absolute_error(source_labels, source_preds)
-#     source_rmse = np.sqrt(metrics.mean_squared_error(source_labels, source_preds))
-#     trans_source_mae = metrics.mean_absolute_error(source_labels, trans_source_preds)
-#     trans_source_rmse = np.sqrt(metrics.mean_squared_error(source_labels, trans_source_preds))
+    source_mae = metrics.mean_absolute_error(source_labels, source_preds)
+    source_rmse = np.sqrt(metrics.mean_squared_error(source_labels, source_preds))
+    target_mae = metrics.mean_absolute_error(target_labels, target_preds)
+    target_rmse = np.sqrt(metrics.mean_squared_error(target_labels, target_preds))
+    trans_target_mae = metrics.mean_absolute_error(target_labels, trans_target_preds)
+    trans_target_rmse = np.sqrt(metrics.mean_squared_error(target_labels, trans_target_preds))
 
-#     return target_mae, target_rmse, source_mae, source_rmse, trans_source_mae, trans_source_rmse
+    return source_mae, source_rmse, target_mae, target_rmse, trans_target_mae, trans_target_rmse
 
 
 def multi_proc_binary(score_path, n_components, label_code, full_df, custom_train_reps, \
@@ -537,36 +534,36 @@ def build_maps(admission_file, diagnosis_file, patient_file):
     return pid_adms, pid_gender, adm_date, admid_codes, pid_visits
 
 
-# def entire_proc_cts_tca(df, custom_train_reps, male_count, female_count, model_func, n_components):
-#     """ 
-#     Run the entire procedure on ordered response using TCA
+def entire_proc_cts_tca(df, custom_train_reps, male_count, female_count, model_func, n_components):
+    """ 
+    Run the entire procedure on ordered response using TCA
 
-#     :param DataFrame df: the complete dataframe to select males and females from
-#     """
-#     selected_df = select_df_cts(df, male_count, female_count)
-#     target_features, target_labels, source_features, source_labels = gen_features_duration(selected_df)
-#     source_embs, target_embs = custom_train_reps(source_features, target_features, n_components)
-#     trans_source_embs, trans_target_embs = TCA2(source_embs, target_embs, n_components)
-#     clf = model_func()
-#     clf.fit(trans_source_embs, source_labels)
-#     trans_target_pred = clf.predict(trans_target_embs)
-#     target_pred = clf.predict(target_embs)
-#     trans_source_pred = clf.predict(trans_source_embs)
-#     source_mae = mean_absolute_error(source_labels, trans_source_pred)
-#     source_mse = mean_squared_error(source_labels, trans_source_pred)
-#     source_rmse = np.sqrt(mean_squared_error(source_labels, trans_source_pred))
-#     target_mae = mean_absolute_error(target_labels, target_pred)
-#     target_mse = mean_squared_error(target_labels, target_pred)
-#     target_rmse = np.sqrt(mean_squared_error(target_labels, target_pred))
-#     trans_target_mae = mean_absolute_error(target_labels, trans_target_pred)
-#     trans_target_mse = mean_squared_error(target_labels, trans_target_pred)
-#     trans_target_rmse = np.sqrt(mean_squared_error(target_labels, trans_target_pred))
-#     return source_mae, source_mse, source_rmse, \
-#         target_mae, target_mse, target_rmse, \
-#         trans_target_mae, trans_target_mse, trans_target_rmse
+    :param DataFrame df: the complete dataframe to select males and females from
+    """
+    selected_df = select_df_cts(df, male_count, female_count)
+    source_features, source_labels, target_features, target_labels = gen_features_duration(selected_df)
+    source_embs, target_embs = custom_train_reps(source_features, target_features, n_components)
+    trans_source_embs, trans_target_embs = TCA2(source_embs, target_embs, n_components)
+    clf = model_func()
+    clf.fit(trans_source_embs, source_labels)
+    trans_target_pred = clf.predict(trans_target_embs)
+    target_pred = clf.predict(target_embs)
+    trans_source_pred = clf.predict(trans_source_embs)
+    source_mae = mean_absolute_error(source_labels, trans_source_pred)
+    source_mse = mean_squared_error(source_labels, trans_source_pred)
+    source_rmse = np.sqrt(mean_squared_error(source_labels, trans_source_pred))
+    target_mae = mean_absolute_error(target_labels, target_pred)
+    target_mse = mean_squared_error(target_labels, target_pred)
+    target_rmse = np.sqrt(mean_squared_error(target_labels, target_pred))
+    trans_target_mae = mean_absolute_error(target_labels, trans_target_pred)
+    trans_target_mse = mean_squared_error(target_labels, trans_target_pred)
+    trans_target_rmse = np.sqrt(mean_squared_error(target_labels, trans_target_pred))
+    return source_mae, source_mse, source_rmse, \
+        target_mae, target_mse, target_rmse, \
+        trans_target_mae, trans_target_mse, trans_target_rmse
         
 
-def run_proc_multi_cts_tca(df, custom_train_reps, model_func, n_times = 100):
+def multi_proc_cts_tca(df, custom_train_reps, model_func, n_times = 100):
     """ 
     Run the entire procedure (entire_proc) multiple times (default 100 times), \
         for continuous labels using TCA
@@ -576,13 +573,13 @@ def run_proc_multi_cts_tca(df, custom_train_reps, model_func, n_times = 100):
 
     :returns: vectors of accuracy statistics of multiple rounds
     """
-    
-    target_maes = []
-    target_mses = [] 
-    target_rmses = [] 
+
     source_maes = []
     source_mses = []
     source_rmses = [] 
+    target_maes = []
+    target_mses = [] 
+    target_rmses = [] 
     trans_target_maes = []
     trans_target_mses = []
     trans_target_rmses = []
@@ -590,35 +587,24 @@ def run_proc_multi_cts_tca(df, custom_train_reps, model_func, n_times = 100):
     for i in range(n_times):
         print("iteration:", i)
         # init accuracies
-        target_mae = None
-        target_mse = None
-        target_rmse = None 
         source_mae = None
         source_mse = None
         source_rmse = None 
+        target_mae = None
+        target_mse = None
+        target_rmse = None 
         trans_target_mae = None
         trans_target_mse = None
         trans_target_rmse = None
 
 
-        try:
-            n_components = 50
-            male_count = 120
-            female_count = 100
-            source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse,\
-                trans_target_mae, trans_target_mse, trans_target_rmse = \
-                    entire_proc_cts_tca(df, custom_train_reps, male_count, female_count, model_func, n_components)
-                    
-        except Exception: # most likely only one label is generated for the examples
-            print("exception 1")
-            continue
-
-        # if domain 2 data performs better using the model trained by domain 1 data, \
-        # there is no need to transport
-        if target_mae <= source_mae: 
-            print("exception 2")
-            continue
-
+        n_components = 50
+        male_count = 120
+        female_count = 100
+        source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse,\
+            trans_target_mae, trans_target_mse, trans_target_rmse = \
+                entire_proc_cts_tca(df, custom_train_reps, male_count, female_count, model_func, n_components)
+    
         source_maes.append(source_mae)
         source_mses.append(source_mse)
         source_rmses.append(source_rmse)
