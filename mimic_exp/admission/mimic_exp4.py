@@ -70,15 +70,31 @@ score_path = os.path.join(output_dir, "exp4_linear_score_"+str(n_components)+".c
 male_count = 120
 female_count = 100
 
-multi_proc_cts(score_path, n_components, admid_diagnosis_df, custom_train_reps, \
-    male_count, female_count, model_func = linear_model.LinearRegression, iteration=100)
+# source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
+#     trans_target_maes, trans_target_mses, trans_target_rmses \
+#         = multi_proc_cts(n_components, admid_diagnosis_df, custom_train_reps, \
+#             male_count, female_count, model_func = linear_model.LinearRegression, iteration=10)
 
-""" 
-Run multiple iterations using Poisson regression
-"""
-score_path = os.path.join(output_dir, "exp4_poisson_score_"+str(n_components)+".csv")
-male_count = 120
-female_count = 100
+# save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
+#     trans_target_maes, trans_target_mses, trans_target_rmses, score_path)
+# print(res)
 
-multi_proc_cts(score_path, n_components, admid_diagnosis_df, custom_train_reps, \
-    male_count, female_count, model_func = linear_model.PoissonRegressor, iteration=100)
+# """ 
+# Run multiple iterations using Poisson regression
+# """
+# score_path = os.path.join(output_dir, "exp4_poisson_score_"+str(n_components)+".csv")
+# male_count = 120
+# female_count = 100
+
+# multi_proc_cts(score_path, n_components, admid_diagnosis_df, custom_train_reps, \
+#     male_count, female_count, model_func = linear_model.PoissonRegressor, iteration=100)
+
+score_path = os.path.join(output_dir, "exp4_SVR_score_"+str(n_components)+".csv")
+
+source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
+    trans_target_maes, trans_target_mses, trans_target_rmses \
+        = multi_proc_cts(n_components, admid_diagnosis_df, custom_train_reps, \
+            male_count, female_count, model_func = SVR, iteration=10)
+
+save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
+    trans_target_maes, trans_target_mses, trans_target_rmses, score_path)
