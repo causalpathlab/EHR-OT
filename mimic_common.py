@@ -4,9 +4,11 @@ sys.path.append("/home/wanxinli/EHR-OT/")
 from datetime import datetime
 import copy
 from common import *
+from collections import Counter
 from ast import literal_eval
+from MMD import *
 import numpy as np
-from nn import *
+from NN import *
 import matplotlib.pyplot as plt
 from multiprocess import Pool
 import os
@@ -15,7 +17,7 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score, \
     f1_score, mean_absolute_error, mean_squared_error, \
     mutual_info_score, normalized_mutual_info_score
 from scipy.stats import entropy
-from tca import *
+from TCA import *
 
 
 # def update_codes(df):
@@ -110,8 +112,8 @@ def gen_features_labels(df, label_code):
     """
 
     unique_code_dict, num_codes = find_unique_code(df)
-    print("number of unique code is:", num_codes)
-    print("label code in unique_code_dict is:", unique_code_dict[label_code])
+    # print("number of unique code is:", num_codes)
+    # print("label code in unique_code_dict is:", unique_code_dict[label_code])
 
     source_df = df.loc[df['gender'] == 'M']
     target_df = df.loc[df['gender'] == 'F']
@@ -233,8 +235,8 @@ def select_df_binary(df, group_name, group_1, group_2, label_code, male_count, f
     :returns:
         - the selected dataframe
     """
-
-    print(f"label_code is {label_code}, group 1 is {group_1}, group 2 is {group_2}")
+    print(f"label_code is {label_code}")
+    # print(f"label_code is {label_code}, group 1 is {group_1}, group 2 is {group_2}")
 
     # select samples based on counts
     female_1_indices = []
@@ -322,7 +324,7 @@ def compute_transfer_score(source_reps, source_labels, target_reps, target_label
 
 
 
-def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, full_df, custom_train_reps, model_func=linear_model.LogisticRegression, \
+def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, full_df, custom_train_reps, model_func, trans_metric, \
                        male_count = 120, female_count = 100, pca_explain=False, transfer_score=False, max_iter = None):
     """
     Wrap up the entire procedure
@@ -334,6 +336,82 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     :param str label_code: the ICD code to determine labels
     :param dataframe full_df: the full dataframe
     :param function custom_train_reps: the customized function for learning representations
+    :param function model_func: the function to model the relationship between target reps and target labels
+    :param str trans_metric: transporting metric, NN, TCA, MMD or OT
+    :param int male_count: the number of samples with label 1s and label 0s for target (male)
+    :param int female_count: the number of samples with label 1s and label 0s for source (female)
+    :param bool pca_explain: print the variance explained by the PCA, if True. Default False
+    :param bool transfer_score: whether to compute transferability score. Default False. Returns the scores if True.
+    :param int max_iter: maximum number of iteration for OT
+
+    :returns accuracy statistics and optimized Wasserstein distance
+    """
+    
+    selected_df = select_df_binary(full_df, group_name, group_1, group_2, \
+                label_code, male_count, female_count)
+
+    source_features, source_labels, target_features, target_labels = gen_features_labels(selected_df, label_code)
+
+    source_reps = None
+    target_reps = None
+    if trans_metric != 'TCA':
+        source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
+
+    source_model = train_model(source_reps, source_labels, model_func)
+    source_preds = source_model.predict(source_reps)
+    target_preds = source_model.predict(target_reps)
+    wa_dist = None
+
+    if trans_metric == 'OT':
+        trans_target_reps, wa_dist = trans_target2source(target_reps, source_reps, ret_cost=True, max_iter=max_iter)
+    elif trans_metric == 'MMD':
+        trans_target_reps = trans_MMD(target_reps, source_reps)
+    elif trans_metric == 'TCA':
+        source_reps, target_reps, trans_target_reps = TCA(source_features, target_features, n_components=n_components)
+    
+    trans_target_preds = source_model.predict(trans_target_reps)
+
+    # Compute accuracies
+    source_accuracy = accuracy_score(source_labels, source_preds)
+    source_precision = precision_score(source_labels, source_preds)
+    source_recall = recall_score(source_labels, source_preds)
+    source_f1 = f1_score(source_labels, source_preds)
+
+    target_accuracy = accuracy_score(target_labels, target_preds)
+    target_precision = precision_score(target_labels, target_preds)
+    target_recall = recall_score(target_labels, target_preds)
+    target_f1 = f1_score(target_labels, target_preds)
+
+    trans_target_accuracy = accuracy_score(target_labels, trans_target_preds)
+    trans_target_precision = precision_score(target_labels, trans_target_preds)
+    trans_target_recall = recall_score(target_labels, trans_target_preds)
+    trans_target_f1 = f1_score(target_labels, trans_target_preds)
+        
+    if trans_metric == 'OT' and transfer_score:
+        transfer_score = compute_transfer_score(source_reps, source_labels, target_reps, target_labels, model_func)
+        return source_accuracy, source_precision, source_recall, source_f1, \
+            target_accuracy, target_precision, target_recall, target_f1, \
+            trans_target_accuracy, trans_target_precision, trans_target_recall, trans_target_f1,\
+            transfer_score, wa_dist
+
+    return source_accuracy, source_precision, source_recall, source_f1, \
+        target_accuracy, target_precision, target_recall, target_f1, \
+        trans_target_accuracy, trans_target_precision, trans_target_recall, trans_target_f1
+
+
+def entire_proc_nn(n_components, group_name, group_1, group_2, label_code, full_df, custom_train_reps, type, model_func=linear_model.LogisticRegression, \
+                       male_count = 120, female_count = 100, pca_explain=False, max_iter = None):
+    """
+    Wrap up the entire procedure using nearest neighbors
+
+    :param int n_components: the number of components for PCA learning
+    :param str group_name: group name to divide groups
+    :param str group_1: group 1 name, the target in transfer learning (e.g. female)
+    :param str group_2: group 2 name, the source in transfer learning (e.g. male)
+    :param str label_code: the ICD code to determine labels
+    :param dataframe full_df: the full dataframe
+    :param function custom_train_reps: the customized function for learning representations
+    :param str type: the task type, either classification or regression
     :param function model_func: the function to model the relationship between target reps and target labels
     :param int male_count: the number of samples with label 1s and label 0s for target (male)
     :param int female_count: the number of samples with label 1s and label 0s for source (female)
@@ -354,9 +432,14 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     source_model = train_model(source_reps, source_labels, model_func)
     source_preds = source_model.predict(source_reps)
     target_preds = source_model.predict(target_reps)
-    trans_target_reps, wa_dist = trans_target2source(target_reps, source_reps, ret_cost=True, max_iter=max_iter)
-    
-    trans_target_preds = source_model.predict(trans_target_reps)
+    trans_target_reps = trans_NN(target_reps, source_reps, ret_cost=True, max_iter=max_iter)
+    trans_target_preds = None
+    if type == 'regression':
+        trans_target_preds = source_model.predict(trans_target_reps)
+    elif type == 'classification':
+        for trans_target_rep in trans_target_reps:
+            trans_target_preds_one_sample = source_model.predict(trans_target_rep7)
+
 
     # Compute accuracies
     source_accuracy = accuracy_score(source_labels, source_preds)
@@ -374,19 +457,13 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     trans_target_recall = recall_score(target_labels, trans_target_preds)
     trans_target_f1 = f1_score(target_labels, trans_target_preds)
         
-    if transfer_score:
-        transfer_score = compute_transfer_score(source_reps, source_labels, target_reps, target_labels, model_func)
-        return source_accuracy, source_precision, source_recall, source_f1, \
-            target_accuracy, target_precision, target_recall, target_f1, \
-            trans_target_accuracy, trans_target_precision, trans_target_recall, trans_target_f1,\
-            transfer_score, wa_dist
 
     return source_accuracy, source_precision, source_recall, source_f1, \
         target_accuracy, target_precision, target_recall, target_f1, \
         trans_target_accuracy, trans_target_precision, trans_target_recall, trans_target_f1
 
 
-def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, male_count = 120, female_count = 100, pca_explain=False):
+def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, male_count = 120, female_count = 100, pca_explain=False):
     """
     Wrap up the entire procedure
 
@@ -395,6 +472,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, male_c
     :param dataframe full_df: the full dataframe
     :param function custom_train_reps: the customized function for learning representations
     :param function model_func: the function the model the relationship between target representations and target response
+    :param str trans_metric: transport metric, OT, MMD, TCA or NN
     :param int male_count: the number of samples with label 1s and label 0s for target (male). Default 120.
     :param int female_count: the number of samples with label 1s and label 0s for source (female). Default 100.
     :param bool pca_explain: print the variance explained by the PCA, if True. Default False.
@@ -409,7 +487,11 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, male_c
     clf = train_model(source_reps, source_labels, model_func) 
     source_preds = clf.predict(source_reps)
     target_preds = clf.predict(target_reps)
-    trans_target_reps = trans_target2source(target_reps, source_reps, max_iter=10000000)
+    trans_target_reps = None
+    if trans_metric == 'OT':
+        trans_target_reps = trans_target2source(target_reps, source_reps, max_iter=10000000)
+    if trans_metric == 'MMD':
+        trans_target_reps = trans_MMD(target_reps, source_reps)
     trans_target_preds = clf.predict(trans_target_reps)
 
     source_mae = metrics.mean_absolute_error(source_labels, source_preds)
@@ -427,7 +509,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, male_c
 
 
 def multi_proc_binary(score_path, n_components, label_code, full_df, custom_train_reps, \
-               male_count, female_count, iteration=20, max_iter = None):
+               male_count, female_count, trans_metric, iteration=20, max_iter = None):
     """ 
     Run the entire_proc function multiple times (iteration) for binary responses
 
@@ -468,13 +550,17 @@ def entire_proc_binary_tca(n_components, group_name, group_1, group_2, label_cod
                 label_code, male_count, female_count)
     
     source_features, source_labels, target_features, target_labels = gen_features_labels(selected_df, label_code)
-    source_embs, target_embs = custom_train_reps(source_features, target_features, n_components)
-    trans_source_embs, trans_target_embs = TCA(source_embs, target_embs, n_components)
+    # source_embs, target_embs = custom_train_reps(source_features, target_features, n_components)
+    trans_source_embs, target_embs, trans_target_embs = TCA(source_features, target_features, n_components=n_components, scale=False)
     clf = model_func()
     clf.fit(trans_source_embs, source_labels)
     trans_target_preds = clf.predict(trans_target_embs)
     target_preds = clf.predict(target_embs)
     trans_source_preds = clf.predict(trans_source_embs)
+    # print("is target_embs == trans_target_embs:", target_embs == trans_target_embs)
+    # print(target_embs[1])
+    # print(trans_target_embs[1])
+    # print("is target_preds == trans_target_preds:", target_preds == trans_target_preds)
 
     # Compute accuracies
     source_accuracy = accuracy_score(source_labels, trans_source_preds)
@@ -492,6 +578,8 @@ def entire_proc_binary_tca(n_components, group_name, group_1, group_2, label_cod
     trans_target_recall = recall_score(target_labels, trans_target_preds)
     trans_target_f1 = f1_score(target_labels, trans_target_preds)
 
+    # print("report f1:", target_f1, trans_target_f1)
+
     return source_accuracy, source_precision, source_recall, source_f1, \
         target_accuracy, target_precision, target_recall, target_f1, \
         trans_target_accuracy, trans_target_precision, trans_target_recall, trans_target_f1
@@ -499,7 +587,7 @@ def entire_proc_binary_tca(n_components, group_name, group_1, group_2, label_cod
 
 
 def multi_proc_cts(n_components, full_df, custom_train_reps, \
-               male_count, female_count, model_func = linear_model.LinearRegression, iteration=20):
+               male_count, female_count, trans_metric, model_func = linear_model.LinearRegression, iteration=20):
     """ 
     Run the entire_proc function multiple times (iteration) for continuous responses
 
@@ -510,6 +598,7 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
     :param int n_components: the number of components in PCA to learn representations
     :param int male_count: the number of samples with label 1s and label 0s for target (male)
     :param int female_count: the number of samples with label 1s and label 0s for source (female)
+    :param str trans_metric: transport metric, OT, MMD, TCA or NN
     :param int iteration: the number of iterations (repetitions)
     """
     random.seed(0)
@@ -536,7 +625,7 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
 
         source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, \
             trans_target_mae, trans_target_mse, trans_target_rmse = \
-                entire_proc_cts(n_components, full_df, custom_train_reps, model_func, male_count=male_count, female_count=female_count)
+                entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, male_count=male_count, female_count=female_count)
         
         source_maes.append(source_mae)
         source_mses.append(source_mse)
@@ -665,7 +754,7 @@ def build_maps(admission_file, diagnosis_file, patient_file):
     return pid_adms, pid_gender, adm_date, admid_codes, pid_visits
 
 
-def entire_proc_cts_tca(df, custom_train_reps, male_count, female_count, model_func, n_components):
+def entire_proc_cts_tca(df, male_count, female_count, model_func, n_components):
     """ 
     Run the entire procedure on ordered response using TCA
 
@@ -673,8 +762,8 @@ def entire_proc_cts_tca(df, custom_train_reps, male_count, female_count, model_f
     """
     selected_df = select_df_cts(df, male_count, female_count)
     source_features, source_labels, target_features, target_labels = gen_features_duration(selected_df)
-    source_embs, target_embs = custom_train_reps(source_features, target_features, n_components)
-    trans_source_embs, trans_target_embs = TCA(source_embs, target_embs, n_components)
+    trans_source_embs, target_embs, trans_target_embs = \
+        TCA(source_features, target_features, n_components=n_components)
     clf = model_func()
     clf.fit(trans_source_embs, source_labels)
     trans_target_pred = clf.predict(trans_target_embs)
@@ -694,7 +783,7 @@ def entire_proc_cts_tca(df, custom_train_reps, male_count, female_count, model_f
         trans_target_mae, trans_target_mse, trans_target_rmse
         
 
-def multi_proc_cts_tca(df, custom_train_reps, model_func, n_times = 100):
+def multi_proc_cts_tca(df, model_func, n_times = 100):
     """ 
     Run the entire procedure (entire_proc) multiple times (default 100 times), \
         for continuous labels using TCA
@@ -734,7 +823,7 @@ def multi_proc_cts_tca(df, custom_train_reps, model_func, n_times = 100):
         female_count = 100
         source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse,\
             trans_target_mae, trans_target_mse, trans_target_rmse = \
-                entire_proc_cts_tca(df, custom_train_reps, male_count, female_count, model_func, n_components)
+                entire_proc_cts_tca(df, male_count, female_count, model_func, n_components)
     
         source_maes.append(source_mae)
         source_mses.append(source_mse)
@@ -749,7 +838,7 @@ def multi_proc_cts_tca(df, custom_train_reps, model_func, n_times = 100):
         trans_target_maes, trans_target_mses, trans_target_rmses
 
 
-def entire_proc_cts_nn(df, custom_train_reps, n_neighbors, male_count, female_count, model_func, n_components):
+def entire_proc_cts_NN(df, custom_train_reps, n_neighbors, male_count, female_count, model_func, n_components):
     """ 
     Run the entire procedure on ordered response using NN
 
@@ -758,7 +847,7 @@ def entire_proc_cts_nn(df, custom_train_reps, n_neighbors, male_count, female_co
     selected_df = select_df_cts(df, male_count, female_count)
     source_features, source_labels, target_features, target_labels = gen_features_duration(selected_df)
     source_embs, target_embs = custom_train_reps(source_features, target_features, n_components)
-    trans_target_embs = NN_trans(source_embs, target_embs, n_neighbors)
+    trans_target_embs = trans_NN(source_embs, target_embs, n_neighbors, 'regression')
     clf = model_func()
     clf.fit(source_embs, source_labels)
     trans_target_pred = clf.predict(trans_target_embs)
@@ -778,7 +867,7 @@ def entire_proc_cts_nn(df, custom_train_reps, n_neighbors, male_count, female_co
         trans_target_mae, trans_target_mse, trans_target_rmse
 
 
-def multi_proc_cts_nn(df, model_func, n_neighbors, n_times = 100):
+def multi_proc_cts_NN(df, model_func, n_neighbors, n_times = 100):
     """ 
     Run the entire procedure (entire_proc) multiple times (default 100 times), \
     for continuous labels using nearest neighbors 
@@ -818,7 +907,7 @@ def multi_proc_cts_nn(df, model_func, n_neighbors, n_times = 100):
         female_count = 100
         source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse,\
             trans_target_mae, trans_target_mse, trans_target_rmse = \
-                entire_proc_cts_nn(df, custom_train_reps_default, n_neighbors, male_count, female_count, model_func, n_components)
+                entire_proc_cts_NN(df, custom_train_reps_default, n_neighbors, male_count, female_count, model_func, n_components)
     
         source_maes.append(source_mae)
         source_mses.append(source_mse)
@@ -833,7 +922,7 @@ def multi_proc_cts_nn(df, model_func, n_neighbors, n_times = 100):
         trans_target_maes, trans_target_mses, trans_target_rmses
 
 
-def custom_train_reps_default(source_features, target_features, n_components):
+def custom_train_reps_default(source_features, target_features, n_components, pca_explain=False):
     """ 
     Customized training algorithm for generating target representations and source representations
 
@@ -842,9 +931,19 @@ def custom_train_reps_default(source_features, target_features, n_components):
     :returns: target representations, source representations
     """
     source_pca = PCA(n_components=n_components)
+    source_reps = source_pca.fit_transform(source_features)
+
     target_pca = PCA(n_components=n_components)
     target_reps = target_pca.fit_transform(target_features)
-    source_reps = source_pca.fit_transform(source_features)
+
+    if pca_explain:
+        source_exp_var = source_pca.explained_variance_ratio_
+        source_cum_sum_var = np.cumsum(source_exp_var)
+        target_exp_var = target_pca.explained_variance_ratio_
+        target_cum_sum_var = np.cumsum(target_exp_var)
+        print("Cummulative variance explained by the source PCA is:", source_cum_sum_var[-1])
+        print("Cummulative variance explained by the target PCA is:", target_cum_sum_var[-1])
+
     return source_reps, target_reps
 
 

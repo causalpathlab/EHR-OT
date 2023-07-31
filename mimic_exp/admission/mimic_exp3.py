@@ -119,19 +119,19 @@ for label_code in label_codes:
     start_time = time.time()
     print(f"label code {label_code} started")
     multi_proc_parallel(score_path, n_components, label_code, custom_train_reps, \
-            male_count, female_count, iteration=100)
+            male_count, female_count, iteration=10)
     end_time = time.time()
     print(f"runtime for {label_code} is: {end_time-start_time}")
 
 
 
-
-
-def multi_proc_parallel_tca(score_path, n_components, label_code, custom_train_reps, \
-        male_count, female_count, iteration=20, max_iter = None):
+def multi_proc_parallel_default(score_path, n_components, label_code, custom_train_reps, \
+        male_count, female_count, trans_metric, iteration=20):
     """ 
     Code cannot be parallized when passing the dataframe (full_df) as a parameter
     Hence, cannot be put into mimic_common.py
+
+    :param str trans_metric: transporting metric
     """
     
     p = Pool(10)
@@ -143,9 +143,9 @@ def multi_proc_parallel_tca(score_path, n_components, label_code, custom_train_r
         :param int iter: the current iteration
         """
         print(f"iteration: {iter}\n")
-        cur_res = entire_proc_binary_tca(n_components, "gender", 'M', 'F', label_code, \
+        cur_res = entire_proc_binary(n_components, "gender", 'M', 'F', label_code, \
                     admid_diagnosis_df, custom_train_reps, model_func=linear_model.LogisticRegression, \
-                    male_count = male_count, female_count = female_count)
+                    trans_metric=trans_metric, male_count = male_count, female_count = female_count)
         
         return cur_res
 
@@ -159,14 +159,16 @@ def multi_proc_parallel_tca(score_path, n_components, label_code, custom_train_r
 
 label_codes = label_codes
 print("label_codes are:", label_codes)
+trans_metric = 'MMD' # MMD using sigmoid
 for label_code in label_codes:
-    score_path = os.path.join(output_dir, f"exp3_{label_code}_TCA_score.csv")
-    # if os.path.exists(score_path):
-    #     print(f"score for {label_code} has been computed")
-    #     continue
+    score_path = os.path.join(output_dir, f"exp3_{label_code}_{trans_metric}_score.csv")
+    print(f"score_path is: {score_path}")
+    if os.path.exists(score_path):
+        print(f"score for {label_code} has been computed")
+        continue
     start_time = time.time()
     print(f"label code {label_code} started")
-    multi_proc_parallel_tca(score_path, n_components, label_code, custom_train_reps, \
-            male_count, female_count, iteration=100)
+    multi_proc_parallel_default(score_path, n_components, label_code, custom_train_reps, \
+            male_count, female_count, 'MMD', iteration=100)
     end_time = time.time()
     print(f"runtime for {label_code} is: {end_time-start_time}")
