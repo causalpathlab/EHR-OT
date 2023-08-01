@@ -73,10 +73,10 @@ female_count = 100
 source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
     trans_target_maes, trans_target_mses, trans_target_rmses \
         = multi_proc_cts(n_components, admid_diagnosis_df, custom_train_reps, \
-            male_count, female_count, model_func = linear_model.LinearRegression, iteration=100)
+            male_count, female_count, model_func = linear_model.LinearRegression, iteration=10)
 
-save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
-    trans_target_maes, trans_target_mses, trans_target_rmses, score_path)
+# save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
+#     trans_target_maes, trans_target_mses, trans_target_rmses, score_path)
 
 # """ 
 # Run multiple iterations using Poisson regression

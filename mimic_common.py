@@ -1026,7 +1026,7 @@ def get_label_codes():
     mimic_output_dir = "/home/wanxinli/EHR-OT/outputs/mimic"
     label_codes = []
     for file in os.listdir(mimic_output_dir):
-        if file.endswith("_score.csv") and "exp3" in file:
+        if file.endswith("OT_score.csv") and "exp3" in file:
             label_codes.append(file.split("_")[1])
     return label_codes
 

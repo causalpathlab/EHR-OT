@@ -144,6 +144,8 @@ def cal_stats_cts(source_reps, source_labels, target_reps, target_labels, \
     target_mae = metrics.mean_absolute_error(target_labels, target_pred_labels)
     target_mse = metrics.mean_squared_error(target_labels, target_pred_labels)
     target_rmse = np.sqrt(metrics.mean_squared_error(target_labels, target_pred_labels))
+    for target_label, target_pred_label in zip(target_labels, target_pred_labels):
+        print(f"target label is: {target_label}, target_pred_label is: {target_pred_label}")
 
     trans_target_pred_labels = source_model.predict(trans_target_reps)
     trans_target_mae = metrics.mean_absolute_error(target_labels, trans_target_pred_labels)
