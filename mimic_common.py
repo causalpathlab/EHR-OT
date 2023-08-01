@@ -1029,3 +1029,20 @@ def get_label_codes():
         if file.endswith("_score.csv") and "exp3" in file:
             label_codes.append(file.split("_")[1])
     return label_codes
+
+
+def compute_metric_ratio(score_df, eval_metric):
+    """ 
+    Computes the improvement ratios for a evaluation metric (eval_metric) on dataset (score_df). \
+        Used for visualizing results.
+    :param Dataframe score_df: the dataframe for scores
+    :param str eval_metric: the metric name for computing ratios, can be mae or rmse for regression, \
+        precision, recall and f1 for classification
+    """
+    improve_ratios = []
+    for target_metric, trans_target_metric in zip(score_df[f'target_{eval_metric}'], score_df[f'trans_target_{eval_metric}']):
+        if eval_metric == 'f1' or eval_metric == 'precision' or eval_metric == 'recall':
+            improve_ratios.append(trans_target_metric-target_metric)
+        elif eval_metric == 'mae' or eval_metric == 'rmse':
+            improve_ratios.append((target_metric-trans_target_metric)/target_metric) # smaller is better
+    return improve_ratios
