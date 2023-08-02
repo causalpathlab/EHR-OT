@@ -185,7 +185,7 @@ def gen_features_duration(df):
     return source_features, source_durations, target_features, target_durations
 
 
-def select_df_cts(df, male_count, female_count):
+def select_df_cts(df, group_name, group_1, group_2, group_1_count, group_2_count):
     """ 
     Select row in the dataframe df with balanced number of labels for males and females \
         for binary reponse
@@ -200,23 +200,29 @@ def select_df_cts(df, male_count, female_count):
 
     # generate label column based on label_code
     df_copy = copy.deepcopy(df)
-    female_indices = []
-    male_indices = []
-
+    
+    group_1_indices = []
+    group_2_indices = []
+    other_indices = []
     for index, row in df_copy.iterrows():
-        if row['gender'] == 'F':
-            female_indices.append(index)
-        elif row['gender'] == 'M':
-            male_indices.append(index)
+        if row[group_name] == group_1:
+            group_1_indices.append(index)
+        elif row[group_name] == group_2:
+            group_2_indices.append(index)
+        else:
+            other_indices.append(index)
+
     
     # indices to delete from the dataframe
     # sample the same number of label 0s and label 1s
-    delete_female_indices = random.sample(female_indices, len(female_indices)-female_count)
-    delete_male_indices = random.sample(male_indices, len(male_indices)-male_count)
 
-    delete_female_indices.extend(delete_male_indices)
-    
-    df_copy = df_copy.drop(delete_female_indices, axis=0, inplace=False)
+    delete_group_2_indices = random.sample(group_2_indices, len(group_2_indices)-group_2_count)
+    delete_group_1_indices = random.sample(group_1_indices, len(group_1_indices)-group_1_count)
+
+    delete_group_2_indices.extend(delete_group_1_indices)
+    delete_group_2_indices.extend(other_indices)
+
+    df_copy = df_copy.drop(delete_group_2_indices, axis=0, inplace=False)
 
     return df_copy
 
@@ -285,13 +291,6 @@ def select_df_binary(df, group_name, group_1, group_2, label_code, male_count, f
     delete_female_0_indices.extend(delete_male_1_indices)
     
     df_copy = df_copy.drop(delete_female_0_indices, axis=0, inplace=False)
-
-    # # remove label_code from ICD code features
-    # for index, row in df_copy.iterrows():
-    #     if label_code in row['ICD codes']:
-    #         new_codes = copy.deepcopy(row['ICD codes'])
-    #         new_codes.remove(label_code)
-    #         df_copy.at[index, 'ICD codes'] = new_codes
     
     return df_copy
 
@@ -359,9 +358,7 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     if trans_metric != 'TCA':
         source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
 
-    source_model = train_model(source_reps, source_labels, model_func)
-    source_preds = source_model.predict(source_reps)
-    target_preds = source_model.predict(target_reps)
+
     wa_dist = None
 
     if trans_metric == 'OT':
@@ -371,6 +368,9 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     elif trans_metric == 'TCA':
         source_reps, target_reps, trans_target_reps = TCA(source_features, target_features, n_components=n_components)
     
+    source_model = train_model(source_reps, source_labels, model_func)
+    source_preds = source_model.predict(source_reps)
+    target_preds = source_model.predict(target_reps)
     trans_target_preds = source_model.predict(trans_target_reps)
 
     # Compute accuracies
@@ -465,7 +465,8 @@ def entire_proc_nn(n_components, group_name, group_1, group_2, label_code, full_
         trans_target_accuracy, trans_target_precision, trans_target_recall, trans_target_f1
 
 
-def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, male_count = 120, female_count = 100, pca_explain=False, equity=False):
+def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, \
+                    group_name, group_1, group_2, group_1_count = 120, group_2_count = 100, pca_explain=False, equity=False):
     """
     Wrap up the entire procedure
 
@@ -475,30 +476,38 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     :param function custom_train_reps: the customized function for learning representations
     :param function model_func: the function the model the relationship between target representations and target response
     :param str trans_metric: transport metric, OT, MMD, TCA or NN
+    :param str group_name: the group name 
     :param int male_count: the number of samples with label 1s and label 0s for target (male). Default 120.
     :param int female_count: the number of samples with label 1s and label 0s for source (female). Default 100.
     :param bool pca_explain: print the variance explained by the PCA, if True. Default False.
     :param bool equity: track differences in predicted values versus ground-truth values, to prepare data to check for equity
     """
     
-    selected_df = select_df_cts(full_df, male_count=male_count, female_count=female_count)
+    selected_df = select_df_cts(full_df, group_name, group_1, group_2, group_1_count=group_1_count, group_2_count=group_2_count)
 
     source_features, source_labels, target_features, target_labels = gen_features_duration(selected_df)
 
-    source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
+    source_reps = None
+    target_reps = None
+    if trans_metric != 'TCA':
+        source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
 
-    clf = train_model(source_reps, source_labels, model_func) 
-    source_preds = clf.predict(source_reps)
-    target_preds = clf.predict(target_reps)
+
     trans_target_reps = None
     if trans_metric == 'OT':
         trans_target_reps = trans_target2source(target_reps, source_reps, max_iter=10000000)
     if trans_metric == 'MMD':
         trans_target_reps = trans_MMD(target_reps, source_reps)
+    elif trans_metric == 'TCA':
+        source_reps, target_reps, trans_target_reps = TCA(source_features, target_features, n_components=n_components)
+
+    clf = train_model(source_reps, source_labels, model_func) 
+    source_preds = clf.predict(source_reps)
+    target_preds = clf.predict(target_reps)
     trans_target_preds = clf.predict(trans_target_reps)
 
     if equity:
-        source_equity_path = os.path.join(mimic_output_dir, "source_equity.csv")
+        source_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_source_equity.csv")
         source_equity_df = pd.read_csv(source_equity_path, header=0, index_col=None)
         source_diffs = np.divide(source_preds - source_labels, source_labels)
         source_data_block = np.transpose(np.array([source_labels, source_preds, source_diffs]))
@@ -506,7 +515,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
         source_equity_df = pd.concat([source_equity_df, source_new_df], ignore_index=True)
         source_equity_df.to_csv(source_equity_path, index=False, header=True)
 
-        target_equity_path = os.path.join(mimic_output_dir, "target_equity.csv")
+        target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_target_equity.csv")
         target_equity_df = pd.read_csv(target_equity_path, header=0, index_col=None)
         target_diffs = np.divide(trans_target_preds - target_labels, target_labels)
         target_data_block = np.transpose(np.array([target_labels, target_preds, target_diffs]))
@@ -578,10 +587,6 @@ def entire_proc_binary_tca(n_components, group_name, group_1, group_2, label_cod
     trans_target_preds = clf.predict(trans_target_embs)
     target_preds = clf.predict(target_embs)
     trans_source_preds = clf.predict(trans_source_embs)
-    # print("is target_embs == trans_target_embs:", target_embs == trans_target_embs)
-    # print(target_embs[1])
-    # print(trans_target_embs[1])
-    # print("is target_preds == trans_target_preds:", target_preds == trans_target_preds)
 
     # Compute accuracies
     source_accuracy = accuracy_score(source_labels, trans_source_preds)
@@ -608,7 +613,7 @@ def entire_proc_binary_tca(n_components, group_name, group_1, group_2, label_cod
 
 
 def multi_proc_cts(n_components, full_df, custom_train_reps, \
-               male_count, female_count, trans_metric, model_func = linear_model.LinearRegression, iteration=20, equity=False):
+               group_name, group_1, group_2, group_1_count, group_2_count, trans_metric, model_func = linear_model.LinearRegression, iteration=20, equity=False):
     """ 
     Run the entire_proc function multiple times (iteration) for continuous responses
 
@@ -617,8 +622,11 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
     :param dataframe full_df: the full dataframe
     :param function custom_train_reps: the customized function for learning representations
     :param int n_components: the number of components in PCA to learn representations
-    :param int male_count: the number of samples with label 1s and label 0s for target (male)
-    :param int female_count: the number of samples with label 1s and label 0s for source (female)
+    :param str group_name: the name of the dividing group
+    :param str group_1: value for group 1
+    :param str group_2: value for group 2
+    :param int group_1_count: the number of samples with label 1s and label 0s for target (male)
+    :param int group_2_count: the number of samples with label 1s and label 0s for source (female)
     :param str trans_metric: transport metric, OT, MMD, TCA or NN
     :param int iteration: the number of iterations (repetitions)
     :param bool equity: prepare statistics for equity
@@ -636,9 +644,9 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
 
     if equity:
         source_equity_df = pd.DataFrame(columns=['source_label', 'source_pred_label', 'source_diff_percent'])
-        source_equity_df.to_csv(os.path.join(mimic_output_dir, "source_equity.csv"), header=True, index=False)
+        source_equity_df.to_csv(os.path.join(mimic_output_dir, f"exp4_{group_name}_source_equity.csv"), header=True, index=False)
         target_equity_df = pd.DataFrame(columns=['target_label', 'target_pred_label', 'target_diff_percent'])
-        target_equity_df.to_csv(os.path.join(mimic_output_dir, "target_equity.csv"), header=True, index=False)
+        target_equity_df.to_csv(os.path.join(mimic_output_dir, f"exp4_{group_name}_target_equity.csv"), header=True, index=False)
     for i in range(iteration):
         print("iteration:", i)
         source_mae = None
@@ -653,7 +661,8 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
 
         source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, \
             trans_target_mae, trans_target_mse, trans_target_rmse = \
-                entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, male_count=male_count, female_count=female_count, equity=equity)
+                entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, \
+                    group_name, group_1, group_2, group_1_count, group_2_count, equity=equity)
         
         source_maes.append(source_mae)
         source_mses.append(source_mse)

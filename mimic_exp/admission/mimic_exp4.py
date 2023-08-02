@@ -27,11 +27,6 @@ Read in the original dataframe
 admid_diagnosis_df = pd.read_csv("../../outputs/mimic/ADMID_DIAGNOSIS.csv", index_col=0, header=0, converters={'ICD codes': literal_eval})
 print(admid_diagnosis_df)
 
-""" 
-Print number of patients for each category
-"""
-print("female:", admid_diagnosis_df.loc[(admid_diagnosis_df['gender'] == 'F')].shape[0])
-print("male:", admid_diagnosis_df.loc[(admid_diagnosis_df['gender'] == 'M')].shape[0])
 
 """
 Train deep patient model and generate representations for targets and sources
@@ -66,34 +61,22 @@ def custom_train_reps(source_features, target_features, n_components, pca_explai
 Run multiple iterations using linear regression
 """
 n_components = 50
-score_path = os.path.join(output_dir, "exp4_linear_score_"+str(n_components)+".csv")
-male_count = 120
-female_count = 100
+group_name = 'insurance'
+group_1 = 'Government'
+group_2 = 'Self Pay'
+# group_name = 'gender'
+# group_1 = 'M'
+# group_2 = 'F'
+group_1_count = 120
+group_2_count = 100
+trans_metric = 'TCA'
+score_path = os.path.join(output_dir, f"exp4_{group_name}_{trans_metric}.csv")
+
 
 source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
     trans_target_maes, trans_target_mses, trans_target_rmses \
-        = multi_proc_cts(n_components, admid_diagnosis_df, custom_train_reps, \
-            male_count, female_count, trans_metric='OT', model_func = linear_model.LinearRegression, iteration=10, equity=True)
+        = multi_proc_cts(n_components, admid_diagnosis_df, custom_train_reps, group_name, group_1, group_2, \
+            group_1_count, group_2_count, trans_metric=trans_metric, model_func = linear_model.LinearRegression, iteration=100, equity=True)
 
-# save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
-#     trans_target_maes, trans_target_mses, trans_target_rmses, score_path)
-
-# """ 
-# Run multiple iterations using Poisson regression
-# """
-# score_path = os.path.join(output_dir, "exp4_poisson_score_"+str(n_components)+".csv")
-# male_count = 120
-# female_count = 100
-
-# multi_proc_cts(score_path, n_components, admid_diagnosis_df, custom_train_reps, \
-#     male_count, female_count, model_func = linear_model.PoissonRegressor, iteration=100)
-
-# score_path = os.path.join(output_dir, "exp4_SVR_score_"+str(n_components)+".csv")
-
-# source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
-#     trans_target_maes, trans_target_mses, trans_target_rmses \
-#         = multi_proc_cts(n_components, admid_diagnosis_df, custom_train_reps, \
-#             male_count, female_count, model_func = SVR, iteration=10)
-
-# save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
-#     trans_target_maes, trans_target_mses, trans_target_rmses, score_path)
+save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
+    trans_target_maes, trans_target_mses, trans_target_rmses, score_path)
