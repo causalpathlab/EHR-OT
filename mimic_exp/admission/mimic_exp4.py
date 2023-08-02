@@ -73,7 +73,7 @@ female_count = 100
 source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
     trans_target_maes, trans_target_mses, trans_target_rmses \
         = multi_proc_cts(n_components, admid_diagnosis_df, custom_train_reps, \
-            male_count, female_count, model_func = linear_model.LinearRegression, iteration=10)
+            male_count, female_count, trans_metric='OT', model_func = linear_model.LinearRegression, iteration=10, equity=True)
 
 # save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
 #     trans_target_maes, trans_target_mses, trans_target_rmses, score_path)

@@ -19,7 +19,7 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score, \
 from scipy.stats import entropy
 from TCA import *
 
-
+mimic_output_dir = "/home/wanxinli/EHR-OT/outputs/mimic"
 # def update_codes(df):
 #     """ 
 #     Update code in dataframe, the new code starts from 0.
@@ -463,7 +463,7 @@ def entire_proc_nn(n_components, group_name, group_1, group_2, label_code, full_
         trans_target_accuracy, trans_target_precision, trans_target_recall, trans_target_f1
 
 
-def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, male_count = 120, female_count = 100, pca_explain=False):
+def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, male_count = 120, female_count = 100, pca_explain=False, equity=False):
     """
     Wrap up the entire procedure
 
@@ -476,6 +476,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     :param int male_count: the number of samples with label 1s and label 0s for target (male). Default 120.
     :param int female_count: the number of samples with label 1s and label 0s for source (female). Default 100.
     :param bool pca_explain: print the variance explained by the PCA, if True. Default False.
+    :param bool equity: track differences in predicted values versus ground-truth values, to prepare data to check for equity
     """
     
     selected_df = select_df_cts(full_df, male_count=male_count, female_count=female_count)
@@ -494,6 +495,24 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
         trans_target_reps = trans_MMD(target_reps, source_reps)
     trans_target_preds = clf.predict(trans_target_reps)
 
+    if equity:
+        source_equity_path = os.path.join(mimic_output_dir, "source_equity.csv")
+        source_equity_df = pd.read_csv(source_equity_path, header=0, index_col=None)
+        source_diffs = np.divide(source_preds - source_labels, source_labels)
+        source_data_block = np.transpose(np.array([source_labels, source_preds, source_diffs]))
+        source_new_df = pd.DataFrame(source_data_block, columns=source_equity_df.columns)
+        source_equity_df = pd.concat([source_equity_df, source_new_df], ignore_index=True)
+        source_equity_df.to_csv(source_equity_path, index=False, header=True)
+
+        target_equity_path = os.path.join(mimic_output_dir, "target_equity.csv")
+        target_equity_df = pd.read_csv(target_equity_path, header=0, index_col=None)
+        target_diffs = np.divide(trans_target_preds - target_labels, target_labels)
+        target_data_block = np.transpose(np.array([target_labels, target_preds, target_diffs]))
+        target_new_df = pd.DataFrame(target_data_block, columns=target_equity_df.columns)
+        target_equity_df = pd.concat([target_equity_df, target_new_df], ignore_index=True)
+        target_equity_df.to_csv(target_equity_path, index=False, header=True)
+
+
     source_mae = metrics.mean_absolute_error(source_labels, source_preds)
     source_mse = mean_squared_error(source_labels, source_preds)
     source_rmse = np.sqrt(metrics.mean_squared_error(source_labels, source_preds))
@@ -509,7 +528,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
 
 
 def multi_proc_binary(score_path, n_components, label_code, full_df, custom_train_reps, \
-               male_count, female_count, trans_metric, iteration=20, max_iter = None):
+               male_count, female_count, iteration=20, max_iter = None):
     """ 
     Run the entire_proc function multiple times (iteration) for binary responses
 
@@ -587,7 +606,7 @@ def entire_proc_binary_tca(n_components, group_name, group_1, group_2, label_cod
 
 
 def multi_proc_cts(n_components, full_df, custom_train_reps, \
-               male_count, female_count, trans_metric, model_func = linear_model.LinearRegression, iteration=20):
+               male_count, female_count, trans_metric, model_func = linear_model.LinearRegression, iteration=20, equity=False):
     """ 
     Run the entire_proc function multiple times (iteration) for continuous responses
 
@@ -600,6 +619,7 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
     :param int female_count: the number of samples with label 1s and label 0s for source (female)
     :param str trans_metric: transport metric, OT, MMD, TCA or NN
     :param int iteration: the number of iterations (repetitions)
+    :param bool equity: prepare statistics for equity
     """
     random.seed(0)
     source_maes = []
@@ -611,6 +631,12 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
     trans_target_maes = []
     trans_target_mses = []
     trans_target_rmses = []
+
+    if equity:
+        source_equity_df = pd.DataFrame(columns=['source_label', 'source_pred_label', 'source_diff_percent'])
+        source_equity_df.to_csv(os.path.join(mimic_output_dir, "source_equity.csv"), header=True, index=False)
+        target_equity_df = pd.DataFrame(columns=['target_label', 'target_pred_label', 'target_diff_percent'])
+        target_equity_df.to_csv(os.path.join(mimic_output_dir, "target_equity.csv"), header=True, index=False)
     for i in range(iteration):
         print("iteration:", i)
         source_mae = None
@@ -625,7 +651,7 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
 
         source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, \
             trans_target_mae, trans_target_mse, trans_target_rmse = \
-                entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, male_count=male_count, female_count=female_count)
+                entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, male_count=male_count, female_count=female_count, equity=equity)
         
         source_maes.append(source_mae)
         source_mses.append(source_mse)
