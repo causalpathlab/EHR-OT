@@ -20,6 +20,8 @@ from scipy.stats import entropy
 from TCA import *
 
 mimic_output_dir = "/home/wanxinli/EHR-OT/outputs/mimic"
+mimic_data_dir = "/home/wanxinli/EHR-OT/mimic_exp/mimiciii"
+
 # def update_codes(df):
 #     """ 
 #     Update code in dataframe, the new code starts from 0.
