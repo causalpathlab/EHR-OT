@@ -61,15 +61,21 @@ def custom_train_reps(source_features, target_features, n_components, pca_explai
 Run multiple iterations using linear regression
 """
 n_components = 50
-group_name = 'insurance'
-group_1 = 'Government'
-group_2 = 'Self Pay'
+group_name = 'ethnicity'
+group_1 = 'BLACK/AFRICAN AMERICAN'
+group_2 = 'WHITE'
+# group_name = 'marital_status'
+# group_1 = 'MARRIED'
+# group_2 = 'SINGLE'
 # group_name = 'gender'
 # group_1 = 'M'
 # group_2 = 'F'
+# group_name = 'insurance'
+# group_1 = 'Medicaid'
+# group_2 = 'Self Pay'
 group_1_count = 120
 group_2_count = 100
-trans_metric = 'TCA'
+trans_metric = 'MMD'
 score_path = os.path.join(output_dir, f"exp4_{group_name}_{trans_metric}.csv")
 
 

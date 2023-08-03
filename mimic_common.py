@@ -506,7 +506,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     target_preds = clf.predict(target_reps)
     trans_target_preds = clf.predict(trans_target_reps)
 
-    if equity:
+    if equity and trans_metric == 'OT':
         source_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_source_equity.csv")
         source_equity_df = pd.read_csv(source_equity_path, header=0, index_col=None)
         source_diffs = np.divide(source_preds - source_labels, source_labels)
