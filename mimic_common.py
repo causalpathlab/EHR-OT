@@ -466,7 +466,8 @@ def entire_proc_nn(n_components, group_name, group_1, group_2, label_code, full_
 
 
 def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, \
-                    group_name, group_1, group_2, group_1_count = 120, group_2_count = 100, pca_explain=False, equity=False):
+                    group_name, group_1, group_2, group_1_count = 120, \
+                    group_2_count = 100, pca_explain=False, equity=False, suffix=None):
     """
     Wrap up the entire procedure
 
@@ -507,7 +508,9 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     trans_target_preds = clf.predict(trans_target_reps)
 
     if equity and trans_metric == 'OT':
-        source_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_source_equity.csv")
+        source_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_source_equity.csv")
+        if suffix is not None:
+            source_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{suffix}_source_equity.csv")
         source_equity_df = pd.read_csv(source_equity_path, header=0, index_col=None)
         source_diffs = np.divide(source_preds - source_labels, source_labels)
         source_data_block = np.transpose(np.array([source_labels, source_preds, source_diffs]))
@@ -515,7 +518,9 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
         source_equity_df = pd.concat([source_equity_df, source_new_df], ignore_index=True)
         source_equity_df.to_csv(source_equity_path, index=False, header=True)
 
-        target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_target_equity.csv")
+        target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_target_equity.csv")
+        if suffix is not None:
+            target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{suffix}_target_equity.csv")
         target_equity_df = pd.read_csv(target_equity_path, header=0, index_col=None)
         target_diffs = np.divide(trans_target_preds - target_labels, target_labels)
         target_data_block = np.transpose(np.array([target_labels, target_preds, target_diffs]))
@@ -613,7 +618,8 @@ def entire_proc_binary_tca(n_components, group_name, group_1, group_2, label_cod
 
 
 def multi_proc_cts(n_components, full_df, custom_train_reps, \
-               group_name, group_1, group_2, group_1_count, group_2_count, trans_metric, model_func = linear_model.LinearRegression, iteration=20, equity=False):
+               group_name, group_1, group_2, group_1_count, group_2_count, \
+                trans_metric, model_func = linear_model.LinearRegression, iteration=20, equity=False, suffix=None):
     """ 
     Run the entire_proc function multiple times (iteration) for continuous responses
 
@@ -644,9 +650,16 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
 
     if equity:
         source_equity_df = pd.DataFrame(columns=['source_label', 'source_pred_label', 'source_diff_percent'])
-        source_equity_df.to_csv(os.path.join(mimic_output_dir, f"exp4_{group_name}_source_equity.csv"), header=True, index=False)
+        source_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_source_equity.csv")
+        if suffix is not None:
+            source_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{suffix}_source_equity.csv")
+        source_equity_df.to_csv(source_equity_path, header=True, index=False)
+
         target_equity_df = pd.DataFrame(columns=['target_label', 'target_pred_label', 'target_diff_percent'])
-        target_equity_df.to_csv(os.path.join(mimic_output_dir, f"exp4_{group_name}_target_equity.csv"), header=True, index=False)
+        target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_target_equity.csv")
+        if suffix is not None:
+            target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{suffix}_target_equity.csv")
+        target_equity_df.to_csv(target_equity_path, header=True, index=False)
     for i in range(iteration):
         print("iteration:", i)
         source_mae = None
@@ -662,7 +675,7 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
         source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, \
             trans_target_mae, trans_target_mse, trans_target_rmse = \
                 entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, \
-                    group_name, group_1, group_2, group_1_count, group_2_count, equity=equity)
+                    group_name, group_1, group_2, group_1_count, group_2_count, equity=equity, suffix=suffix)
         
         source_maes.append(source_mae)
         source_mses.append(source_mse)
