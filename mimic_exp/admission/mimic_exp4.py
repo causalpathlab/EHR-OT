@@ -61,13 +61,21 @@ def custom_train_reps(source_features, target_features, n_components, pca_explai
 Run multiple iterations using linear regression
 """
 n_components = 50
-# group_name = 'ethnicity'
-# group_1 = 'BLACK/AFRICAN AMERICAN'
-# group_2 = 'WHITE'
 
+suffix = None
+group_name = 'gender'
+group_1 = 'M'
+group_2 = 'F'
+
+# suffix = None
 # group_name = 'marital_status'
-# group_1 = 'MARRIED'
-# group_2 = 'SINGLE'
+# group_1 = 'SINGLE'
+# group_2 = 'MARRIED'
+
+# suffix = None
+# group_name = 'marital_status'
+# group_1 = 'SINGLE'
+# group_2 = 'MARRIED'
 
 # group_name = 'gender'
 # group_1 = 'F'
@@ -77,10 +85,10 @@ n_components = 50
 # admid_diagnosis_df = admid_diagnosis_df[admid_diagnosis_df['adm_type'] == 'NEWBORN']
 # suffix = "newborn"
 
-suffix = None
-group_name = 'insurance'
-group_1 = 'Self_Pay'
-group_2 = 'Medicaid'
+# suffix = None
+# group_name = 'insurance'
+# group_1 = 'Self_Pay'
+# group_2 = 'Medicaid'
 
 group_1_count = 120
 group_2_count = 100
