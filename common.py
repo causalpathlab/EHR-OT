@@ -27,13 +27,14 @@ from statistics import median
 Transport source representations to target representations
 """
 
-def trans_target2source(target_reps, source_reps, reg_e = 0.1, type="balanced", max_iter = None, ret_cost=False):
+def trans_target2source(target_reps, source_reps, reg_e = 0.1, max_iter = None, ret_cost=False, ret_coupling=False):
     """ 
     Optimal transport (without entropy regularization) source representations \
         to target representations
 
     :param str type: balanced or unbalanced
     :param bool ret_cost: return OT cost or not
+    :param bool ret_coupling: return coupling or not
     :returns: transported source representations and the optimized Wasserstein distance (if cost is True), default False
 
     TODO: the unbalanced case has not been implemented 
@@ -45,27 +46,17 @@ def trans_target2source(target_reps, source_reps, reg_e = 0.1, type="balanced", 
         ot_emd = ot.da.SinkhornTransport(reg_e=reg_e, max_iter=max_iter, log=True)
     ot_emd.fit(Xs=target_reps, Xt=source_reps)
     trans_target_reps = ot_emd.transform(Xs=target_reps)
-    if not ret_cost:
+    if not ret_cost and not ret_coupling:
         return trans_target_reps
-    print(ot_emd)
+    if not ret_cost:
+        return trans_target_reps, ot_emd.coupling_
+    
     wa_dist = ot_emd.log_['err'][-1]
-    # wa_dist = wasserstein_distance(source_reps, target_reps)
+    if not ret_coupling:
+        return trans_target_reps, wa_dist,
 
-    return trans_target_reps, wa_dist
+    return trans_target_reps, wa_dist, ot_emd.coupling_
 
-
-    # elif type == "unbalanced":
-    #     reg = 0.005
-    #     reg_m_kl = 0.5
-    #     n = source_reps.shape[0]
-
-    #     a, b = np.ones((n,)) / n, np.ones((n,)) / n  # uniform distribution on samples
-
-    #     M = ot.dist(source_reps, target_reps)
-    #     M /= M.max()
-
-    #     coupling = ot.unbalanced.sinkhorn_unbalanced(a, b, M, reg, reg_m_kl)
-    #     trans_source_reps = np.matmul(coupling, source_reps)
 
 
 

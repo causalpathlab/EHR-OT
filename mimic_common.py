@@ -358,7 +358,6 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     if trans_metric != 'TCA':
         source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
 
-
     wa_dist = None
 
     if trans_metric == 'OT':
@@ -493,10 +492,10 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     if trans_metric != 'TCA':
         source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
 
-
     trans_target_reps = None
+    coupling = None
     if trans_metric == 'OT':
-        trans_target_reps = trans_target2source(target_reps, source_reps, max_iter=10000000)
+        trans_target_reps, coupling = trans_target2source(target_reps, source_reps, max_iter=10000000, ret_coupling=True)
     if trans_metric == 'MMD':
         trans_target_reps = trans_MMD(target_reps, source_reps)
     elif trans_metric == 'TCA':
@@ -508,21 +507,15 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     trans_target_preds = clf.predict(trans_target_reps)
 
     if equity and trans_metric == 'OT':
-        source_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_source_equity.csv")
+        # compute transported target without using the model, used for studying the bias 
+        trans_target_mappings = np.matmul(coupling, source_labels)
+        np.save("tmp.txt", trans_target_mappings)
+        target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_equity.csv")
         if suffix is not None:
-            source_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{suffix}_source_equity.csv")
-        source_equity_df = pd.read_csv(source_equity_path, header=0, index_col=None)
-        source_diffs = np.divide(source_preds - source_labels, source_labels)
-        source_data_block = np.transpose(np.array([source_labels, source_preds, source_diffs]))
-        source_new_df = pd.DataFrame(source_data_block, columns=source_equity_df.columns)
-        source_equity_df = pd.concat([source_equity_df, source_new_df], ignore_index=True)
-        source_equity_df.to_csv(source_equity_path, index=False, header=True)
-
-        target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_target_equity.csv")
-        if suffix is not None:
-            target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{suffix}_target_equity.csv")
+            target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{suffix}_equity.csv")
         target_equity_df = pd.read_csv(target_equity_path, header=0, index_col=None)
-        target_diffs = np.divide(trans_target_preds - target_labels, target_labels)
+        target_diffs = np.divide(trans_target_mappings - target_labels, target_labels)
+
         target_data_block = np.transpose(np.array([target_labels, target_preds, target_diffs]))
         target_new_df = pd.DataFrame(target_data_block, columns=target_equity_df.columns)
         target_equity_df = pd.concat([target_equity_df, target_new_df], ignore_index=True)
@@ -649,17 +642,12 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
     trans_target_rmses = []
 
     if equity:
-        source_equity_df = pd.DataFrame(columns=['source_label', 'source_pred_label', 'source_diff_percent'])
-        source_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_source_equity.csv")
-        if suffix is not None:
-            source_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{suffix}_source_equity.csv")
-        source_equity_df.to_csv(source_equity_path, header=True, index=False)
-
         target_equity_df = pd.DataFrame(columns=['target_label', 'target_pred_label', 'target_diff_percent'])
-        target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_target_equity.csv")
+        target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_equity.csv")
         if suffix is not None:
-            target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{suffix}_target_equity.csv")
+            target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{suffix}_equity.csv")
         target_equity_df.to_csv(target_equity_path, header=True, index=False)
+
     for i in range(iteration):
         print("iteration:", i)
         source_mae = None
