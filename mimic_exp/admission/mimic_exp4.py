@@ -69,8 +69,8 @@ n_components = 50
 
 suffix = None
 group_name = 'ethnicity'
-group_1 = 'ASIAN'
-group_2 = 'WHITE'
+group_1 = 'WHITE'
+group_2 = 'HISPANIC_OR_LATINO'
 
 # suffix = None
 # group_name = 'marital_status'
