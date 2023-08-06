@@ -147,7 +147,7 @@ def gen_features_labels(df, label_code):
     return source_features, source_labels, target_features, target_labels
 
 
-def gen_features_duration(df):
+def gen_features_duration(df, group_name, group_1, group_2):
     """ 
     Generate source features, source durations (continuous response), \
         target features and target durations (continuous response) from dataframe df
@@ -157,8 +157,8 @@ def gen_features_duration(df):
 
     unique_code_dict, num_codes = find_unique_code(df)
 
-    source_df = df.loc[df['gender'] == 'M']
-    target_df = df.loc[df['gender'] == 'F']
+    source_df = df.loc[df[group_name] == group_1]
+    target_df = df.loc[df[group_name] == group_2]
 
     # Prepare source
     source_features = np.empty(shape=[source_df.shape[0], num_codes])
@@ -485,7 +485,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     
     selected_df = select_df_cts(full_df, group_name, group_1, group_2, group_1_count=group_1_count, group_2_count=group_2_count)
 
-    source_features, source_labels, target_features, target_labels = gen_features_duration(selected_df)
+    source_features, source_labels, target_features, target_labels = gen_features_duration(selected_df, group_name, group_1, group_2)
 
     source_reps = None
     target_reps = None
@@ -509,14 +509,14 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     if equity and trans_metric == 'OT':
         # compute transported target without using the model, used for studying the bias 
         trans_target_mappings = np.matmul(coupling, source_labels)
-        np.save("tmp.txt", trans_target_mappings)
+        trans_target_mappings = np.multiply(trans_target_mappings, group_2_count)
         target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_equity.csv")
         if suffix is not None:
             target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{suffix}_equity.csv")
         target_equity_df = pd.read_csv(target_equity_path, header=0, index_col=None)
         target_diffs = np.divide(trans_target_mappings - target_labels, target_labels)
 
-        target_data_block = np.transpose(np.array([target_labels, target_preds, target_diffs]))
+        target_data_block = np.transpose(np.array([target_labels, trans_target_mappings, target_diffs]))
         target_new_df = pd.DataFrame(target_data_block, columns=target_equity_df.columns)
         target_equity_df = pd.concat([target_equity_df, target_new_df], ignore_index=True)
         target_equity_df.to_csv(target_equity_path, index=False, header=True)
