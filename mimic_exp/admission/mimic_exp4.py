@@ -67,15 +67,15 @@ n_components = 50
 # group_1 = 'M'
 # group_2 = 'F'
 
-suffix = None
-group_name = 'ethnicity'
-group_1 = 'WHITE'
-group_2 = 'HISPANIC_OR_LATINO'
-
 # suffix = None
-# group_name = 'marital_status'
-# group_1 =  'MARRIED'
-# group_2 = 'SINGLE'
+# group_name = 'ethnicity'
+# group_1 = 'WHITE'
+# group_2 = 'HISPANIC_OR_LATINO'
+
+suffix = None
+group_name = 'marital_status'
+group_1 =  'SEPARATED'
+group_2 = 'MARRIED'
 
 # suffix = None
 # group_name = 'marital_status'
