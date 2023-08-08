@@ -1,5 +1,6 @@
 import sys
 sys.path.append("/home/wanxinli/EHR-OT/")
+sys.path.append("/home/wanxinli/unbalanced_gromov_wasserstein/")
 
 from datetime import datetime
 import copy
@@ -18,29 +19,15 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score, \
     mutual_info_score, normalized_mutual_info_score
 from scipy.stats import entropy
 from TCA import *
+import torch
+
+from unbalancedgw.vanilla_ugw_solver import exp_ugw_sinkhorn
+from unbalancedgw._vanilla_utils import ugw_cost
+from unbalancedgw.utils import generate_measure
 
 mimic_output_dir = "/home/wanxinli/EHR-OT/outputs/mimic"
 mimic_data_dir = "/home/wanxinli/EHR-OT/mimic_exp/mimiciii"
 
-# def update_codes(df):
-#     """ 
-#     Update code in dataframe, the new code starts from 0.
-#     We use -1 to denote NA code in later analysis
-
-#     returns
-#         - a new dataframe with the updated codes
-#         - total number of unique codes in df
-#     """
-#     new_code_dict = {} # mapping from old code to new code
-#     for index, row in df.iterrows():
-#         cur_codes = row['ICD codes']
-#         new_codes = []
-#         for code in cur_codes:
-#             if code not in new_code_dict:
-#                 new_code_dict[code] = len(new_code_dict) # add a new entry
-#             new_codes.append(new_code_dict[code])
-#         # df.at[index, 'ICD codes'] = new_codes
-#     return df, len(new_code_dict)
 
 def find_unique_code(df):
     """ 
@@ -54,56 +41,6 @@ def find_unique_code(df):
         unique_code_dict[code] = index
     return unique_code_dict, len(unique_codes) 
     
-
-
-# def plot_code_distn(df):
-#     """ 
-#     Plot code distribution for males and females, (codes are updated)
-
-#     We expect the distributions for males and females are different
-
-#     Note: we prefer not to use the updated codes directly afterwards. 
-
-#     """
-
-#     df, _ = update_codes(df)
-#     female_1_df = df.loc[(df['label'] == 1) & (df['gender'] == 'F')]
-#     male_1_df = df.loc[(df['label'] == 1) & (df['gender'] == 'M')]
-#     female_0_df = df.loc[(df['label'] == 0) & (df['gender'] == 'F')]
-#     male_0_df = df.loc[(df['label'] == 0) & (df['gender'] == 'M')]
-#     print("female_1_df.shape is:", female_1_df.shape)
-#     print("female_0_df.shape is:", female_0_df.shape)
-#     print("male_1_df.shape is:", male_1_df.shape)
-#     print("male_0_df.shape is:", male_0_df.shape)
-#     bin_width = 1
-
-#     plt.subplot(2,2,1)
-#     female_1_codes = female_1_df['ICD codes']
-#     female_1_codes = [code for sublist in female_1_codes for code in sublist]
-#     plt.hist(female_1_codes, bins=range(min(female_1_codes), max(female_1_codes)+bin_width, bin_width))
-#     plt.title("female label 1")
-
-#     plt.subplot(2,2,2)
-#     male_1_codes = male_1_df['ICD codes']
-#     male_1_codes = [code for sublist in male_1_codes for code in sublist]
-#     plt.hist(male_1_codes, bins=range(min(male_1_codes), max(male_1_codes)+bin_width, bin_width))
-#     plt.title("male label 1")
-
-#     plt.subplot(2,2,3)
-#     female_0_codes = female_0_df['ICD codes']
-#     female_0_codes = [code for sublist in female_0_codes for code in sublist]
-#     plt.hist(female_0_codes, bins=range(min(female_0_codes), max(female_0_codes)+bin_width, bin_width))
-#     plt.title("female label 0")
-
-#     plt.subplot(2,2,4)
-#     male_0_codes = male_0_df['ICD codes']
-#     male_0_codes = [code for sublist in male_0_codes for code in sublist]
-#     plt.hist(male_0_codes, bins=range(min(male_0_codes), max(male_0_codes)+bin_width, bin_width))
-#     plt.title("male label 0")
-
-#     plt.tight_layout()
-#     plt.show()
-
 
 def gen_features_labels(df, label_code):
     """ 
@@ -495,7 +432,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     trans_target_reps = None
     coupling = None
     if trans_metric == 'OT':
-        trans_target_reps, coupling = trans_target2source(target_reps, source_reps, max_iter=10000000, ret_coupling=True)
+        trans_target_reps, coupling = trans_target2source_ugw(target_reps, source_reps)
     if trans_metric == 'MMD':
         trans_target_reps = trans_MMD(target_reps, source_reps)
     elif trans_metric == 'TCA':

@@ -5,6 +5,7 @@ Common functions for synthetic datasets
 
 import sys
 sys.path.append("/home/wanxinli/EHR-OT")
+sys.path.append("/home/wanxinli/unbalanced_gromov_wasserstein/")
 
 import numpy as np
 import matplotlib.pylab as pl
@@ -19,13 +20,14 @@ from sklearn.metrics import f1_score
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import mutual_info_score
+from scipy.spatial.distance import cdist
 from scipy.stats import wasserstein_distance
-
 from statistics import median
+import torch
+from unbalancedgw.vanilla_ugw_solver import exp_ugw_sinkhorn
+from unbalancedgw._vanilla_utils import ugw_cost
+from unbalancedgw.utils import generate_measure, dist_matrix
 
-""" 
-Transport source representations to target representations
-"""
 
 def trans_target2source(target_reps, source_reps, reg_e = 0.1, max_iter = None, ret_cost=False, ret_coupling=False):
     """ 
@@ -56,6 +58,50 @@ def trans_target2source(target_reps, source_reps, reg_e = 0.1, max_iter = None, 
         return trans_target_reps, wa_dist,
 
     return trans_target_reps, wa_dist, ot_emd.coupling_
+
+
+
+def trans_target2source_ugw(target_reps, source_reps, reg_e = 0.1, max_iter = None, ret_cost=False, ret_coupling=False):
+    """ 
+    Unbalanced Gromov Wasserstein Optimal transport (without entropy regularization) source representations \
+        to target representations
+
+    :param str type: balanced or unbalanced
+    :param bool ret_cost: return OT cost or not
+    :param bool ret_coupling: return coupling or not
+    :returns: transported source representations and the optimized Wasserstein distance (if cost is True), default False
+
+    TODO: the unbalanced case has not been implemented 
+    """
+
+    # Generate measures
+    target_measure = torch.from_numpy(np.array([1/target_reps.shape[0]] * target_reps.shape[0]))
+    print("target_measure is", target_measure)
+    source_measure = torch.from_numpy(np.array([1/source_reps.shape[0]] * source_reps.shape[0]))
+
+    # Generate metric
+    target_metric = torch.from_numpy(cdist(target_reps, target_reps, metric='euclidean'))
+    source_metric = torch.from_numpy(cdist(source_reps, source_reps, metric='euclidean'))
+
+    # Run unbalanced Gromov-Wasserstein OT
+    eps = 1.0
+    rho, rho2 = 1.0, 1.0
+    print("source_measure is:", source_measure)
+    print("target_measure is:", target_measure)
+    print("source_metric is:", source_metric)
+    print("target_metric is:", target_metric)
+    coupling = exp_ugw_sinkhorn(source_measure, source_metric, target_measure, target_metric, \
+                          init=None, eps=eps,
+                          rho=rho, rho2=rho2,
+                          nits_plan=1000, tol_plan=1e-5,
+                          nits_sinkhorn=1000, tol_sinkhorn=1e-5,
+                          two_outputs=False)
+    trans_target_reps = np.matmul(np.transpose(coupling), source_reps)
+    print("coupling shape is:", coupling.shape)
+    print("trans_target_reps shape is:", trans_target_reps.shape)
+
+    return trans_target_reps, coupling
+
 
 
 
