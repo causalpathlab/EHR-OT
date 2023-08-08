@@ -110,7 +110,6 @@ label_codes = list(set([item for sublist in label_codes for item in sublist]))
 print("number of label_codes are:", len(label_codes))
 
 
-# label_codes = label_codes[200:]
 for label_code in label_codes:
     score_path = os.path.join(output_dir, f"exp3_{label_code}_score.csv")
     if os.path.exists(score_path):
@@ -157,18 +156,19 @@ def multi_proc_parallel_default(score_path, n_components, label_code, custom_tra
     return res
 
 
-label_codes = label_codes
-print("label_codes are:", label_codes)
-trans_metric = 'MMD' # MMD using sigmoid
-for label_code in label_codes:
-    score_path = os.path.join(output_dir, f"exp3_{label_code}_{trans_metric}_score.csv")
-    print(f"score_path is: {score_path}")
-    if os.path.exists(score_path):
-        print(f"score for {label_code} has been computed")
-        continue
-    start_time = time.time()
-    print(f"label code {label_code} started")
-    multi_proc_parallel_default(score_path, n_components, label_code, custom_train_reps, \
-            male_count, female_count, 'MMD', iteration=100)
-    end_time = time.time()
-    print(f"runtime for {label_code} is: {end_time-start_time}")
+# label_codes = label_codes
+# print("label_codes are:", label_codes)
+# print("number of codes is:", len(label_codes))
+# trans_metric = 'MMD' # MMD using sigmoid
+# for label_code in label_codes:
+#     score_path = os.path.join(output_dir, f"exp3_{label_code}_{trans_metric}_score.csv")
+#     print(f"score_path is: {score_path}")
+#     if os.path.exists(score_path):
+#         print(f"score for {label_code} has been computed")
+#         continue
+#     start_time = time.time()
+#     print(f"label code {label_code} started")
+#     multi_proc_parallel_default(score_path, n_components, label_code, custom_train_reps, \
+#             male_count, female_count, 'MMD', iteration=100)
+#     end_time = time.time()
+#     print(f"runtime for {label_code} is: {end_time-start_time}")

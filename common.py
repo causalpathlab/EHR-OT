@@ -61,7 +61,7 @@ def trans_target2source(target_reps, source_reps, reg_e = 0.1, max_iter = None, 
 
 
 
-def trans_target2source_ugw(target_reps, source_reps, reg_e = 0.1, max_iter = None, ret_cost=False, ret_coupling=False):
+def trans_target2source_ugw(target_reps, source_reps):
     """ 
     Unbalanced Gromov Wasserstein Optimal transport (without entropy regularization) source representations \
         to target representations
@@ -69,7 +69,7 @@ def trans_target2source_ugw(target_reps, source_reps, reg_e = 0.1, max_iter = No
     :param str type: balanced or unbalanced
     :param bool ret_cost: return OT cost or not
     :param bool ret_coupling: return coupling or not
-    :returns: transported source representations and the optimized Wasserstein distance (if cost is True), default False
+    :returns: transported source representations, the transport plan and the optimized Wasserstein distance 
 
     """
 
@@ -84,17 +84,18 @@ def trans_target2source_ugw(target_reps, source_reps, reg_e = 0.1, max_iter = No
     # Run unbalanced Gromov-Wasserstein OT
     eps = 1.0
     rho, rho2 = 1.0, 1.0
-    coupling = exp_ugw_sinkhorn(source_measure, source_metric, target_measure, target_metric, \
+    coupling_1, coupling_2 = exp_ugw_sinkhorn(source_measure, source_metric, target_measure, target_metric, \
                           init=None, eps=eps,
                           rho=rho, rho2=rho2,
                           nits_plan=1000, tol_plan=1e-5,
                           nits_sinkhorn=1000, tol_sinkhorn=1e-5,
-                          two_outputs=False)
-    coupling = coupling.detach().cpu().numpy()
-    coupling = np.transpose(coupling)
-    trans_target_reps = np.matmul(coupling, source_reps)
+                          two_outputs=True)
+    coupling_1 = coupling_1.detach().cpu().numpy()
+    coupling_1 = np.transpose(coupling_1)
+    trans_target_reps = np.matmul(coupling_1, source_reps)
+    wa_dist = ugw_cost(coupling_1, coupling_2, source_measure, source_metric, target_measure, target_metric, eps=eps, rho=rho, rho2=rho2)
 
-    return trans_target_reps, coupling
+    return trans_target_reps, coupling_1, wa_dist
 
 
 

@@ -42,11 +42,9 @@ def find_unique_code(df):
     return unique_code_dict, len(unique_codes) 
     
 
-def gen_features_labels(df, label_code):
+def gen_features_labels(df, group_name, group_1, group_2, label_code):
     """ 
     Generate source features, source labels, target features and target labels from dataframe df
-
-    TODO: Now we assume female is the source, and male is the target.
 
     """
 
@@ -54,8 +52,8 @@ def gen_features_labels(df, label_code):
     # print("number of unique code is:", num_codes)
     # print("label code in unique_code_dict is:", unique_code_dict[label_code])
 
-    source_df = df.loc[df['gender'] == 'M']
-    target_df = df.loc[df['gender'] == 'F']
+    source_df = df.loc[df[group_name] == group_1]
+    target_df = df.loc[df[group_name] == group_2]
 
     # Prepare source
     source_features = np.empty(shape=[source_df.shape[0], num_codes])
@@ -164,7 +162,7 @@ def select_df_cts(df, group_name, group_1, group_2, group_1_count, group_2_count
     return df_copy
 
 
-def select_df_binary(df, group_name, group_1, group_2, label_code, male_count, female_count):
+def select_df_binary(df, group_name, group_1, group_2, group_1_count, group_2_count, label_code):
     """ 
     Select row in the dataframe df with balanced number of labels for males and females
     Specifically, we want to reduce the number of rows with label 0 for males and females
@@ -173,9 +171,10 @@ def select_df_binary(df, group_name, group_1, group_2, label_code, male_count, f
     :param str group_name: the criteria for dividing groups, e.g., "gender", "adm_type"
     :param str group_1: group 1 label for group_name
     :param str group_2: group 2 label for group_name
+    :param int group_1_count: the number of samples with label 1s and label 0s for target (male). 
+    :param int group_2_count: the number of samples with label 1s and label 0s for source (female). 
     :param str label_code: the ICD code for determining labels. This code should be removed from ICD codes.
-    :param int target_count: the number of samples with label 1s and label 0s for target (male). 
-    :param int source_count: the number of samples with label 1s and label 0s for source (female). 
+
 
     :returns:
         - the selected dataframe
@@ -217,11 +216,11 @@ def select_df_binary(df, group_name, group_1, group_2, label_code, male_count, f
     
     # indices to delete from the dataframe
     # sample the same number of label 0s and label 1s
-    delete_female_0_indices = random.sample(female_0_indices, len(female_0_indices)-female_count)
-    delete_male_0_indices = random.sample(male_0_indices, len(male_0_indices)-male_count)
+    delete_female_0_indices = random.sample(female_0_indices, len(female_0_indices)-group_2_count)
+    delete_male_0_indices = random.sample(male_0_indices, len(male_0_indices)-group_1_count)
     
-    delete_female_1_indices = random.sample(female_1_indices, len(female_1_indices)-female_count)
-    delete_male_1_indices = random.sample(male_1_indices, len(male_1_indices)-male_count)
+    delete_female_1_indices = random.sample(female_1_indices, len(female_1_indices)-group_2_count)
+    delete_male_1_indices = random.sample(male_1_indices, len(male_1_indices)-group_1_count)
 
     delete_female_0_indices.extend(delete_male_0_indices)
     delete_female_0_indices.extend(delete_female_1_indices)
@@ -263,7 +262,7 @@ def compute_transfer_score(source_reps, source_labels, target_reps, target_label
 
 
 def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, full_df, custom_train_reps, model_func, trans_metric, \
-                       male_count = 120, female_count = 100, pca_explain=False, transfer_score=False, max_iter = None):
+                       group_1_count = 120, group_2_count = 100, pca_explain=False):
     """
     Wrap up the entire procedure
 
@@ -276,19 +275,18 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     :param function custom_train_reps: the customized function for learning representations
     :param function model_func: the function to model the relationship between target reps and target labels
     :param str trans_metric: transporting metric, NN, TCA, MMD or OT
-    :param int male_count: the number of samples with label 1s and label 0s for target (male)
-    :param int female_count: the number of samples with label 1s and label 0s for source (female)
+    :param int group_1_count: the number of samples with label 1s and label 0s for target (male)
+    :param int group_2_count: the number of samples with label 1s and label 0s for source (female)
     :param bool pca_explain: print the variance explained by the PCA, if True. Default False
-    :param bool transfer_score: whether to compute transferability score. Default False. Returns the scores if True.
-    :param int max_iter: maximum number of iteration for OT
+
 
     :returns accuracy statistics and optimized Wasserstein distance
     """
     
     selected_df = select_df_binary(full_df, group_name, group_1, group_2, \
-                label_code, male_count, female_count)
+                group_1_count, group_2_count, label_code)
 
-    source_features, source_labels, target_features, target_labels = gen_features_labels(selected_df, label_code)
+    source_features, source_labels, target_features, target_labels = gen_features_labels(selected_df, group_name, group_1, group_2, label_code)
 
     source_reps = None
     target_reps = None
@@ -296,9 +294,11 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
         source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
 
     wa_dist = None
+    coupling = None 
 
     if trans_metric == 'OT':
-        trans_target_reps, wa_dist = trans_target2source(target_reps, source_reps, ret_cost=True, max_iter=max_iter)
+         # coupling will be useful if we want to study equity
+        trans_target_reps, coupling, wa_dist = trans_target2source_ugw(target_reps, source_reps)
     elif trans_metric == 'MMD':
         trans_target_reps = trans_MMD(target_reps, source_reps)
     elif trans_metric == 'TCA':
@@ -325,80 +325,13 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     trans_target_recall = recall_score(target_labels, trans_target_preds)
     trans_target_f1 = f1_score(target_labels, trans_target_preds)
         
-    if trans_metric == 'OT' and transfer_score:
-        transfer_score = compute_transfer_score(source_reps, source_labels, target_reps, target_labels, model_func)
-        return source_accuracy, source_precision, source_recall, source_f1, \
-            target_accuracy, target_precision, target_recall, target_f1, \
-            trans_target_accuracy, trans_target_precision, trans_target_recall, trans_target_f1,\
-            transfer_score, wa_dist
+    transfer_score = compute_transfer_score(source_reps, source_labels, target_reps, target_labels, model_func)
 
     return source_accuracy, source_precision, source_recall, source_f1, \
         target_accuracy, target_precision, target_recall, target_f1, \
-        trans_target_accuracy, trans_target_precision, trans_target_recall, trans_target_f1
+        trans_target_accuracy, trans_target_precision, trans_target_recall, trans_target_f1,\
+        transfer_score, wa_dist
 
-
-def entire_proc_nn(n_components, group_name, group_1, group_2, label_code, full_df, custom_train_reps, type, model_func=linear_model.LogisticRegression, \
-                       male_count = 120, female_count = 100, pca_explain=False, max_iter = None):
-    """
-    Wrap up the entire procedure using nearest neighbors
-
-    :param int n_components: the number of components for PCA learning
-    :param str group_name: group name to divide groups
-    :param str group_1: group 1 name, the target in transfer learning (e.g. female)
-    :param str group_2: group 2 name, the source in transfer learning (e.g. male)
-    :param str label_code: the ICD code to determine labels
-    :param dataframe full_df: the full dataframe
-    :param function custom_train_reps: the customized function for learning representations
-    :param str type: the task type, either classification or regression
-    :param function model_func: the function to model the relationship between target reps and target labels
-    :param int male_count: the number of samples with label 1s and label 0s for target (male)
-    :param int female_count: the number of samples with label 1s and label 0s for source (female)
-    :param bool pca_explain: print the variance explained by the PCA, if True. Default False
-    :param bool transfer_score: whether to compute transferability score. Default False. Returns the scores if True.
-    :param int max_iter: maximum number of iteration for OT
-
-    :returns accuracy statistics and optimized Wasserstein distance
-    """
-    
-    selected_df = select_df_binary(full_df, group_name, group_1, group_2, \
-                label_code, male_count, female_count)
-
-    source_features, source_labels, target_features, target_labels = gen_features_labels(selected_df, label_code)
-
-    source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
-
-    source_model = train_model(source_reps, source_labels, model_func)
-    source_preds = source_model.predict(source_reps)
-    target_preds = source_model.predict(target_reps)
-    trans_target_reps = trans_NN(target_reps, source_reps, ret_cost=True, max_iter=max_iter)
-    trans_target_preds = None
-    if type == 'regression':
-        trans_target_preds = source_model.predict(trans_target_reps)
-    elif type == 'classification':
-        for trans_target_rep in trans_target_reps:
-            trans_target_preds_one_sample = source_model.predict(trans_target_rep7)
-
-
-    # Compute accuracies
-    source_accuracy = accuracy_score(source_labels, source_preds)
-    source_precision = precision_score(source_labels, source_preds)
-    source_recall = recall_score(source_labels, source_preds)
-    source_f1 = f1_score(source_labels, source_preds)
-
-    target_accuracy = accuracy_score(target_labels, target_preds)
-    target_precision = precision_score(target_labels, target_preds)
-    target_recall = recall_score(target_labels, target_preds)
-    target_f1 = f1_score(target_labels, target_preds)
-
-    trans_target_accuracy = accuracy_score(target_labels, trans_target_preds)
-    trans_target_precision = precision_score(target_labels, trans_target_preds)
-    trans_target_recall = recall_score(target_labels, trans_target_preds)
-    trans_target_f1 = f1_score(target_labels, trans_target_preds)
-        
-
-    return source_accuracy, source_precision, source_recall, source_f1, \
-        target_accuracy, target_precision, target_recall, target_f1, \
-        trans_target_accuracy, trans_target_precision, trans_target_recall, trans_target_f1
 
 
 def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, \
@@ -432,7 +365,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     trans_target_reps = None
     coupling = None
     if trans_metric == 'OT':
-        trans_target_reps, coupling = trans_target2source_ugw(target_reps, source_reps)
+        trans_target_reps, coupling, _ = trans_target2source_ugw(target_reps, source_reps)
     if trans_metric == 'MMD':
         trans_target_reps = trans_MMD(target_reps, source_reps)
     elif trans_metric == 'TCA':
@@ -503,50 +436,6 @@ def multi_proc_binary(score_path, n_components, label_code, full_df, custom_trai
     return res
 
 
-
-def entire_proc_binary_tca(n_components, group_name, group_1, group_2, label_code, full_df, custom_train_reps, model_func=linear_model.LogisticRegression, \
-                       male_count = 120, female_count = 100):
-    """ 
-    Run the entire procedure on unordered response using TCA
-
-    :param DataFrame df: the complete dataframe to select males and females from
-    """
-    selected_df = select_df_binary(full_df, group_name, group_1, group_2, \
-                label_code, male_count, female_count)
-    
-    source_features, source_labels, target_features, target_labels = gen_features_labels(selected_df, label_code)
-    # source_embs, target_embs = custom_train_reps(source_features, target_features, n_components)
-    trans_source_embs, target_embs, trans_target_embs = TCA(source_features, target_features, n_components=n_components, scale=False)
-    clf = model_func()
-    clf.fit(trans_source_embs, source_labels)
-    trans_target_preds = clf.predict(trans_target_embs)
-    target_preds = clf.predict(target_embs)
-    trans_source_preds = clf.predict(trans_source_embs)
-
-    # Compute accuracies
-    source_accuracy = accuracy_score(source_labels, trans_source_preds)
-    source_precision = precision_score(source_labels, trans_source_preds)
-    source_recall = recall_score(source_labels, trans_source_preds)
-    source_f1 = f1_score(source_labels, trans_source_preds)
-
-    target_accuracy = accuracy_score(target_labels, target_preds)
-    target_precision = precision_score(target_labels, target_preds)
-    target_recall = recall_score(target_labels, target_preds)
-    target_f1 = f1_score(target_labels, target_preds)
-
-    trans_target_accuracy = accuracy_score(target_labels, trans_target_preds)
-    trans_target_precision = precision_score(target_labels, trans_target_preds)
-    trans_target_recall = recall_score(target_labels, trans_target_preds)
-    trans_target_f1 = f1_score(target_labels, trans_target_preds)
-
-    # print("report f1:", target_f1, trans_target_f1)
-
-    return source_accuracy, source_precision, source_recall, source_f1, \
-        target_accuracy, target_precision, target_recall, target_f1, \
-        trans_target_accuracy, trans_target_precision, trans_target_recall, trans_target_f1
-
-
-
 def multi_proc_cts(n_components, full_df, custom_train_reps, \
                group_name, group_1, group_2, group_1_count, group_2_count, \
                 trans_metric, model_func = linear_model.LinearRegression, iteration=20, equity=False, suffix=None):
@@ -614,59 +503,6 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
 
     return source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
         trans_target_maes, trans_target_mses, trans_target_rmses
-
-
-def multi_proc_binary_tca(n_components, full_df, custom_train_reps, \
-               male_count, female_count, model_func = linear_model.LinearRegression, iteration=20):
-    """ 
-    Run the entire_proc function multiple times (iteration) for continuous responses
-
-    :param str score_path: the path to save results
-    :param str label_code: the ICD code to determine labels
-    :param dataframe full_df: the full dataframe
-    :param function custom_train_reps: the customized function for learning representations
-    :param int n_components: the number of components in PCA to learn representations
-    :param int male_count: the number of samples with label 1s and label 0s for target (male)
-    :param int female_count: the number of samples with label 1s and label 0s for source (female)
-    :param int iteration: the number of iterations (repetitions)
-    """
-    random.seed(0)
-    source_accuracies = []
-    source_precisions = []
-    source_recalls = [] 
-    source_f1s = []
-    target_accuracies = []
-    target_precisions = []
-    target_recalls = [] 
-    target_f1s = []
-    trans_target_accuracies = []
-    trans_target_precisions = []
-    trans_target_recalls = [] 
-    trans_target_f1s = []
-    for i in range(iteration):
-        print("iteration:", i)
-
-        source_accuracy, source_precision, source_recall, source_f1, \
-        target_accuracy, target_precision, target_recall, target_f1, \
-        trans_target_accuracy, trans_target_precision, trans_target_recall, trans_target_f1 \
-            = entire_proc_binary_tca(n_components, full_df, custom_train_reps, model_func, male_count=male_count, female_count=female_count)
-        
-        source_accuracies.append(source_accuracy)
-        source_precisions.append(source_precision)
-        source_recalls.append(source_recall)
-        source_f1s.append(source_f1)
-        target_accuracies.append(target_accuracy)
-        target_precisions.append(target_precision)
-        target_recalls.append(target_recall)
-        target_f1s.append(target_f1)
-        trans_target_accuracies.append(trans_target_accuracy)
-        trans_target_precisions.append(trans_target_precision)
-        trans_target_recalls.append(trans_target_recall)
-        trans_target_f1s.append(trans_target_f1)
-
-    return source_accuracies, source_precisions, source_recalls, source_f1s, \
-        target_accuracies, target_precisions, target_recalls, target_f1s, \
-        trans_target_accuracies, trans_target_precisions, trans_target_recalls, trans_target_f1s
 
 
 def build_maps(admission_file, diagnosis_file, patient_file):
