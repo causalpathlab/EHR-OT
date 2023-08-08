@@ -62,8 +62,8 @@ def custom_train_reps(source_features, target_features, n_components, pca_explai
     return source_reps, target_reps
 
 
-def multi_proc_parallel(score_path, n_components, label_code, custom_train_reps, \
-        male_count, female_count, iteration=20, max_iter = None):
+def multi_proc_parallel(score_path, n_components, group_name, group_1, group_2, label_code, custom_train_reps, trans_metric, \
+        group_1_count, group_2_count, iteration=20, max_iter = None):
     """ 
     Code cannot be parallized when passing the dataframe (full_df) as a parameter
     Hence, cannot be put into mimic_common.py
@@ -81,9 +81,8 @@ def multi_proc_parallel(score_path, n_components, label_code, custom_train_reps,
         :param int iter: the current iteration
         """
         print(f"iteration: {iter}\n")
-        cur_res = entire_proc_binary(n_components, "gender", 'M', 'F', label_code, admid_diagnosis_df, custom_train_reps, \
-                                     male_count = male_count, female_count = female_count, transfer_score=True, max_iter=max_iter)
-
+        cur_res = entire_proc_binary(n_components, group_name, group_1, group_2, label_code, admid_diagnosis_df, custom_train_reps,  \
+                                     trans_metric, model_func=linear_model.LogisticRegression, group_1_count = group_1_count, group_2_count = group_2_count)
         
         return cur_res
 
@@ -95,19 +94,17 @@ def multi_proc_parallel(score_path, n_components, label_code, custom_train_reps,
     res_df.to_csv(score_path, index=False, header=True)
     return res
 
-""" 
-Run the entire proc for all response (i.e., label_code) 
-Responses are selected by select_codes.ipynb and saved in ../../outputs/mimic/selected_summary_mimic.csv
-"""
+
 
 n_components = 50
-male_count = 120
-female_count = 100
+group_1_count = 120
+group_2_count = 100
 label_code_path = os.path.join(output_dir, "ADMID_DIAGNOSIS_selected.csv")
 label_code_df = pd.read_csv(label_code_path, header=0, index_col=0, converters={'ICD codes': literal_eval})
 label_codes = list(label_code_df['ICD codes'])
 label_codes = list(set([item for sublist in label_codes for item in sublist]))
 print("number of label_codes are:", len(label_codes))
+label_codes = label_codes[:1]
 
 
 for label_code in label_codes:
@@ -118,42 +115,42 @@ for label_code in label_codes:
     start_time = time.time()
     print(f"label code {label_code} started")
     multi_proc_parallel(score_path, n_components, label_code, custom_train_reps, \
-            male_count, female_count, iteration=10)
+            group_1_count, group_2_count, iteration=10)
     end_time = time.time()
     print(f"runtime for {label_code} is: {end_time-start_time}")
 
 
 
-def multi_proc_parallel_default(score_path, n_components, label_code, custom_train_reps, \
-        male_count, female_count, trans_metric, iteration=20):
-    """ 
-    Code cannot be parallized when passing the dataframe (full_df) as a parameter
-    Hence, cannot be put into mimic_common.py
+# def multi_proc_parallel_default(score_path, n_components, label_code, custom_train_reps, \
+#         male_count, female_count, trans_metric, iteration=20):
+#     """ 
+#     Code cannot be parallized when passing the dataframe (full_df) as a parameter
+#     Hence, cannot be put into mimic_common.py
 
-    :param str trans_metric: transporting metric
-    """
+#     :param str trans_metric: transporting metric
+#     """
     
-    p = Pool(10)
+#     p = Pool(10)
 
-    def iteration_wrapper(iter):
-        """ 
-        Wrapper function for one iteration, returns result statistics, for parallel computing
+#     def iteration_wrapper(iter):
+#         """ 
+#         Wrapper function for one iteration, returns result statistics, for parallel computing
 
-        :param int iter: the current iteration
-        """
-        print(f"iteration: {iter}\n")
-        cur_res = entire_proc_binary(n_components, "gender", 'M', 'F', label_code, \
-                    admid_diagnosis_df, custom_train_reps, model_func=linear_model.LogisticRegression, \
-                    trans_metric=trans_metric, male_count = male_count, female_count = female_count)
+#         :param int iter: the current iteration
+#         """
+#         print(f"iteration: {iter}\n")
+#         cur_res = entire_proc_binary(n_components, "gender", 'M', 'F', label_code, \
+#                     admid_diagnosis_df, custom_train_reps, model_func=linear_model.LogisticRegression, \
+#                     trans_metric=trans_metric, male_count = male_count, female_count = female_count)
         
-        return cur_res
+#         return cur_res
 
-    res = p.map(iteration_wrapper, np.arange(0, iteration, 1))
-    res_df = pd.DataFrame(res, columns = ['source_accuracy', 'source_precision', 'source_recall', 'source_f1', \
-                                          'target_accuracy', 'target_precision', 'target_recall', 'target_f1', \
-                                            'trans_target_accuracy', 'trans_target_precision', 'trans_target_recall', 'trans_target_f1'])
-    res_df.to_csv(score_path, index=False, header=True)
-    return res
+#     res = p.map(iteration_wrapper, np.arange(0, iteration, 1))
+#     res_df = pd.DataFrame(res, columns = ['source_accuracy', 'source_precision', 'source_recall', 'source_f1', \
+#                                           'target_accuracy', 'target_precision', 'target_recall', 'target_f1', \
+#                                             'trans_target_accuracy', 'trans_target_precision', 'trans_target_recall', 'trans_target_f1'])
+#     res_df.to_csv(score_path, index=False, header=True)
+#     return res
 
 
 # label_codes = label_codes

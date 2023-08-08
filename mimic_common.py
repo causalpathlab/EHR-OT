@@ -261,8 +261,8 @@ def compute_transfer_score(source_reps, source_labels, target_reps, target_label
 
 
 
-def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, full_df, custom_train_reps, model_func, trans_metric, \
-                       group_1_count = 120, group_2_count = 100, pca_explain=False):
+def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, full_df, custom_train_reps, trans_metric, \
+                       model_func = linear_model.LogisticRegression, group_1_count = 120, group_2_count = 100, pca_explain=False):
     """
     Wrap up the entire procedure
 
