@@ -71,12 +71,10 @@ def trans_target2source_ugw(target_reps, source_reps, reg_e = 0.1, max_iter = No
     :param bool ret_coupling: return coupling or not
     :returns: transported source representations and the optimized Wasserstein distance (if cost is True), default False
 
-    TODO: the unbalanced case has not been implemented 
     """
 
     # Generate measures
     target_measure = torch.from_numpy(np.array([1/target_reps.shape[0]] * target_reps.shape[0]))
-    print("target_measure is", target_measure)
     source_measure = torch.from_numpy(np.array([1/source_reps.shape[0]] * source_reps.shape[0]))
 
     # Generate metric
@@ -86,19 +84,15 @@ def trans_target2source_ugw(target_reps, source_reps, reg_e = 0.1, max_iter = No
     # Run unbalanced Gromov-Wasserstein OT
     eps = 1.0
     rho, rho2 = 1.0, 1.0
-    print("source_measure is:", source_measure)
-    print("target_measure is:", target_measure)
-    print("source_metric is:", source_metric)
-    print("target_metric is:", target_metric)
     coupling = exp_ugw_sinkhorn(source_measure, source_metric, target_measure, target_metric, \
                           init=None, eps=eps,
                           rho=rho, rho2=rho2,
                           nits_plan=1000, tol_plan=1e-5,
                           nits_sinkhorn=1000, tol_sinkhorn=1e-5,
                           two_outputs=False)
-    trans_target_reps = np.matmul(np.transpose(coupling), source_reps)
-    print("coupling shape is:", coupling.shape)
-    print("trans_target_reps shape is:", trans_target_reps.shape)
+    coupling = coupling.detach().cpu().numpy()
+    coupling = np.transpose(coupling)
+    trans_target_reps = np.matmul(coupling, source_reps)
 
     return trans_target_reps, coupling
 
@@ -191,30 +185,6 @@ def cal_stats_cts(source_reps, source_labels, target_reps, target_labels, \
         trans_target_mae, trans_target_mse, trans_target_rmse
 
 
-# def cal_stats_emb_ordered(target_clf, aug_target_clf, test_reps, test_labels):
-#     """ 
-#     Calculates the accuracy statistics for embedding-based simulation with ordered reponse
-
-#     :param function target_clf: the target function trained by target data
-#     :param function aug_target_clf: the target function target by target data and (augmented) transported source data
-#     :param list[float] test_reps: the 1D test data representations
-#     :param list[float] test_labels: test labels
-
-#     returns
-#         - MAE, MSE, RMSE of target model/augmented target model
-#     """
-#     target_pred_labels = target_clf.predict(test_reps)
-#     target_mae = metrics.mean_absolute_error(test_labels, target_pred_labels)
-#     target_mse = metrics.mean_squared_error(test_labels, target_pred_labels)
-#     target_rmse = np.sqrt(metrics.mean_squared_error(test_labels, target_pred_labels))
-    
-#     aug_target_pred_labels = aug_target_clf.predict(test_reps)
-#     aug_target_mae = metrics.mean_absolute_error(test_labels, aug_target_pred_labels)
-#     aug_target_mse = metrics.mean_squared_error(test_labels, aug_target_pred_labels)
-#     aug_target_rmse = np.sqrt(metrics.mean_squared_error(test_labels, aug_target_pred_labels))
-
-#     return target_mae, target_mse, target_rmse, aug_target_mae, aug_target_mse, aug_target_rmse
-
 
 def train_model(reps, labels, model_func):
     """ 
@@ -223,19 +193,6 @@ def train_model(reps, labels, model_func):
     clf = model_func()
     clf.fit(reps, labels)
     return clf
-
-
-# def compute_transfer_score(trans_source_reps, source_labels, model_func, target_model):
-#     """ 
-#     deprecated 
-#     Computes the transfer score
-
-#     :param function model_func: the function to model the relationship between transported source reps and source labels
-#     :param function target_model: the model trained by target representations and target labels
-#     """
-#     trans_source_model = train_model(trans_source_reps, source_labels, model_func)
-#     transfer_score = mutual_info_score(target_model.coef_, trans_source_model.coef_)
-#     return transfer_score
 
 
 
@@ -319,26 +276,6 @@ def train_model(reps, labels, model_func = linear_model.LinearRegression):
     clf = model_func()
     clf.fit(reps, labels)
     return clf
-
-
-# def entire_proc_emb_ordered(sim_func, custom_train_reps, max_iter):
-#     """ 
-#     Run the entire procedure for embedding simulated and ordered response
-#     """
-
-
-#     target_features, target_labels, test_features, test_labels, source_features, source_labels = sim_func()
-#     target_reps, source_reps, test_reps = custom_train_reps(target_features, source_features, test_features)
-#     trans_source_reps = trans_target2source(source_reps, target_reps, max_iter=max_iter)
-
-#     target_clf = train_model(target_reps, target_labels)
-#     aug_target_clf = \
-#         train_model(np.append(target_reps, trans_source_reps, axis = 0), np.append(target_labels, source_labels, axis=0))
-
-#     target_mae, target_mse, target_rmse, aug_target_mae, aug_target_mse, aug_target_rmse = \
-#         cal_stats_emb_ordered(target_clf, aug_target_clf, test_reps, test_labels)
-
-#     return target_mae, target_mse, target_rmse, aug_target_mae, aug_target_mse, aug_target_rmse
 
 
 """ 
@@ -503,42 +440,6 @@ def run_proc_multi_cts(sim_func, custom_train_reps, model_func, reg_e = 1e-1, ma
     return source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
         trans_target_maes, trans_target_mses, trans_target_rmses
 
-# def run_proc_multi_emb_ordered(sim_func, custom_train_reps, max_iter, n_times = 100):
-#     """ 
-#     Run the entire procedure (entire_proc) multiple times (default 100 times), \
-#         for embedding-based ordered response
-
-#     :returns: vectors of accuracy statistics of multiple rounds
-#     """
-
-#     target_maes = []
-#     target_mses = [] 
-#     target_rmses = [] 
-#     aug_target_maes = []
-#     aug_target_mses = [] 
-#     aug_target_rmses = [] 
-
-#     for _ in range(n_times):
-#         # init accuracies
-#         target_mae = None
-#         target_mse = None
-#         target_rmse = None 
-#         aug_target_mae = None
-#         aug_target_mse = None
-#         aug_target_rmse = None 
-
-#         target_mae, target_mse, target_rmse, aug_target_mae, aug_target_mse, aug_target_rmse = \
-#             entire_proc_emb_ordered(sim_func, custom_train_reps, max_iter)
-
-#         target_maes.append(target_mae)
-#         target_mses.append(target_mse)
-#         target_rmses.append(target_rmse)
-#         aug_target_maes.append(aug_target_mae)
-#         aug_target_mses.append(aug_target_mse)
-#         aug_target_rmses.append(aug_target_rmse)
-     
-#     return target_maes, target_mses, target_rmses,  aug_target_maes, aug_target_mses, aug_target_rmses
-
 
 """ 
 Constructs a dataframe to demonstrate the accuracy statistics for binary labels
@@ -592,28 +493,6 @@ def save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target
 
     # save
     score_df.to_csv(file_path, index=None, header=True)
-
-
-# """ 
-# Constructs a dataframe to demonstrate the accuracy statistics for embedding-based ordered response
-# """
-
-# def save_scores_emb_ordered(target_maes, target_mses, target_rmses,  aug_target_maes, aug_target_mses, aug_target_rmses, file_path):
-#     """ 
-#     Save accuracy statistics to file path
-#     """
-#     # construct dataframe
-#     score_df = pd.DataFrame()
-#     score_df['target_mae'] = target_maes
-#     score_df['target_mse'] = target_mses
-#     score_df['target_rmse'] = target_rmses
-#     score_df['aug_target_mae'] = aug_target_maes
-#     score_df['aug_target_mse'] = aug_target_mses
-#     score_df['aug_target_rmse'] = aug_target_rmses
-
-#     # save
-#     score_df.to_csv(file_path, index=None, header=True)
-
 
 
 """ 
@@ -826,356 +705,6 @@ def box_plot_cts_short(score_path, save_path=None):
     plt.show()
     
     return median(trans_target_target_mae), median(trans_target_target_rmse)
-
-
-# """ 
-# Histogram plot of simulation result statistics for continuous labels
-# """
-# def hist_plot_cts(score_path):
-#     """ 
-#     histogram plot of the scores in score dataframe stored in score_path for binary labels. \
-#         Specifically, we plot the box plots of 
-#         - mae/mse/rmse of source over mae/mse/rmse of target
-#         - mae/mse/rmse of transported source over mae/mse/rmse of target
-#         - mae/mse/rmse of transported source over mae/mse/rmse of source
-
-#     :param str score_path: the path to scores.csv
-#     """
-
-#     scores_df = pd.read_csv(score_path, index_col=None, header=0)
-
-#     target_mae = scores_df['target_mae']
-#     target_rmse = scores_df['target_rmse']
-
-#     trans_target_mae = scores_df['trans_target_mae']
-#     trans_target_rmse = scores_df['trans_target_rmse']
-
-#     fig = plt.figure(figsize=(16,10))
-#     flierprops={'marker': 'o', 'markersize': 4, 'markerfacecolor': 'fuchsia'}
-
-
-
-#     # transported target to target mae
-#     trans_target_target_mae = [i / j for i, j in zip(trans_target_mae, target_mae)]
-
-#     # transported target to target rmse
-#     trans_target_target_rmse = [i / j for i, j in zip(trans_target_rmse, target_rmse)]
-
-
-#     bin_width = 0.01
-#     plt.subplot(1, 2, 1)
-#     plt.hist(trans_source_source_mae, \
-#         bins=np.arange(min(trans_source_source_mae), max(trans_source_source_mae) + bin_width, bin_width))
-#     plt.title("trans source to source accuracy ratio histogram")
-
-    
-#     plt.subplot(1, 2, 2)
-#     plt.hist(trans_source_source_rmse , \
-#         bins=np.arange(min(trans_source_source_rmse), max(trans_source_source_rmse) + bin_width, bin_width))
-#     plt.title("trans source to source rmse ratio histogram")
-
-#     print("average trans source to source mae is {:.1%}".format(np.mean(trans_source_source_mae)))
-#     print("median trans source to source mae is {:.1%}".format(np.median(trans_source_source_mae)))
-#     print("average trans source to source rmse is {:.1%}".format(np.mean(trans_source_source_rmse)))
-#     print("median trans source to source rmse f1 is {:.1%}".format(np.median(trans_source_source_rmse)))
-
-#     plt.tight_layout()
-#     plt.show()
-
-
-# """ 
-# Histogram plot of simulation result statistics
-# """
-# def hist_plot(score_path, filter = True):
-#     """ 
-#     histogram plot of the scores in score dataframe stored in score_path for binary labels. \
-#         Specifically, we plot the box plots of 
-#         - precision/recall of source over accuracy/precision/recall of target
-#         - precision/recall of transported source over accuracy/precision/recall of target
-#         - precision/recall of transported source over accuracy/precision/recall of source
-
-#     :param str score_path: the path to scores.csv
-#     :param bool filter: filter out scores where source accuracy is greater than > 0.7 (small room for improvement)
-#     """
-
-#     scores_df = pd.read_csv(score_path, index_col=None, header=0)
-
-#     target_accuracy = scores_df['target_accuracy']
-#     target_f1 = scores_df['target_f1']
-
-#     source_accuracy = scores_df['source_accuracy']
-#     source_f1 = scores_df['source_f1']
-
-#     trans_source_accuracy = scores_df['trans_source_accuracy']
-#     trans_source_f1 = scores_df['trans_source_f1']
-
-#     if filter:
-#         delete_indices = []
-#         high_acc_thres = 0.7
-#         for i in range(len(source_accuracy)):
-#             if source_accuracy[i] > high_acc_thres:
-#                 delete_indices.append(i)
-#         target_accuracy = np.delete(list(target_accuracy), delete_indices)
-#         target_f1 = np.delete(list(target_f1), delete_indices)
-#         source_accuracy = np.delete(list(source_accuracy), delete_indices)
-#         source_f1 = np.delete(list(source_f1), delete_indices)
-#         trans_source_accuracy = np.delete(list(trans_source_accuracy), delete_indices)
-#         trans_source_f1 = np.delete(list(trans_source_f1), delete_indices)
-    
-
-#     trans_source_source_accuracy_incre =  [i - j for i, j in zip(trans_source_accuracy, source_accuracy)]
-#     trans_source_source_f1_incre =  [i - j for i, j in zip(trans_source_f1, source_f1)]
-
-#     print("average trans target to target accuracy increment is {:.1%}".format(np.mean(trans_source_source_accuracy_incre)))
-#     print("median trans target to target accuracy increment is {:.1%}".format(np.median(trans_source_source_accuracy_incre)))
-#     print("average trans target to target accuracy f1 is {:.1%}".format(np.mean(trans_source_source_f1_incre)))
-#     print("median trans target to target accuracy f1 is {:.1%}".format(np.median(trans_source_source_f1_incre)))
-
-#     fig = plt.figure(figsize=(16,16))
-#     flierprops={'marker': 'o', 'markersize': 4, 'markerfacecolor': 'fuchsia'}
-
-#     # source to target accuracy
-#     source_target_accuracy = [i / j for i, j in zip(source_accuracy, target_accuracy)]
-
-#     # transported source to target accuracy
-#     trans_source_target_accuracy = [i / j for i, j in zip(trans_source_accuracy, target_accuracy)]
-
-#     # transported source to source accuracy
-#     trans_source_source_accuracy = [i / j for i, j in zip(trans_source_accuracy, source_accuracy)]
-
-
-#     # source to target accuracy
-#     source_target_f1 = [i / j for i, j in zip(source_f1, target_f1)]
-
-#     # transported source to target accuracy
-#     trans_source_target_f1 = [i / j for i, j in zip(trans_source_f1, target_f1)]
-
-#     # transported source to source accuracy
-#     trans_source_source_f1 = [i / j for i, j in zip(trans_source_f1, source_f1)]
-
-#     bin_width = 0.01
-#     plt.subplot(3, 3, 1)
-#     plt.hist(trans_source_source_accuracy_incre, \
-#         bins=np.arange(min(trans_source_source_accuracy_incre), max(trans_source_source_accuracy_incre) + bin_width, bin_width))
-#     plt.title("trans target to target accuracy increment histogram")
-
-    
-#     plt.subplot(3, 3, 2)
-#     plt.hist(trans_source_source_f1_incre , \
-#         bins=np.arange(min(trans_source_source_f1_incre), max(trans_source_source_f1_incre) + bin_width, bin_width))
-#     plt.title("trans target to target f1 increment histogram")
-
-#     plt.tight_layout()
-#     plt.show()
-
-
-# def vis_emb_dim2_ordered(target_reps, target_labels, source_reps, source_labels, trans_source_reps, model):
-#     """ 
-#     Visualize the embedding space of dimension 2 of the target data, source data and transported source data \
-#         for ordered response (continuous and discrete response)
-    
-#     :param function model: the trained model
-#     """
-
-#     fig = plt.figure(figsize=(15, 15))
-#     ax = Axes3D(fig)
-#     ax.scatter(source_reps[:, 0], source_reps[:, 1], source_labels, marker='+', color='red', label="Source Samples")
-#     ax.scatter(target_reps[:, 0], target_reps[:, 1], target_labels, marker='o', color = "green", label='Target samples')
-#     x_pred = np.linspace(-0.6, 1.4, num=100)
-#     y_pred = np.linspace(-0.4, 1, num=100)
-#     z_pred = np.linspace(-0.6, 1.4, num=100)
-#     xx_pred, yy_pred, zz_pred = np.meshgrid(x_pred, y_pred, z_pred)
-#     model_viz = np.array([xx_pred.flatten(), yy_pred.flatten(), zz_pred.flatten()]).T
-#     predicted = model.predict(model_viz)
-#     ax.scatter(xx_pred.flatten(), yy_pred.flatten(), predicted, facecolor=(0,0,0,0), s=20, edgecolor='#70b3f0')
-
-#     ax.scatter(trans_source_reps[:, 0], trans_source_reps[:, 1], source_labels, marker='+', color="blue", label='Transported source samples')
-#     plt.legend()
-#     plt.show()
-
-
-# def vis_boundary(reps, labels, model):
-#     # construct colors
-#     colors = []
-#     unique_colors = list(set(labels))
-#     for label in labels:
-#         if label == unique_colors[0]:
-#             colors.append('red')
-#         else:
-#             colors.append('blue')
-    
-#     class_1_indices = [i for i,val in enumerate(colors) if val=="red"]
-#     class_2_indices = [i for i,val in enumerate(colors) if val=="blue"]
-
-#     fig = plt.figure(figsize=(15, 15))
-#     ax = Axes3D(fig)
-#     ax.scatter(reps[class_1_indices, 0], reps[class_1_indices, 1], reps[class_1_indices, 2], edgecolors="red", alpha = 0.5, s=30, facecolors='none', label="class 1")
-#     ax.scatter(reps[class_2_indices, 0], reps[class_2_indices, 1], reps[class_2_indices, 2], edgecolors="blue", alpha = 0.5, s=10, facecolors='none', label = "class 2")
-    
-#     x_pred = np.linspace(-0.6, 1.4, num=100)
-#     y_pred = np.linspace(-0.4, 1, num=100)
-#     z_pred = np.linspace(-0.6, 1.4, num=100)
-
-#     xx_pred, yy_pred, zz_pred = np.meshgrid(x_pred, y_pred, z_pred)
-#     model_viz = np.array([xx_pred.flatten(), yy_pred.flatten(), zz_pred.flatten()]).T
-#     predicted = model.predict(model_viz)
-#     ax.scatter(xx_pred.flatten(), yy_pred.flatten(), predicted, facecolor=(0,0,0,0), s=5, edgecolor='#70b3f0')
-
-#     plt.legend()
-#     plt.show()
-
-
-# def vis_emb_dim2_unordered(target_reps, target_labels, source_reps, source_labels, trans_source_reps, save_path = None):
-#     """ 
-#     Visualize the embedding space of dimension 2 of the target data, source data and transported source data \
-#         for unordered reponse (categorical response)
-    
-#         :param str save_path: path to save the figure
-#     """
-    
-#     pl.figure(1, figsize=(15, 5))
-#     pl.subplot(1, 3, 1)
-#     pl.scatter(source_reps[:, 0], source_reps[:, 1], c=source_labels, alpha = 0.5, marker='o')
-#     pl.xticks([])
-#     pl.yticks([])
-#     # pl.legend(loc=0)
-#     pl.title('(a) Target embedding', fontweight='bold', loc='left', fontsize=20)
-
-#     pl.figure(1, figsize=(15, 5))
-#     pl.subplot(1, 3, 2)
-#     pl.scatter(target_reps[:, 0], target_reps[:, 1], c=target_labels, marker='+')
-#     pl.xticks([])
-#     pl.yticks([])
-#     # pl.legend(loc=0)
-#     pl.title('(b) Source embedding', fontweight='bold', loc='left', fontsize=20)
-
-#     pl.figure(1, figsize=(15, 5))
-#     pl.subplot(1, 3, 3)
-#     pl.scatter(trans_source_reps[:, 0], trans_source_reps[:, 1],c=target_labels, alpha = 0.5, marker='o')
-#     pl.xticks([])
-#     pl.yticks([])
-#     # pl.legend(loc=0)
-#     pl.title('(c) Transported target embedding', fontweight='bold', loc='left', fontsize=20)
-#     pl.tight_layout()
-
-#     if save_path is not None:
-#         pl.savefig(save_path, bbox_inches = 'tight')
-#     pl.show()
-
-
-# def vis_emb_dim1_ordered(target_reps, target_labels, source_reps, source_labels, \
-#     trans_source_reps, test_reps, test_labels, target_model, aug_target_model, low=0, high=200):
-#     """
-#     Visualize the embedding space of dimension 1 of the target data, source data and transported source data \
-#         for ordered reponse (e.g. continuous response, discrete response),
-#         also visualize the learned functions
-#     :param function target_model: the model trained by target data only
-#     :param function aug_target_model: the model trained by target data and transported source data
-#     :param float low: the lower bound for visualizing the two functions, default 0
-#     :param float high: the upper bound for visualizing the two functions, default 200
-
-#     """
-#     plt.figure(1, figsize=(20, 5))
-
-#     plt.subplot(1, 4, 1)
-#     plt.scatter(source_reps, source_labels,  alpha = 0.5, marker='o', c='cornflowerblue')
-#     plt.title('Source embedding')
-#     plt.xlabel("embedding dim")
-#     plt.ylabel("response")
-
-#     plt.subplot(1, 4, 2)
-#     target_points = plt.scatter(target_reps, target_labels, alpha=0.5, marker='+', c='red')
-#     test_points = plt.scatter(test_reps, test_labels, alpha=0.5, marker='v', c='black')
-#     # visualize functions
-#     x = np.array([[low], [high]])
-#     target_y = target_model.predict(x)
-#     plt.plot(x, target_y, 'gold')
-#     plt.title('Target embedding')
-#     plt.xlabel("embedding dim")
-#     plt.ylabel("response")
-#     plt.legend((target_points, test_points),
-#         ('target', 'test'),
-#         scatterpoints=1,
-#         loc='lower right',
-#         ncol=3,
-#         fontsize=12)
-
-#     plt.subplot(1, 4, 3)
-#     plt.scatter(trans_source_reps, source_labels, alpha = 0.5, marker='o', c='cornflowerblue')
-#     plt.title('Transported source embedding')
-#     plt.xlabel("embedding dim")
-#     plt.ylabel("response")
-
-#     plt.subplot(1, 4, 4)
-#     trans_source_points = plt.scatter(trans_source_reps, source_labels, alpha = 0.5, marker='o', c='cornflowerblue')
-#     target_points = plt.scatter(target_reps, target_labels, alpha=0.5, marker='+', c='red')
-#     test_points = plt.scatter(test_reps, test_labels, alpha=0.5, marker='v', c='black')
-#     aug_target_y = aug_target_model.predict(x)
-#     plt.plot(x, aug_target_y, 'gold')
-#     plt.title('Target and transported source embedding')
-#     plt.legend((trans_source_points, target_points, test_points),
-#            ('trans source', 'target', 'test'),
-#            scatterpoints=1,
-#            loc='lower right',
-#            ncol=3,
-#            fontsize=9)
-#     plt.xlabel("embedding dim")
-#     plt.ylabel("response")
-#     plt.tight_layout()
-#     plt.show()
-
-
-# """ 
-# Histogram plot of simulation result statistics for embedding-based ordered labels
-# """
-# def hist_plot_ordered_emb(score_path):
-#     """ 
-#     histogram plot of the scores in score dataframe stored in score_path for ordered labels generated by embeddings. \
-#         Specifically, we plot the box plots of 
-#         - mae/mse/rmse of source over mae/mse/rmse of target
-#         - mae/mse/rmse of source over mae/mse/rmse of augmented target
- 
-
-#     :param str score_path: the path to scores.csv
-#     """
-
-#     scores_df = pd.read_csv(score_path, index_col=None, header=0)
-
-#     target_mae = scores_df['target_mae']
-#     target_rmse = scores_df['target_rmse']
-
-#     aug_target_mae = scores_df['aug_target_mae']
-#     aug_target_rmse = scores_df['aug_target_rmse']
-
-
-#     fig = plt.figure(figsize=(16,16))
-#     flierprops={'marker': 'o', 'markersize': 4, 'markerfacecolor': 'fuchsia'}
-
-#     # transported source to source mae
-#     aug_target_target_mae = [i / j for i, j in zip(aug_target_mae, target_mae)]
-
-#     # transported source to source rmse
-#     aug_target_target_rmse = [i / j for i, j in zip(aug_target_rmse, target_rmse)]
-
-#     bin_width = 0.01
-#     plt.subplot(3, 3, 1)
-#     plt.hist(aug_target_target_mae, \
-#         bins=np.arange(min(aug_target_target_mae), max(aug_target_target_mae) + bin_width, bin_width))
-#     plt.title("aug target to target mae ratio histogram")
-
-    
-#     plt.subplot(3, 3, 2)
-#     plt.hist(aug_target_target_rmse , \
-#         bins=np.arange(min(aug_target_target_rmse), max(aug_target_target_rmse) + bin_width, bin_width))
-#     plt.title("aug target to target rmse ratio histogram")
-
-#     print("average trans source to source mae is {:.1%}".format(np.mean(aug_target_target_mae)))
-#     print("median trans source to source mae is {:.1%}".format(np.median(aug_target_target_mae)))
-#     print("average trans source to source rmse is {:.1%}".format(np.mean(aug_target_target_rmse)))
-#     print("median trans source to source rmse f1 is {:.1%}".format(np.median(aug_target_target_rmse)))
-
-#     plt.tight_layout()
-#     plt.show()
 
 
 def box_plot_cts_tca_short(ot_score_path, tca_score_path, save_path=None):
