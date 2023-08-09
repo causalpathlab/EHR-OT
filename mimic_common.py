@@ -120,18 +120,52 @@ def gen_features_duration(df, group_name, group_1, group_2):
     return source_features, source_durations, target_features, target_durations
 
 
+# def select_df_cts(df, group_name, group_1, group_2, group_1_count, group_2_count):
+#     """ 
+#     Select row in the dataframe df with balanced number of labels for males and females \
+#         for binary reponse
+
+#     :param Dataframe df: the dataframe to select samples from.
+#     :param int target_count: the number of samples of males.
+#     :param int source_count: the number of samples of females.
+
+#     :returns:
+#         - the selected dataframe
+#     """
+
+#     # generate label column based on label_code
+#     df_copy = copy.deepcopy(df)
+    
+#     group_1_indices = []
+#     group_2_indices = []
+#     other_indices = []
+#     for index, row in df_copy.iterrows():
+#         if row[group_name] == group_1:
+#             group_1_indices.append(index)
+#         elif row[group_name] == group_2:
+#             group_2_indices.append(index)
+#         else:
+#             other_indices.append(index)
+
+    
+#     # indices to delete from the dataframe
+#     # sample the same number of label 0s and label 1s
+
+#     delete_group_2_indices = random.sample(group_2_indices, len(group_2_indices)-group_2_count)
+#     delete_group_1_indices = random.sample(group_1_indices, len(group_1_indices)-group_1_count)
+
+#     delete_group_2_indices.extend(delete_group_1_indices)
+#     delete_group_2_indices.extend(other_indices)
+
+#     df_copy = df_copy.drop(delete_group_2_indices, axis=0, inplace=False)
+
+#     return df_copy
+
 def select_df_cts(df, group_name, group_1, group_2, group_1_count, group_2_count):
     """ 
-    Select row in the dataframe df with balanced number of labels for males and females \
-        for binary reponse
-
-    :param Dataframe df: the dataframe to select samples from.
-    :param int target_count: the number of samples of males.
-    :param int source_count: the number of samples of females.
-
-    :returns:
-        - the selected dataframe
+    A Native way of selecting subset dataframe 
     """
+
 
     # generate label column based on label_code
     df_copy = copy.deepcopy(df)
@@ -151,8 +185,8 @@ def select_df_cts(df, group_name, group_1, group_2, group_1_count, group_2_count
     # indices to delete from the dataframe
     # sample the same number of label 0s and label 1s
 
-    delete_group_2_indices = random.sample(group_2_indices, len(group_2_indices)-group_2_count)
-    delete_group_1_indices = random.sample(group_1_indices, len(group_1_indices)-group_1_count)
+    delete_group_2_indices = group_2_indices[group_2_count:]
+    delete_group_1_indices = group_1_indices[group_1_count:]
 
     delete_group_2_indices.extend(delete_group_1_indices)
     delete_group_2_indices.extend(other_indices)
@@ -160,6 +194,7 @@ def select_df_cts(df, group_name, group_1, group_2, group_1_count, group_2_count
     df_copy = df_copy.drop(delete_group_2_indices, axis=0, inplace=False)
 
     return df_copy
+
 
 
 def select_df_binary(df, group_name, group_1, group_2, group_1_count, group_2_count, label_code):
@@ -365,7 +400,8 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     trans_target_reps = None
     coupling = None
     if trans_metric == 'OT':
-        trans_target_reps, coupling, _ = trans_target2source_ugw(target_reps, source_reps)
+        trans_target_reps, coupling, _ = trans_target2source(target_reps, source_reps)
+        np.savetxt(os.path.join(mimic_output_dir, f"exp4_coupling_{group_2}2{group_1}.txt"), coupling)
     if trans_metric == 'MMD':
         trans_target_reps = trans_MMD(target_reps, source_reps)
     elif trans_metric == 'TCA':
@@ -384,7 +420,8 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
         if suffix is not None:
             target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{suffix}_equity.csv")
         target_equity_df = pd.read_csv(target_equity_path, header=0, index_col=None)
-        target_diffs = np.divide(trans_target_mappings - target_labels, target_labels)
+        target_diffs = trans_target_mappings - target_labels
+        # target_diffs = np.divide(trans_target_mappings - target_labels, target_labels)
 
         target_data_block = np.transpose(np.array([target_labels, trans_target_mappings, target_diffs]))
         target_new_df = pd.DataFrame(target_data_block, columns=target_equity_df.columns)

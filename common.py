@@ -29,7 +29,7 @@ from unbalancedgw._vanilla_utils import ugw_cost
 from unbalancedgw.utils import generate_measure, dist_matrix
 
 
-def trans_target2source(target_reps, source_reps, reg_e = 0.1, max_iter = None, ret_cost=False, ret_coupling=False):
+def trans_target2source(target_reps, source_reps, reg_e = 0.1, max_iter = None):
     """ 
     Optimal transport (without entropy regularization) source representations \
         to target representations
@@ -43,21 +43,17 @@ def trans_target2source(target_reps, source_reps, reg_e = 0.1, max_iter = None, 
     """
     trans_target_reps = None
     # if type == "balanced":
-    ot_emd = ot.da.SinkhornTransport(reg_e=reg_e, log=True)
+    # ot_emd = ot.da.SinkhornTransport(reg_e=reg_e, log=True)
+    ot_emd = ot.da.EMDTransport(log=True)
     if max_iter is not None:
-        ot_emd = ot.da.SinkhornTransport(reg_e=reg_e, max_iter=max_iter, log=True)
+        # ot_emd = ot.da.SinkhornTransport(reg_e=reg_e, max_iter=max_iter, log=True)
+        ot_emd = ot.da.EMDTransport(max_iter=max_iter, log=True)
     ot_emd.fit(Xs=target_reps, Xt=source_reps)
     trans_target_reps = ot_emd.transform(Xs=target_reps)
-    if not ret_cost and not ret_coupling:
-        return trans_target_reps
-    if not ret_cost:
-        return trans_target_reps, ot_emd.coupling_
-    
-    wa_dist = ot_emd.log_['err'][-1]
-    if not ret_coupling:
-        return trans_target_reps, wa_dist,
+    # wa_dist = ot_emd.log_['err'][-1]
+    wa_dist = ot_emd.log_['cost']
 
-    return trans_target_reps, wa_dist, ot_emd.coupling_
+    return trans_target_reps, ot_emd.coupling_, wa_dist
 
 
 
