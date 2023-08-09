@@ -686,6 +686,14 @@ def get_label_codes():
             label_codes.append(file.split("_")[1])
     return label_codes
 
+def get_code_title(code):
+    """ 
+    Get ICD code titles for code 
+    """
+    diagnose_path = os.path.join(mimic_data_dir, "D_ICD_DIAGNOSES.csv")
+    diagnose_df = pd.read_csv(diagnose_path, header=0, index_col=0)
+    return diagnose_df.loc[code]['SHORT_TITLE']
+
 
 def compute_metric_ratio(score_df, eval_metric):
     """ 
