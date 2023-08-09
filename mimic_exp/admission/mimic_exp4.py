@@ -64,29 +64,29 @@ n_components = 50
 
 # suffix = None
 # group_name = 'gender'
-# group_1 = 'F'
-# group_2 = 'M'
-
-# suffix = None
-# group_name = 'ethnicity'
-# group_1 = 'WHITE'
-# # group_2 = 'HISPANIC_OR_LATINO'
-# group_2 = 'ASIAN'
-
-# suffix = None
-# group_name = 'marital_status'
-# group_1 =  'SEPARATED'
-# group_2 = 'MARRIED'
-
-# suffix = None
-# group_name = 'marital_status'
-# group_1 = 'SINGLE'
-# group_2 = 'MARRIED'
+# group_1 = 'M'
+# group_2 = 'F'
 
 suffix = None
-group_name = 'insurance'
-group_1 = 'Medicaid'
-group_2 = 'Self_Pay'
+group_name = 'ethnicity'
+group_1 =   'HISPANIC_OR_LATINO'
+group_2 = 'ASIAN'
+# group_2 = 'WHITE'
+
+# suffix = None
+# group_name = 'marital_status'
+# group_1 =   'MARRIED'
+# group_2 = 'SEPARATED'
+
+# suffix = None
+# group_name = 'marital_status'
+# group_1 =  'MARRIED'
+# group_2 = 'SINGLE'
+
+# suffix = None
+# group_name = 'insurance'
+# group_1 = 'Medicaid'
+# group_2 = 'Self_Pay'
 
 # Select a subset of the data (newborn)
 # admid_diagnosis_df = admid_diagnosis_df[admid_diagnosis_df['adm_type'] == 'NEWBORN']
