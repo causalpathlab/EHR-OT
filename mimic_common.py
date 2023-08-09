@@ -31,8 +31,10 @@ mimic_data_dir = "/home/wanxinli/EHR-OT/mimic_exp/mimiciii"
 
 def find_unique_code(df):
     """ 
-    Find all unique codes in df, and returns the number of unique codes
+    Find all unique codes in df, and returns code to index dictionary, \
+        and the number of unique codes
     """
+
     all_codes = list(df['ICD codes'])
     all_codes = [item for sublist in all_codes for item in sublist]
     unique_codes = list(set(all_codes))
@@ -116,6 +118,7 @@ def gen_features_duration(df, group_name, group_1, group_2):
         target_features[feature_index] = code_ind
         feature_index += 1
     target_durations = np.array(list(target_df['duration']))
+
 
     return source_features, source_durations, target_features, target_durations
 
@@ -240,7 +243,7 @@ def train_model(reps, labels, model_func):
     return clf
 
 
-def compute_transfer_score(source_reps, source_labels, target_reps, target_labels, model_func):
+def compute_label_div_score(source_reps, source_labels, target_reps, target_labels, model_func):
     """ 
     Computes the transfer score using the third term in Theorem 1: \mathbb{E}_{x\sim D_T}[|f_T(x)-f_S(x)|]
     where f_T is the labeling function for target domain, f_S is the labeling function for the source domain
@@ -249,15 +252,15 @@ def compute_transfer_score(source_reps, source_labels, target_reps, target_label
     """
 
     source_model = train_model(source_reps, source_labels, model_func)
-    source_pred_probs = source_model.predict_proba(target_reps)
+    source_pred = source_model.predict(target_reps)
 
     target_model = train_model(target_reps, target_labels, model_func)
-    target_pred_probs = target_model.predict_proba(target_reps)
+    target_pred = target_model.predict(target_reps)
 
-    diff_probs = np.subtract(source_pred_probs, target_pred_probs)
-    diff_probs = [abs(prob) for prob in diff_probs]
+    diffs = np.subtract(source_pred, target_pred)
+    diffs = [abs(diff) for diff in diffs]
 
-    return np.sum(diff_probs)
+    return np.sum(diffs)
 
 
 
@@ -325,7 +328,7 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     trans_target_recall = recall_score(target_labels, trans_target_preds)
     trans_target_f1 = f1_score(target_labels, trans_target_preds)
         
-    transfer_score = compute_transfer_score(source_reps, source_labels, target_reps, target_labels, model_func)
+    transfer_score = compute_label_div_score(source_reps, source_labels, target_reps, target_labels, model_func)
 
     return source_accuracy, source_precision, source_recall, source_f1, \
         target_accuracy, target_precision, target_recall, target_f1, \
@@ -357,6 +360,9 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
 
     source_features, source_labels, target_features, target_labels = gen_features_duration(selected_df, group_name, group_1, group_2)
 
+    # Generate target codes
+    target_codes = list(selected_df.loc[selected_df[group_name] == group_2]['ICD codes'])
+
     source_reps = None
     target_reps = None
     if trans_metric != 'TCA':
@@ -365,7 +371,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     trans_target_reps = None
     coupling = None
     if trans_metric == 'OT':
-        trans_target_reps, coupling, _ = trans_target2source_ugw(target_reps, source_reps)
+        trans_target_reps, coupling, wa_dist = trans_target2source_ugw(target_reps, source_reps)
     if trans_metric == 'MMD':
         trans_target_reps = trans_MMD(target_reps, source_reps)
     elif trans_metric == 'TCA':
@@ -383,11 +389,12 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
         target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_equity.csv")
         if suffix is not None:
             target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{suffix}_equity.csv")
-        target_equity_df = pd.read_csv(target_equity_path, header=0, index_col=None)
+        target_equity_df = pd.read_csv(target_equity_path, header=0, index_col = None)
+
         target_diffs = np.divide(trans_target_mappings - target_labels, target_labels)
 
-        target_data_block = np.transpose(np.array([target_labels, trans_target_mappings, target_diffs]))
-        target_new_df = pd.DataFrame(target_data_block, columns=target_equity_df.columns)
+        target_new_df = pd.DataFrame([target_labels, trans_target_mappings, target_diffs, target_codes]).transpose()
+        target_new_df.columns = target_equity_df.columns
         target_equity_df = pd.concat([target_equity_df, target_new_df], ignore_index=True)
         target_equity_df.to_csv(target_equity_path, index=False, header=True)
 
@@ -402,8 +409,10 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     trans_target_mse = mean_squared_error(target_labels, trans_target_preds)
     trans_target_rmse = np.sqrt(metrics.mean_squared_error(target_labels, trans_target_preds))
 
+    label_div_score = compute_label_div_score(source_reps, source_labels, target_reps, target_labels, model_func)
+
     return source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, \
-        trans_target_mae, trans_target_mse, trans_target_rmse
+        trans_target_mae, trans_target_mse, trans_target_rmse, label_div_score, wa_dist 
 
 
 def multi_proc_binary(score_path, n_components, label_code, full_df, custom_train_reps, \
@@ -466,9 +475,11 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
     trans_target_maes = []
     trans_target_mses = []
     trans_target_rmses = []
+    label_div_scores = []
+    wa_dists = []
 
     if equity:
-        target_equity_df = pd.DataFrame(columns=['target_label', 'target_pred_label', 'target_diff_percent'])
+        target_equity_df = pd.DataFrame(columns=['target_label', 'target_pred_label', 'target_diff_percent', 'target_codes'])
         target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_equity.csv")
         if suffix is not None:
             target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{suffix}_equity.csv")
@@ -487,7 +498,7 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
         trans_target_rmse = None
 
         source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, \
-            trans_target_mae, trans_target_mse, trans_target_rmse = \
+            trans_target_mae, trans_target_mse, trans_target_rmse, label_div_score, wa_dist = \
                 entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, \
                     group_name, group_1, group_2, group_1_count, group_2_count, equity=equity, suffix=suffix)
         
@@ -500,9 +511,11 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
         trans_target_maes.append(trans_target_mae)
         trans_target_mses.append(trans_target_mse)
         trans_target_rmses.append(trans_target_rmse)
+        label_div_scores.append(label_div_score)
+        wa_dists.append(wa_dist)
 
     return source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
-        trans_target_maes, trans_target_mses, trans_target_rmses
+        trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists
 
 
 def build_maps(admission_file, diagnosis_file, patient_file):

@@ -90,10 +90,12 @@ def trans_target2source_ugw(target_reps, source_reps):
                           nits_plan=1000, tol_plan=1e-5,
                           nits_sinkhorn=1000, tol_sinkhorn=1e-5,
                           two_outputs=True)
+    wa_dist = ugw_cost(coupling_1, coupling_2, source_measure, source_metric, target_measure, target_metric, eps=eps, rho=rho, rho2=rho2)
+    wa_dist = wa_dist.detach().cpu().numpy()
+
     coupling_1 = coupling_1.detach().cpu().numpy()
     coupling_1 = np.transpose(coupling_1)
     trans_target_reps = np.matmul(coupling_1, source_reps)
-    wa_dist = ugw_cost(coupling_1, coupling_2, source_measure, source_metric, target_measure, target_metric, eps=eps, rho=rho, rho2=rho2)
 
     return trans_target_reps, coupling_1, wa_dist
 
@@ -476,7 +478,7 @@ Constructs a dataframe to demonstrate the accuracy statistics for continuous lab
 """
 
 def save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
-        trans_target_maes, trans_target_mses, trans_target_rmses, file_path):
+        trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, file_path):
     """ 
     Save accuracy statistics to file path
     """
@@ -491,6 +493,8 @@ def save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target
     score_df['trans_target_mae'] = trans_target_maes
     score_df['trans_target_mse'] = trans_target_mses
     score_df['trans_target_rmse'] = trans_target_rmses
+    score_df['label_div_score'] = label_div_scores
+    score_df['wa_dist'] = wa_dists
 
     # save
     score_df.to_csv(file_path, index=None, header=True)
