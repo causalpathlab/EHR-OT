@@ -67,11 +67,11 @@ n_components = 50
 # group_1 = 'M'
 # group_2 = 'F'
 
-suffix = None
-group_name = 'ethnicity'
-group_1 =   'HISPANIC_OR_LATINO'
-group_2 = 'ASIAN'
-# group_2 = 'WHITE'
+# suffix = None
+# group_name = 'ethnicity'
+# group_1 =   'HISPANIC_OR_LATINO'
+# group_2 = 'ASIAN'
+# # group_2 = 'WHITE'
 
 # suffix = None
 # group_name = 'marital_status'
@@ -85,28 +85,39 @@ group_2 = 'ASIAN'
 
 # suffix = None
 # group_name = 'insurance'
-# group_1 = 'Medicaid'
-# group_2 = 'Self_Pay'
+# group_1 =  'Medicare'
+# group_2 = 'Medicaid'
 
 # Select a subset of the data (newborn)
 # admid_diagnosis_df = admid_diagnosis_df[admid_diagnosis_df['adm_type'] == 'NEWBORN']
 # suffix = "newborn"
 
-group_1_count = 120
-group_2_count = 100
-trans_metric = 'OT'
-# trans_metric = 'TCA'
-# trans_metric = 'MMD'
+group_name = 'marital_status'
+suffix = None
+marital_statuses = ['MARRIED', 'SINGLE', 'WIDOWED', 'DIVORCED', 'SEPARATED']
 
-score_path = os.path.join(output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{trans_metric}.csv")
-if suffix is not None:
-    score_path = os.path.join(output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{trans_metric}_{suffix}.csv")
+for group_1 in marital_statuses:
+    for group_2 in marital_statuses:
+        if group_1 == group_2:
+            continue
+        
+        print(f"group_1 is: {group_1}, group_2 is: {group_2}")
+
+        group_1_count = 120
+        group_2_count = 100
+        trans_metric = 'OT'
+        # trans_metric = 'TCA'
+        # trans_metric = 'MMD'
+
+        score_path = os.path.join(output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{trans_metric}.csv")
+        if suffix is not None:
+            score_path = os.path.join(output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{trans_metric}_{suffix}.csv")
 
 
-source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
-    trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists \
-        = multi_proc_cts(n_components, admid_diagnosis_df, custom_train_reps, group_name, group_1, group_2, \
-            group_1_count, group_2_count, trans_metric=trans_metric, model_func = linear_model.LinearRegression, iteration=100, equity=True, suffix=suffix)
+        source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
+            trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists \
+                = multi_proc_cts(n_components, admid_diagnosis_df, custom_train_reps, group_name, group_1, group_2, \
+                    group_1_count, group_2_count, trans_metric=trans_metric, model_func = linear_model.LinearRegression, iteration=100, equity=True, suffix=suffix)
 
-save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
-    trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, score_path)
+        save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
+            trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, score_path)
