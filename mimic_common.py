@@ -370,6 +370,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
 
     trans_target_reps = None
     coupling = None
+    wa_dist = None
     if trans_metric == 'OT':
         trans_target_reps, coupling, wa_dist = trans_target2source_ugw(target_reps, source_reps)
     if trans_metric == 'MMD':

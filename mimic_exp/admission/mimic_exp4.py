@@ -92,12 +92,15 @@ n_components = 50
 # admid_diagnosis_df = admid_diagnosis_df[admid_diagnosis_df['adm_type'] == 'NEWBORN']
 # suffix = "newborn"
 
-group_name = 'marital_status'
 suffix = None
-marital_statuses = ['MARRIED', 'SINGLE', 'WIDOWED', 'DIVORCED', 'SEPARATED']
+group_name = 'insurance'
+groups = ['Self_Pay', 'Private', 'Government', 'Medicare', 'Medicaid']
 
-for group_1 in marital_statuses:
-    for group_2 in marital_statuses:
+# group_name = 'marital_status'
+# groups = ['MARRIED', 'SINGLE', 'WIDOWED', 'DIVORCED', 'SEPARATED']
+
+for group_1 in groups:
+    for group_2 in groups:
         if group_1 == group_2:
             continue
         
@@ -113,11 +116,14 @@ for group_1 in marital_statuses:
         if suffix is not None:
             score_path = os.path.join(output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{trans_metric}_{suffix}.csv")
 
+        target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_equity.csv")
+        target_equity_df = pd.read_csv(target_equity_path, header=0, index_col = None)
 
-        source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
-            trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists \
-                = multi_proc_cts(n_components, admid_diagnosis_df, custom_train_reps, group_name, group_1, group_2, \
-                    group_1_count, group_2_count, trans_metric=trans_metric, model_func = linear_model.LinearRegression, iteration=100, equity=True, suffix=suffix)
+        if 'target_codes' not in target_equity_df.columns:
+            source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
+                trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists \
+                    = multi_proc_cts(n_components, admid_diagnosis_df, custom_train_reps, group_name, group_1, group_2, \
+                        group_1_count, group_2_count, trans_metric=trans_metric, model_func = linear_model.LinearRegression, iteration=100, equity=True, suffix=suffix)
 
-        save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
-            trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, score_path)
+            save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
+                trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, score_path)
