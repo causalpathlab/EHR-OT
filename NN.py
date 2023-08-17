@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 
 
-def trans_NN(source_reps, target_reps, n_neighbors, type):
+def trans_NN(source_reps, target_reps, n_neighbors=1, type='regression'):
     """ 
     Domain adaptation using nearest neighbor
 
@@ -18,7 +18,7 @@ def trans_NN(source_reps, target_reps, n_neighbors, type):
     """
     knn = NearestNeighbors(n_neighbors=n_neighbors)
     knn.fit(source_reps)
-    nearest_neighbors_indices =  knn.kneighbors(target_reps)[1]
+    nearest_neighbors_indices =  knn.kneighbors(target_reps)[n_neighbors]
     trans_reps = source_reps[nearest_neighbors_indices]
     if type == 'regression':
         trans_reps = np.mean(trans_reps, axis=1)

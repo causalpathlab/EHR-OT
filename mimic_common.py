@@ -7,6 +7,7 @@ import copy
 from common import *
 from collections import Counter
 from ast import literal_eval
+from GFK import *
 from MMD import *
 import numpy as np
 from NN import *
@@ -306,6 +307,8 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
         trans_target_reps = trans_MMD(target_reps, source_reps)
     elif trans_metric == 'TCA':
         source_reps, target_reps, trans_target_reps = TCA(source_features, target_features, n_components=n_components)
+
+
     
     source_model = train_model(source_reps, source_labels, model_func)
     source_preds = source_model.predict(source_reps)
@@ -377,6 +380,10 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
         trans_target_reps = trans_MMD(target_reps, source_reps)
     elif trans_metric == 'TCA':
         source_reps, target_reps, trans_target_reps = TCA(source_features, target_features, n_components=n_components)
+    elif trans_metric == 'NN':
+        trans_target_reps = trans_NN(source_reps, target_reps)
+    elif trans_metric == 'GFK':
+        source_reps, trans_target_reps = trans_GFK(source_reps, target_reps)
 
     clf = train_model(source_reps, source_labels, model_func) 
     source_preds = clf.predict(source_reps)
