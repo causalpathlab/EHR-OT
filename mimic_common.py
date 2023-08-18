@@ -4,6 +4,7 @@ sys.path.append("/home/wanxinli/unbalanced_gromov_wasserstein/")
 
 from datetime import datetime
 import copy
+from CA import *
 from common import *
 from collections import Counter
 from ast import literal_eval
@@ -300,9 +301,9 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
     wa_dist = None
     coupling = None 
 
-    if trans_metric == 'OT':
+    if trans_metric == 'GWOT':
          # coupling will be useful if we want to study equity
-        trans_target_reps, coupling, wa_dist = trans_target2source_ugw(target_reps, source_reps)
+        trans_target_reps, coupling, wa_dist = trans_GWOT(target_reps, source_reps)
     elif trans_metric == 'MMD':
         trans_target_reps = trans_MMD(target_reps, source_reps)
     elif trans_metric == 'TCA':
@@ -374,23 +375,27 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     trans_target_reps = None
     coupling = None
     wa_dist = None
-    if trans_metric == 'OT':
-        trans_target_reps, coupling, wa_dist = trans_target2source_ugw(target_reps, source_reps)
+    if trans_metric == 'GWOT': # Unbalanced Gromov Wasserstein OT
+        trans_target_reps, coupling, wa_dist = trans_GWOT(target_reps, source_reps)
     if trans_metric == 'MMD':
         trans_target_reps = trans_MMD(target_reps, source_reps)
-    elif trans_metric == 'TCA':
+    elif trans_metric == 'TCA': # Transfer component analysis
         source_reps, target_reps, trans_target_reps = TCA(source_features, target_features, n_components=n_components)
-    elif trans_metric == 'NN':
+    elif trans_metric == 'NN': # Nearest neighbor
         trans_target_reps = trans_NN(source_reps, target_reps)
-    elif trans_metric == 'GFK':
+    elif trans_metric == 'GFK': #
         source_reps, trans_target_reps = trans_GFK(source_reps, target_reps)
+    elif trans_metric == 'OT': # Unbalanced OT
+        trans_target_reps, wa_dist = trans_UOT(target_reps, source_reps)
+    elif trans_metric == 'CA': # Correlation alignment
+        trans_target_reps = trans_CA(target_reps, source_reps)
 
     clf = train_model(source_reps, source_labels, model_func) 
     source_preds = clf.predict(source_reps)
     target_preds = clf.predict(target_reps)
     trans_target_preds = clf.predict(trans_target_reps)
 
-    if equity and trans_metric == 'OT':
+    if equity and trans_metric == 'GWOT':
         # compute transported target without using the model, used for studying the bias 
         trans_target_mappings = np.matmul(coupling, source_labels)
         trans_target_mappings = np.multiply(trans_target_mappings, group_2_count)

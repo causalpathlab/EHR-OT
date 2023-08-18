@@ -21,6 +21,7 @@ from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import mutual_info_score
 from scipy.spatial.distance import cdist
+from scipy.optimize import linear_sum_assignment
 from scipy.stats import wasserstein_distance
 from statistics import median
 import torch
@@ -61,7 +62,7 @@ def trans_target2source(target_reps, source_reps, reg_e = 0.1, max_iter = None, 
 
 
 
-def trans_target2source_ugw(target_reps, source_reps):
+def trans_GWOT(target_reps, source_reps):
     """ 
     Unbalanced Gromov Wasserstein Optimal transport (without entropy regularization) source representations \
         to target representations
@@ -100,7 +101,38 @@ def trans_target2source_ugw(target_reps, source_reps):
     return trans_target_reps, coupling_1, wa_dist
 
 
+def compute_wa_dist(source_reps, target_reps):
+    cost_matrix = cdist(source_reps, target_reps, metric='euclidean')
+    row_indices, col_indices = linear_sum_assignment(cost_matrix)
+    w_dist = np.sum(cost_matrix[row_indices, col_indices])
+    return w_dist
 
+
+
+
+def trans_UOT(target_reps, source_reps, reg=0.1, reg_m=1):
+    """ 
+    Transport by unbalanced optimal transport
+    
+    :param float reg: entropy regularization param
+    :param float reg_m: marginal relaxation paramter 
+
+    :returns the tranport plan and the Wasserstein distance
+    -
+    """
+
+    source_measure = np.ones((source_reps.shape[0],))/source_reps.shape[0]
+    target_measure = np.ones((target_reps.shape[0],))/target_reps.shape[0]
+
+    # M = ot.dist(source_bins.reshape((source_reps.shape[0], 1)), \
+    #             target_bins.reshape((target_reps.shape[0], 1)), metric="euclidean")
+    M = ot.dist(source_reps, target_reps)
+    M /= M.max()
+    coupling = ot.unbalanced.sinkhorn_unbalanced(source_measure, target_measure, M, reg, reg_m)
+    coupling = np.transpose(coupling)
+    trans_target_reps = np.matmul(coupling, source_reps)
+    wa_dist = compute_wa_dist(source_reps, target_reps)
+    return trans_target_reps, wa_dist
 
 
 """ 
