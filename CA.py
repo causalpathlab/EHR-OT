@@ -23,7 +23,10 @@ def trans_CA(target_reps, source_reps):
     # Minimize the Correlation Alignment loss
     C_s = np.corrcoef(source_reps.T)
     C_t = np.corrcoef(target_reps.T)
+    print("C_s shape is:", C_s.shape)
+    print("C_t shape is:", C_t.shape)
     result = minimize(correlation_alignment_loss, W_init, args=(C_s, C_t, d), method='BFGS')
+    # print("result shape is:", result.shape)
 
     # Get the learned transformation matrix W
     W = result.x.reshape(d, d)

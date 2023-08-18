@@ -130,7 +130,7 @@ for group_1 in groups:
             source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
                 trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists \
                     = multi_proc_cts(n_components, admid_diagnosis_df, custom_train_reps, group_name, group_1, group_2, \
-                        group_1_count, group_2_count, trans_metric=trans_metric, model_func = linear_model.LinearRegression, iteration=100, equity=False, suffix=suffix)
+                        group_1_count, group_2_count, trans_metric=trans_metric, model_func = linear_model.LinearRegression, iteration=5, equity=False, suffix=suffix)
 
             save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
                 trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, score_path)
