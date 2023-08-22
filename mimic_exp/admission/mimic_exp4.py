@@ -109,7 +109,7 @@ trans_metric = 'OT'
 # trans_metric = 'MMD'
 # trans_metric = 'NN'
 # trans_metric = 'GFK'
-trans_metric = 'CA'
+# trans_metric = 'CA'
 
 # groups.reverse()
 for group_1 in groups:
