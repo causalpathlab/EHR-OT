@@ -93,11 +93,11 @@ n_components = 50
 # suffix = "newborn"
 
 suffix = None
-group_name = 'insurance'
-groups = ['Self_Pay', 'Private', 'Government', 'Medicare', 'Medicaid']
+# group_name = 'insurance'
+# groups = ['Self_Pay', 'Private', 'Government', 'Medicare', 'Medicaid']
 
-# group_name = 'marital_status'
-# groups = ['MARRIED', 'SINGLE', 'WIDOWED', 'DIVORCED', 'SEPARATED']
+group_name = 'marital_status'
+groups = ['MARRIED', 'SINGLE', 'WIDOWED', 'DIVORCED', 'SEPARATED']
 
 
 
@@ -123,14 +123,15 @@ for group_1 in groups:
         if suffix is not None:
             score_path = os.path.join(output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{trans_metric}_{suffix}.csv")
 
-        if not os.path.exists(score_path):
-            target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_equity.csv")
-            target_equity_df = pd.read_csv(target_equity_path, header=0, index_col = None)
+        # if not os.path.exists(score_path):
+        target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_equity.csv")
+        target_equity_df = pd.read_csv(target_equity_path, header=0, index_col = None)
 
+        if trans_metric == 'OT':
             source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
-                trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists \
+                trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, coupling_diffs, diameters, max_hs \
                     = multi_proc_cts(n_components, admid_diagnosis_df, custom_train_reps, group_name, group_1, group_2, \
                         group_1_count, group_2_count, trans_metric=trans_metric, model_func = linear_model.LinearRegression, iteration=100, equity=False, suffix=suffix)
 
-            save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
-                trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, score_path)
+        save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
+            trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, coupling_diffs, diameters, max_hs, score_path)

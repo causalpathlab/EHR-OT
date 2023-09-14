@@ -46,7 +46,7 @@ def find_unique_code(df):
     return unique_code_dict, len(unique_codes) 
     
 
-def gen_features_labels(df, group_name, group_1, group_2, label_code):
+def gen_features_labels(df, group_name, source, target, label_code):
     """ 
     Generate source features, source labels, target features and target labels from dataframe df
 
@@ -56,8 +56,8 @@ def gen_features_labels(df, group_name, group_1, group_2, label_code):
     # print("number of unique code is:", num_codes)
     # print("label code in unique_code_dict is:", unique_code_dict[label_code])
 
-    source_df = df.loc[df[group_name] == group_1]
-    target_df = df.loc[df[group_name] == group_2]
+    source_df = df.loc[df[group_name] == source]
+    target_df = df.loc[df[group_name] == target]
 
     # Prepare source
     source_features = np.empty(shape=[source_df.shape[0], num_codes])
@@ -86,7 +86,7 @@ def gen_features_labels(df, group_name, group_1, group_2, label_code):
     return source_features, source_labels, target_features, target_labels
 
 
-def gen_features_duration(df, group_name, group_1, group_2):
+def gen_features_duration(df, group_name, source, target):
     """ 
     Generate source features, source durations (continuous response), \
         target features and target durations (continuous response) from dataframe df
@@ -96,8 +96,8 @@ def gen_features_duration(df, group_name, group_1, group_2):
 
     unique_code_dict, num_codes = find_unique_code(df)
 
-    source_df = df.loc[df[group_name] == group_1]
-    target_df = df.loc[df[group_name] == group_2]
+    source_df = df.loc[df[group_name] == source]
+    target_df = df.loc[df[group_name] == target]
 
     # Prepare source
     source_features = np.empty(shape=[source_df.shape[0], num_codes])
@@ -125,7 +125,7 @@ def gen_features_duration(df, group_name, group_1, group_2):
     return source_features, source_durations, target_features, target_durations
 
 
-def select_df_cts(df, group_name, group_1, group_2, group_1_count, group_2_count):
+def select_df_cts(df, group_name, source, target, source_count, target_count):
     """ 
     Select row in the dataframe df with balanced number of labels for males and females \
         for binary reponse
@@ -141,14 +141,14 @@ def select_df_cts(df, group_name, group_1, group_2, group_1_count, group_2_count
     # generate label column based on label_code
     df_copy = copy.deepcopy(df)
     
-    group_1_indices = []
-    group_2_indices = []
+    source_indices = []
+    target_indices = []
     other_indices = []
     for index, row in df_copy.iterrows():
-        if row[group_name] == group_1:
-            group_1_indices.append(index)
-        elif row[group_name] == group_2:
-            group_2_indices.append(index)
+        if row[group_name] == source:
+            source_indices.append(index)
+        elif row[group_name] == target:
+            target_indices.append(index)
         else:
             other_indices.append(index)
 
@@ -156,28 +156,28 @@ def select_df_cts(df, group_name, group_1, group_2, group_1_count, group_2_count
     # indices to delete from the dataframe
     # sample the same number of label 0s and label 1s
 
-    delete_group_2_indices = random.sample(group_2_indices, len(group_2_indices)-group_2_count)
-    delete_group_1_indices = random.sample(group_1_indices, len(group_1_indices)-group_1_count)
+    delete_target_indices = random.sample(target_indices, len(target_indices)-target_count)
+    delete_source_indices = random.sample(source_indices, len(source_indices)-source_count)
 
-    delete_group_2_indices.extend(delete_group_1_indices)
-    delete_group_2_indices.extend(other_indices)
+    delete_target_indices.extend(delete_source_indices)
+    delete_target_indices.extend(other_indices)
 
-    df_copy = df_copy.drop(delete_group_2_indices, axis=0, inplace=False)
+    df_copy = df_copy.drop(delete_target_indices, axis=0, inplace=False)
 
     return df_copy
 
 
-def select_df_binary(df, group_name, group_1, group_2, group_1_count, group_2_count, label_code):
+def select_df_binary(df, group_name, source, target, source_count, target_count, label_code):
     """ 
     Select row in the dataframe df with balanced number of labels for males and females
     Specifically, we want to reduce the number of rows with label 0 for males and females
 
     :param Dataframe df: the dataframe to select samples with label 0 and label 1
     :param str group_name: the criteria for dividing groups, e.g., "gender", "adm_type"
-    :param str group_1: group 1 label for group_name
-    :param str group_2: group 2 label for group_name
-    :param int group_1_count: the number of samples with label 1s and label 0s for target (male). 
-    :param int group_2_count: the number of samples with label 1s and label 0s for source (female). 
+    :param str source: group 1 label for group_name
+    :param str target: group 2 label for group_name
+    :param int source_count: the number of samples with label 1s and label 0s for target (male). 
+    :param int target_count: the number of samples with label 1s and label 0s for source (female). 
     :param str label_code: the ICD code for determining labels. This code should be removed from ICD codes.
 
 
@@ -185,7 +185,7 @@ def select_df_binary(df, group_name, group_1, group_2, group_1_count, group_2_co
         - the selected dataframe
     """
     print(f"label_code is {label_code}")
-    # print(f"label_code is {label_code}, group 1 is {group_1}, group 2 is {group_2}")
+    # print(f"label_code is {label_code}, group 1 is {source}, group 2 is {target}")
 
     # select samples based on counts
     female_1_indices = []
@@ -206,13 +206,13 @@ def select_df_binary(df, group_name, group_1, group_2, group_1_count, group_2_co
     df_copy['label'] = labels
 
     for index, row in df_copy.iterrows():
-        if row['label'] == 0 and row[group_name] == group_1:
+        if row['label'] == 0 and row[group_name] == source:
             female_0_indices.append(index)
-        elif row['label'] == 0 and row[group_name] == group_2:
+        elif row['label'] == 0 and row[group_name] == target:
             male_0_indices.append(index)
-        elif row['label'] == 1 and row[group_name] == group_1:
+        elif row['label'] == 1 and row[group_name] == source:
             female_1_indices.append(index)
-        elif row['label'] == 1 and row[group_name] == group_2:
+        elif row['label'] == 1 and row[group_name] == target:
             male_1_indices.append(index)
     print("group 1 with label 0 length is:", len(female_0_indices))
     print("group 2 with label 0 length is:", len(male_0_indices))
@@ -221,11 +221,11 @@ def select_df_binary(df, group_name, group_1, group_2, group_1_count, group_2_co
     
     # indices to delete from the dataframe
     # sample the same number of label 0s and label 1s
-    delete_female_0_indices = random.sample(female_0_indices, len(female_0_indices)-group_2_count)
-    delete_male_0_indices = random.sample(male_0_indices, len(male_0_indices)-group_1_count)
+    delete_female_0_indices = random.sample(female_0_indices, len(female_0_indices)-target_count)
+    delete_male_0_indices = random.sample(male_0_indices, len(male_0_indices)-source_count)
     
-    delete_female_1_indices = random.sample(female_1_indices, len(female_1_indices)-group_2_count)
-    delete_male_1_indices = random.sample(male_1_indices, len(male_1_indices)-group_1_count)
+    delete_female_1_indices = random.sample(female_1_indices, len(female_1_indices)-target_count)
+    delete_male_1_indices = random.sample(male_1_indices, len(male_1_indices)-source_count)
 
     delete_female_0_indices.extend(delete_male_0_indices)
     delete_female_0_indices.extend(delete_female_1_indices)
@@ -266,32 +266,32 @@ def compute_label_div_score(source_reps, source_labels, target_reps, target_labe
 
 
 
-def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, full_df, custom_train_reps, trans_metric, \
-                       model_func = linear_model.LogisticRegression, group_1_count = 120, group_2_count = 100, pca_explain=False):
+def entire_proc_binary(n_components, group_name, source, target, label_code, full_df, custom_train_reps, trans_metric, \
+                       model_func = linear_model.LogisticRegression, source_count = 120, target_count = 100, pca_explain=False):
     """
     Wrap up the entire procedure
 
     :param int n_components: the number of components for PCA learning
     :param str group_name: group name to divide groups
-    :param str group_1: group 1 name, the target in transfer learning (e.g. female)
-    :param str group_2: group 2 name, the source in transfer learning (e.g. male)
+    :param str source: group 1 name, the target in transfer learning (e.g. female)
+    :param str target: group 2 name, the source in transfer learning (e.g. male)
     :param str label_code: the ICD code to determine labels
     :param dataframe full_df: the full dataframe
     :param function custom_train_reps: the customized function for learning representations
     :param function model_func: the function to model the relationship between target reps and target labels
     :param str trans_metric: transporting metric, NN, TCA, MMD or OT
-    :param int group_1_count: the number of samples with label 1s and label 0s for target (male)
-    :param int group_2_count: the number of samples with label 1s and label 0s for source (female)
+    :param int source_count: the number of samples with label 1s and label 0s for target (male)
+    :param int target_count: the number of samples with label 1s and label 0s for source (female)
     :param bool pca_explain: print the variance explained by the PCA, if True. Default False
 
 
     :returns accuracy statistics and optimized Wasserstein distance
     """
     
-    selected_df = select_df_binary(full_df, group_name, group_1, group_2, \
-                group_1_count, group_2_count, label_code)
+    selected_df = select_df_binary(full_df, group_name, source, target, \
+                source_count, target_count, label_code)
 
-    source_features, source_labels, target_features, target_labels = gen_features_labels(selected_df, group_name, group_1, group_2, label_code)
+    source_features, source_labels, target_features, target_labels = gen_features_labels(selected_df, group_name, source, target, label_code)
 
     source_reps = None
     target_reps = None
@@ -342,8 +342,8 @@ def entire_proc_binary(n_components, group_name, group_1, group_2, label_code, f
 
 
 def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, \
-                    group_name, group_1, group_2, group_1_count = 120, \
-                    group_2_count = 100, pca_explain=False, equity=False, suffix=None):
+                    group_name, source, target, source_count = 120, \
+                    target_count = 100, pca_explain=False, equity=False, suffix=None):
     """
     Wrap up the entire procedure
 
@@ -360,12 +360,12 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     :param bool equity: track differences in predicted values versus ground-truth values, to prepare data to check for equity
     """
     
-    selected_df = select_df_cts(full_df, group_name, group_1, group_2, group_1_count=group_1_count, group_2_count=group_2_count)
+    selected_df = select_df_cts(full_df, group_name, source, target, source_count=source_count, target_count=target_count)
 
-    source_features, source_labels, target_features, target_labels = gen_features_duration(selected_df, group_name, group_1, group_2)
+    source_features, source_labels, target_features, target_labels = gen_features_duration(selected_df, group_name, source, target)
 
     # Generate target codes
-    target_codes = list(selected_df.loc[selected_df[group_name] == group_2]['ICD codes'])
+    target_codes = list(selected_df.loc[selected_df[group_name] == target]['ICD codes'])
 
     source_reps = None
     target_reps = None
@@ -375,6 +375,9 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     trans_target_reps = None
     coupling = None
     wa_dist = None
+    label_div_score = None
+    coupling_diff = None
+    max_h = None
     if trans_metric == 'GWOT': # Unbalanced Gromov Wasserstein OT
         trans_target_reps, coupling, wa_dist = trans_GWOT(target_reps, source_reps)
     if trans_metric == 'MMD':
@@ -386,7 +389,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     elif trans_metric == 'GFK': #
         source_reps, trans_target_reps = trans_GFK(source_reps, target_reps)
     elif trans_metric == 'OT': # Unbalanced OT
-        trans_target_reps, wa_dist = trans_UOT(target_reps, source_reps)
+        trans_target_reps, wa_dist, coupling, diameter = trans_UOT(target_reps, source_reps)
     elif trans_metric == 'CA': # Correlation alignment
         trans_target_reps = trans_CA(target_reps, source_reps)
 
@@ -398,10 +401,10 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     if equity and trans_metric == 'GWOT':
         # compute transported target without using the model, used for studying the bias 
         trans_target_mappings = np.matmul(coupling, source_labels)
-        trans_target_mappings = np.multiply(trans_target_mappings, group_2_count)
-        target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_equity.csv")
+        trans_target_mappings = np.multiply(trans_target_mappings, target_count)
+        target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{target}2{source}_equity.csv")
         if suffix is not None:
-            target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{suffix}_equity.csv")
+            target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{target}2{source}_{suffix}_equity.csv")
         target_equity_df = pd.read_csv(target_equity_path, header=0, index_col = None)
 
         target_diffs = np.divide(trans_target_mappings - target_labels, target_labels)
@@ -410,8 +413,18 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
         target_new_df.columns = target_equity_df.columns
         target_equity_df = pd.concat([target_equity_df, target_new_df], ignore_index=True)
         target_equity_df.to_csv(target_equity_path, index=False, header=True)
+    
+    if trans_metric == 'OT':
+        # Compute the difference between the transported mass and the original mass
+        coupling_target =  coupling.sum(axis=1)
+        coupling_diff = np.subtract(np.full(coupling_target.shape, 1/target_count), coupling_target)
+        coupling_diff = np.sum(np.absolute(coupling_diff))
+        label_div_score = compute_label_div_score(source_reps, source_labels, target_reps, target_labels, model_func)
 
-
+        # Compute the maximum |||h||| (triple norm of h)
+        target_pred_norms = np.linalg.norm(target_preds, axis=0)
+        max_h = np.max(np.divide(target_preds, target_pred_norms))
+        
     source_mae = metrics.mean_absolute_error(source_labels, source_preds)
     source_mse = mean_squared_error(source_labels, source_preds)
     source_rmse = np.sqrt(metrics.mean_squared_error(source_labels, source_preds))
@@ -422,10 +435,8 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     trans_target_mse = mean_squared_error(target_labels, trans_target_preds)
     trans_target_rmse = np.sqrt(metrics.mean_squared_error(target_labels, trans_target_preds))
 
-    label_div_score = compute_label_div_score(source_reps, source_labels, target_reps, target_labels, model_func)
-
     return source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, \
-        trans_target_mae, trans_target_mse, trans_target_rmse, label_div_score, wa_dist 
+        trans_target_mae, trans_target_mse, trans_target_rmse, label_div_score, wa_dist ,coupling_diff, diameter, max_h
 
 
 def multi_proc_binary(score_path, n_components, label_code, full_df, custom_train_reps, \
@@ -459,7 +470,7 @@ def multi_proc_binary(score_path, n_components, label_code, full_df, custom_trai
 
 
 def multi_proc_cts(n_components, full_df, custom_train_reps, \
-               group_name, group_1, group_2, group_1_count, group_2_count, \
+               group_name, source, target, source_count, target_count, \
                 trans_metric, model_func = linear_model.LinearRegression, iteration=20, equity=False, suffix=None):
     """ 
     Run the entire_proc function multiple times (iteration) for continuous responses
@@ -470,10 +481,10 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
     :param function custom_train_reps: the customized function for learning representations
     :param int n_components: the number of components in PCA to learn representations
     :param str group_name: the name of the dividing group
-    :param str group_1: value for group 1
-    :param str group_2: value for group 2
-    :param int group_1_count: the number of samples with label 1s and label 0s for target (male)
-    :param int group_2_count: the number of samples with label 1s and label 0s for source (female)
+    :param str source: value for group 1
+    :param str target: value for group 2
+    :param int source_count: the number of samples with label 1s and label 0s for target (male)
+    :param int target_count: the number of samples with label 1s and label 0s for source (female)
     :param str trans_metric: transport metric, OT, MMD, TCA or NN
     :param int iteration: the number of iterations (repetitions)
     :param bool equity: prepare statistics for equity
@@ -490,12 +501,15 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
     trans_target_rmses = []
     label_div_scores = []
     wa_dists = []
+    coupling_diffs = []
+    diameters = []
+    max_hs = []
 
     if equity:
         target_equity_df = pd.DataFrame(columns=['target_label', 'target_pred_label', 'target_diff_percent', 'target_codes'])
-        target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_equity.csv")
+        target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{target}2{source}_equity.csv")
         if suffix is not None:
-            target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{suffix}_equity.csv")
+            target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{target}2{source}_{suffix}_equity.csv")
         target_equity_df.to_csv(target_equity_path, header=True, index=False)
 
     for i in range(iteration):
@@ -511,10 +525,10 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
         trans_target_rmse = None
 
         source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, \
-            trans_target_mae, trans_target_mse, trans_target_rmse, label_div_score, wa_dist = \
+            trans_target_mae, trans_target_mse, trans_target_rmse, label_div_score, wa_dist, coupling_diff, diameter, max_h = \
                 entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, \
-                    group_name, group_1, group_2, group_1_count, group_2_count, equity=equity, suffix=suffix)
-        
+                    group_name, source, target, source_count, target_count, equity=equity, suffix=suffix)
+            
         source_maes.append(source_mae)
         source_mses.append(source_mse)
         source_rmses.append(source_rmse)
@@ -524,11 +538,17 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
         trans_target_maes.append(trans_target_mae)
         trans_target_mses.append(trans_target_mse)
         trans_target_rmses.append(trans_target_rmse)
-        label_div_scores.append(label_div_score)
         wa_dists.append(wa_dist)
-
+        coupling_diffs.append(coupling_diff)
+        label_div_scores.append(label_div_score)
+        diameters.append(diameter)
+        max_hs.append(max_h)
+        
     return source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
-        trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists
+        trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, \
+        wa_dists, coupling_diffs, diameters, max_hs
+
+
 
 
 def build_maps(admission_file, diagnosis_file, patient_file):

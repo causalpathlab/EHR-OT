@@ -101,8 +101,7 @@ def trans_GWOT(target_reps, source_reps):
     return trans_target_reps, coupling_1, wa_dist
 
 
-def compute_wa_dist(source_reps, target_reps):
-    cost_matrix = cdist(source_reps, target_reps, metric='euclidean')
+def compute_wa_dist(cost_matrix):
     row_indices, col_indices = linear_sum_assignment(cost_matrix)
     w_dist = np.sum(cost_matrix[row_indices, col_indices])
     return w_dist
@@ -117,22 +116,24 @@ def trans_UOT(target_reps, source_reps, reg=0.1, reg_m=1):
     :param float reg: entropy regularization param
     :param float reg_m: marginal relaxation paramter 
 
-    :returns the tranport plan and the Wasserstein distance
+    :returns the transported target representations, the Wasserstein distance, \
+        the tranport plan, and the maximum distance (diameter) between source and target embeddings
     -
     """
 
     source_measure = np.ones((source_reps.shape[0],))/source_reps.shape[0]
     target_measure = np.ones((target_reps.shape[0],))/target_reps.shape[0]
 
-    # M = ot.dist(source_bins.reshape((source_reps.shape[0], 1)), \
-    #             target_bins.reshape((target_reps.shape[0], 1)), metric="euclidean")
-    M = ot.dist(source_reps, target_reps)
+    M = ot.dist(source_reps, target_reps, metric='euclidean')
     M /= M.max()
-    coupling = ot.unbalanced.sinkhorn_unbalanced(source_measure, target_measure, M, reg, reg_m)
+    coupling, ot_log = ot.unbalanced.sinkhorn_unbalanced(source_measure, target_measure, M, reg, reg_m, log=True)
+    # print(ot_log)
     coupling = np.transpose(coupling)
     trans_target_reps = np.matmul(coupling, source_reps)
-    wa_dist = compute_wa_dist(source_reps, target_reps)
-    return trans_target_reps, wa_dist
+    wa_dist = compute_wa_dist(M)
+
+    # Compute the maximum distance between source representations and target representations
+    return trans_target_reps, wa_dist, coupling, M.max()
 
 
 """ 
@@ -510,7 +511,7 @@ Constructs a dataframe to demonstrate the accuracy statistics for continuous lab
 """
 
 def save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
-        trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, file_path):
+        trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, coupling_diffs, diameters, max_hs, file_path):
     """ 
     Save accuracy statistics to file path
     """
@@ -527,6 +528,9 @@ def save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target
     score_df['trans_target_rmse'] = trans_target_rmses
     score_df['label_div_score'] = label_div_scores
     score_df['wa_dist'] = wa_dists
+    score_df['coupling_diff'] = coupling_diffs
+    score_df['diameter'] = diameters
+    score_df['max_h'] = max_hs
 
     # save
     score_df.to_csv(file_path, index=None, header=True)
