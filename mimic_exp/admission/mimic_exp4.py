@@ -93,22 +93,22 @@ n_components = 50
 # suffix = "newborn"
 
 suffix = None
-# group_name = 'insurance'
-# groups = ['Self_Pay', 'Private', 'Government', 'Medicare', 'Medicaid']
+group_name = 'insurance'
+groups = ['Self_Pay', 'Private', 'Government', 'Medicare', 'Medicaid']
 
-group_name = 'marital_status'
-groups = ['MARRIED', 'SINGLE', 'WIDOWED', 'DIVORCED', 'SEPARATED']
+# group_name = 'marital_status'
+# groups = ['MARRIED', 'SINGLE', 'WIDOWED', 'DIVORCED', 'SEPARATED']
 
 
 group_1_count = 120
 group_2_count = 100
 
 # trans_metric = 'OT'
-trans_metric = 'TCA'
+# trans_metric = 'TCA'
 # trans_metric = 'MMD'
 # trans_metric = 'NN'
 # trans_metric = 'GFK'
-# trans_metric = 'CA'
+trans_metric = 'CA'
 
 # groups.reverse()
 for group_1 in groups:
