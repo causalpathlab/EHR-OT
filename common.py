@@ -510,7 +510,7 @@ def save_scores(source_accuracies, source_precisions, source_recalls, source_f1s
 Constructs a dataframe to demonstrate the accuracy statistics for continuous labels
 """
 
-def save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
+def save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, target_clf_maes, target_clf_mses, target_clf_rmses, \
         trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, coupling_diffs, diameters, max_hs, file_path):
     """ 
     Save accuracy statistics to file path
@@ -523,6 +523,9 @@ def save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target
     score_df['target_mae'] = target_maes
     score_df['target_mse'] = target_mses
     score_df['target_rmse'] = target_rmses
+    score_df['target_clf_mae'] = target_clf_maes
+    score_df['target_clf_mse'] = target_clf_mses
+    score_df['target_clf_rmse'] = target_clf_rmses
     score_df['trans_target_mae'] = trans_target_maes
     score_df['trans_target_mse'] = trans_target_mses
     score_df['trans_target_rmse'] = trans_target_rmses

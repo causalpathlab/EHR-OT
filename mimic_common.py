@@ -378,6 +378,8 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     label_div_score = None
     coupling_diff = None
     max_h = None
+    diameter = None 
+    
     if trans_metric == 'GWOT': # Unbalanced Gromov Wasserstein OT
         trans_target_reps, coupling, wa_dist = trans_GWOT(target_reps, source_reps)
     if trans_metric == 'MMD':
@@ -397,6 +399,8 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     source_preds = clf.predict(source_reps)
     target_preds = clf.predict(target_reps)
     trans_target_preds = clf.predict(trans_target_reps)
+    target_clf = train_model(target_reps, target_labels, model_func)
+    target_clf_preds = target_clf.predict(target_reps)
 
     if equity and trans_metric == 'GWOT':
         # compute transported target without using the model, used for studying the bias 
@@ -431,11 +435,14 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     target_mae = metrics.mean_absolute_error(target_labels, target_preds)
     target_mse = mean_squared_error(target_labels, target_preds)
     target_rmse = np.sqrt(metrics.mean_squared_error(target_labels, target_preds))
+    target_clf_mae = metrics.mean_absolute_error(target_labels, target_clf_preds)
+    target_clf_mse = mean_squared_error(target_labels, target_clf_preds)
+    target_clf_rmse = np.sqrt(metrics.mean_squared_error(target_labels, target_clf_preds))
     trans_target_mae = metrics.mean_absolute_error(target_labels, trans_target_preds)
     trans_target_mse = mean_squared_error(target_labels, trans_target_preds)
     trans_target_rmse = np.sqrt(metrics.mean_squared_error(target_labels, trans_target_preds))
 
-    return source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, \
+    return source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, target_clf_mae, target_clf_mse, target_clf_rmse, \
         trans_target_mae, trans_target_mse, trans_target_rmse, label_div_score, wa_dist ,coupling_diff, diameter, max_h
 
 
@@ -496,6 +503,9 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
     target_maes = []
     target_mses = [] 
     target_rmses = [] 
+    target_clf_maes = [] 
+    target_clf_mses = [] 
+    target_clf_rmses = []
     trans_target_maes = []
     trans_target_mses = []
     trans_target_rmses = []
@@ -523,8 +533,11 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
         trans_target_mae = None
         trans_target_mse = None
         trans_target_rmse = None
+        target_clf_mae = None 
+        target_clf_mse = None
+        target_clf_rmse = None
 
-        source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, \
+        source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, target_clf_mae, target_clf_mse, target_clf_rmse, \
             trans_target_mae, trans_target_mse, trans_target_rmse, label_div_score, wa_dist, coupling_diff, diameter, max_h = \
                 entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, \
                     group_name, source, target, source_count, target_count, equity=equity, suffix=suffix)
@@ -535,6 +548,9 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
         target_maes.append(target_mae)
         target_mses.append(target_mse)
         target_rmses.append(target_rmse)
+        target_clf_maes.append(target_clf_mae)
+        target_clf_mses.append(target_clf_mse)
+        target_clf_rmses.append(target_clf_rmse)
         trans_target_maes.append(trans_target_mae)
         trans_target_mses.append(trans_target_mse)
         trans_target_rmses.append(trans_target_rmse)
@@ -544,7 +560,7 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
         diameters.append(diameter)
         max_hs.append(max_h)
         
-    return source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
+    return source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses, target_clf_maes, target_clf_mses, target_clf_rmses, \
         trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, \
         wa_dists, coupling_diffs, diameters, max_hs
 
