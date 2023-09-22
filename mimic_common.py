@@ -753,6 +753,7 @@ def compute_metric_ratio(score_df, eval_metric):
         precision, recall and f1 for classification
     """
     improve_ratios = []
+    eval_metric = eval_metric.lower()
     for target_metric, trans_target_metric in zip(score_df[f'target_{eval_metric}'], score_df[f'trans_target_{eval_metric}']):
         if eval_metric == 'f1' or eval_metric == 'precision' or eval_metric == 'recall':
             improve_ratios.append(trans_target_metric-target_metric)
