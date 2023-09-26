@@ -19,6 +19,7 @@ import random
 from sklearn.metrics import precision_score, recall_score, accuracy_score, \
     f1_score, mean_absolute_error, mean_squared_error, \
     mutual_info_score, normalized_mutual_info_score
+from sklearn.svm import svr
 from scipy.stats import entropy
 from TCA import *
 import torch
@@ -250,7 +251,8 @@ def compute_label_div_score(source_reps, source_labels, target_reps, target_labe
     Computes the transfer score using the third term in Theorem 1: \mathbb{E}_{x\sim D_T}[|f_T(x)-f_S(x)|]
     where f_T is the labeling function for target domain, f_S is the labeling function for the source domain
 
-    :param function model_func: the function to model the relationship between transported source reps and source labels
+    :param function model_func: the function to model the relationship between transported source reps and source labels.
+        Linear regression can be the simplest, can be more complicated. 
     """
 
     source_model = train_model(source_reps, source_labels, model_func)
@@ -447,7 +449,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
 
 
 def multi_proc_binary(score_path, n_components, label_code, full_df, custom_train_reps, \
-               male_count, female_count, iteration=20, max_iter = None):
+               male_count, female_count, model_func, iteration=20, max_iter = None):
     """ 
     Run the entire_proc function multiple times (iteration) for binary responses
 
@@ -466,7 +468,7 @@ def multi_proc_binary(score_path, n_components, label_code, full_df, custom_trai
     res = np.empty(shape=[iteration, 12])
     for i in range(iteration):
         print("iteration:", i)
-        cur_res = entire_proc_binary(n_components, label_code, full_df, custom_train_reps, male_count, female_count, max_iter=max_iter)
+        cur_res = entire_proc_binary(n_components, label_code, full_df, custom_train_reps, male_count, female_count, max_iter=max_iter, model_func=model_func)
         res[i] = cur_res
     res_df = pd.DataFrame(res, \
                           columns = ['source_accuracy', 'source_precision', 'source_recall', 'source_f1', \
