@@ -103,14 +103,14 @@ groups = ['Self_Pay', 'Private', 'Government', 'Medicare', 'Medicaid']
 group_1_count = 120
 group_2_count = 100
 
-# trans_metric = 'OT'
+trans_metric = 'OT'
 # trans_metric = 'TCA'
 # trans_metric = 'MMD'
 # trans_metric = 'NN'
 # trans_metric = 'GFK'
-trans_metric = 'CA'
+# trans_metric = 'CA'
 
-# groups.reverse()
+groups.reverse()
 for group_1 in groups:
     for group_2 in groups:
         if group_1 == group_2:

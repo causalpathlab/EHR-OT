@@ -19,7 +19,6 @@ import random
 from sklearn.metrics import precision_score, recall_score, accuracy_score, \
     f1_score, mean_absolute_error, mean_squared_error, \
     mutual_info_score, normalized_mutual_info_score
-from sklearn.svm import svr
 from scipy.stats import entropy
 from TCA import *
 import torch
@@ -242,6 +241,8 @@ def train_model(reps, labels, model_func):
     Trains a model using reps and labels and returns the model
     """
     clf = model_func()
+    if 'SVR' in str(model_func):
+        clf = model_func(kernel='linear')
     clf.fit(reps, labels)
     return clf
 

@@ -130,7 +130,8 @@ def trans_UOT(target_reps, source_reps, reg=0.1, reg_m=1):
     # print(ot_log)
     coupling = np.transpose(coupling)
     trans_target_reps = np.matmul(coupling, source_reps)
-    wa_dist = compute_wa_dist(M)
+    wa_dist = ot.emd2(source_measure, target_measure, M)
+    # print("wa_distance is:", wa_dist)
 
     # Compute the maximum distance between source representations and target representations
     return trans_target_reps, wa_dist, coupling, M.max()
