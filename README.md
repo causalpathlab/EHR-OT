@@ -1,11 +1,7 @@
-# Deep Patient: An Unsupervised Representation to Predict the Future of Patients from the Electronic Health Records #
+# OTTEHR: Transfer Learning of Electronic Healthcare Records through Optimal Transport  #
 
-Compute representations based on a stack of denoising autoencoders from a matrix of raw data. The code return a matrix of deep representations. 
+Run mimic_exp/admission/mimic_exp4_bound.ipynb to generate analysis of target error and individual terms in the derived upper bound 
 
-This code was used for the paper: https://www.nature.com/articles/srep26094
+Run mimic_exp/admission/mimic_exp4_accuracy.ipynb to generate benchmarking results of OTTEHR against existing transfer learning methods 
 
-See run_dp.py for an example on how to run the code.
 
-The code is an extension of: http://deeplearning.net/tutorial/SdA.html
-
-Requirements: theano, numpy
