@@ -1,5 +1,5 @@
 import sys
-sys.path.append("/home/wanxinli/EHR-OT/")
+sys.path.append("/home/wanxinli/OTTEHR/")
 sys.path.append("/home/wanxinli/unbalanced_gromov_wasserstein/")
 
 from datetime import datetime
@@ -27,8 +27,8 @@ from unbalancedgw.vanilla_ugw_solver import exp_ugw_sinkhorn
 from unbalancedgw._vanilla_utils import ugw_cost
 from unbalancedgw.utils import generate_measure
 
-mimic_output_dir = "/home/wanxinli/EHR-OT/outputs/mimic"
-mimic_data_dir = "/home/wanxinli/EHR-OT/mimic_exp/mimiciii"
+mimic_output_dir = "/home/wanxinli/OTTEHR/outputs/mimic"
+mimic_data_dir = "/home/wanxinli/OTTEHR/mimic_exp/mimiciii"
 
 
 def find_unique_code(df):
@@ -731,7 +731,7 @@ def get_label_codes():
     """ 
     Get label codes (the used label codes)
     """
-    mimic_output_dir = "/home/wanxinli/EHR-OT/outputs/mimic"
+    mimic_output_dir = "/home/wanxinli/OTTEHR/outputs/mimic"
     label_codes = []
     for file in os.listdir(mimic_output_dir):
         if file.endswith("OT_score.csv") and "exp3" in file:

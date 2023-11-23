@@ -4,7 +4,7 @@ Common functions for synthetic datasets
 
 
 import sys
-sys.path.append("/home/wanxinli/EHR-OT")
+sys.path.append("/home/wanxinli/OTTEHR")
 sys.path.append("/home/wanxinli/unbalanced_gromov_wasserstein/")
 
 import numpy as np
@@ -756,9 +756,9 @@ def box_plot_cts_tca_short(ot_score_path, tca_score_path, save_path=None):
     """ 
     Box plot of the scores in score dataframe stored in score_path for ordered. \
         Specifically, we plot the box plots of 
-        - mae/rmse of EHR-OT over TCA
+        - mae/rmse of OTTEHR over TCA
 
-    :param str ot_score_path: the path to EHR-OT scores
+    :param str ot_score_path: the path to OTTEHR scores
     :param str tca_score_path: the path to TCA scores
 
     Returns:
