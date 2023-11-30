@@ -66,11 +66,11 @@ Image(filename='../outputs/pipeline_figs/EHR_emb_sim_pipeline.png')
 
 
 import sys
-sys.path.append("/home/wanxinli/EHR-OT/synthetic_exp")
-sys.path.append("/home/wanxinli/EHR-OT/")
+sys.path.append("/home/wanxinli/OTTEHR/synthetic_exp")
+sys.path.append("/home/wanxinli/OTTEHR/")
 
 from common import *
-from EHR-OT.sda import SDA
+from OTTEHR.sda import SDA
 from math import floor, exp
 import matplotlib.pylab as pl
 import numpy as np

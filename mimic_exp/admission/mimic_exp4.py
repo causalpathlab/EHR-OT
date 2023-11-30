@@ -1,5 +1,5 @@
 import sys
-sys.path.append("/home/wanxinli/EHR-OT/")
+sys.path.append("/home/wanxinli/OTTEHR/")
 
 from ast import literal_eval
 from common import *
@@ -18,7 +18,7 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_sc
 import time
 
 
-output_dir = os.path.join(os.path.expanduser("~"), f"EHR-OT/outputs/mimic")
+output_dir = os.path.join(os.path.expanduser("~"), f"OTTEHR/outputs/mimic")
 print(f"Will save outputs to {output_dir}")
 
 """ 

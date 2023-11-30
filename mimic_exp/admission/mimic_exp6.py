@@ -11,7 +11,7 @@ from collections import Counter
 import pandas as pd
 
 
-admid_diagnosis_df = pd.read_csv("/home/wanxinli/EHR-OT/outputs/mimic/ADMID_DIAGNOSIS.csv", header=0, index_col=0,  converters={"ICD codes": literal_eval})
+admid_diagnosis_df = pd.read_csv("/home/wanxinli/OTTEHR/outputs/mimic/ADMID_DIAGNOSIS.csv", header=0, index_col=0,  converters={"ICD codes": literal_eval})
 adm_types = list(admid_diagnosis_df['adm_type'])
 print(Counter(adm_types))
 
@@ -20,7 +20,7 @@ print(Counter(adm_types))
 
 
 import sys
-sys.path.append("/home/wanxinli/EHR-OT/")
+sys.path.append("/home/wanxinli/OTTEHR/")
 
 from mimic_common import *
 from multiprocess import Pool
@@ -35,7 +35,7 @@ import time
 # In[3]:
 
 
-output_dir = os.path.join(os.path.expanduser("~"), f"EHR-OT/outputs/mimic")
+output_dir = os.path.join(os.path.expanduser("~"), f"OTTEHR/outputs/mimic")
 print(f"Will save outputs to {output_dir}")
 
 
