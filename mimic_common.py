@@ -383,6 +383,8 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     max_h = None
     diameter = None 
     
+    # Computing the coupling is common to both tasks: 
+    # (1) OTTEHR - mitigate bias in the regressor (2) bias detection between two subpopulations
     if trans_metric == 'GWOT': # Unbalanced Gromov Wasserstein OT
         trans_target_reps, coupling, wa_dist = trans_GWOT(target_reps, source_reps)
     if trans_metric == 'MMD':
@@ -395,6 +397,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
         source_reps, trans_target_reps = trans_GFK(source_reps, target_reps)
     elif trans_metric == 'OT': # Unbalanced OT
         trans_target_reps, wa_dist, coupling, diameter = trans_UOT(target_reps, source_reps)
+        print("shape of coupling is:", coupling.shape)
     elif trans_metric == 'CA': # Correlation alignment
         trans_target_reps = trans_CA(target_reps, source_reps)
 
@@ -405,7 +408,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     target_clf = train_model(target_reps, target_labels, model_func)
     target_clf_preds = target_clf.predict(target_reps)
 
-    if equity and trans_metric == 'GWOT':
+    if equity:
         # compute transported target without using the model, used for studying the bias 
         trans_target_mappings = np.matmul(coupling, source_labels)
         trans_target_mappings = np.multiply(trans_target_mappings, target_count)
@@ -431,6 +434,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
         # Compute the maximum |||h||| (triple norm of h)
         target_pred_norms = np.linalg.norm(target_preds, axis=0)
         max_h = np.max(np.divide(target_preds, target_pred_norms))
+
         
     source_mae = metrics.mean_absolute_error(source_labels, source_preds)
     source_mse = mean_squared_error(source_labels, source_preds)
@@ -446,7 +450,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     trans_target_rmse = np.sqrt(metrics.mean_squared_error(target_labels, trans_target_preds))
 
     return source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, target_clf_mae, target_clf_mse, target_clf_rmse, \
-        trans_target_mae, trans_target_mse, trans_target_rmse, label_div_score, wa_dist ,coupling_diff, diameter, max_h
+        trans_target_mae, trans_target_mse, trans_target_rmse, label_div_score, wa_dist, coupling_diff, diameter, max_h
 
 
 def multi_proc_binary(score_path, n_components, label_code, full_df, custom_train_reps, \
