@@ -397,7 +397,6 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
         source_reps, trans_target_reps = trans_GFK(source_reps, target_reps)
     elif trans_metric == 'OT': # Unbalanced OT
         trans_target_reps, wa_dist, coupling, diameter = trans_UOT(target_reps, source_reps)
-        print("shape of coupling is:", coupling.shape)
     elif trans_metric == 'CA': # Correlation alignment
         trans_target_reps = trans_CA(target_reps, source_reps)
 
