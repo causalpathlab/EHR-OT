@@ -111,7 +111,7 @@ trans_metric = 'OT'
 # trans_metric = 'GFK'
 # trans_metric = 'CA'
 
-groups.reverse()
+# groups.reverse()
 for group_1 in groups:
     for group_2 in groups:
         if group_1 == group_2:
