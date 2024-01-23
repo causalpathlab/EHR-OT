@@ -1,6 +1,8 @@
 import sys
 sys.path.append("/home/wanxinli/OTTEHR/")
 sys.path.append("/home/wanxinli/unbalanced_gromov_wasserstein/")
+sys.path.append("/home/wanxinli/OTTEHR/deepJDOT")
+
 
 from ast import literal_eval
 from mimic_common import *
@@ -12,100 +14,8 @@ from sklearn.metrics import mean_squared_error
 from scipy.optimize import minimize
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
-
-def l2_loss(y_true, y_pred):
-    return np.mean((y_true - y_pred) ** 2)
-
-def optimal_transport_plan(x_s, x_t, alpha, reg=0.1, reg_m=1):
-
-    source_measure = np.ones((x_s.shape[0],))/x_s.shape[0]
-    target_measure = np.ones((x_t.shape[0],))/x_t.shape[0]
-
-    M = ot.dist(x_s, x_t, metric='euclidean')
-    M /= M.max()
-    gamma = ot.unbalanced.sinkhorn_unbalanced(source_measure, target_measure, M, reg, reg_m)
-
-    return gamma * alpha
-
-
-def linear_regression(x, params):
-    x_with_intercept = np.column_stack((x, np.ones(x.shape[0])))
-    return np.matmul(x_with_intercept, params)
-
-
-def pairwise_operator(vector1, vector2, operator):
-    """
-    Calculate pairwise operator between two vectors.
-
-    Parameters:
-    - vector1 (list): First input vector
-    - vector2 (list): Second input vector
-    - operator (function): Pairwise operator function (e.g., add, subtract, multiply, divide)
-
-    Returns:
-    - result_matrix (list of lists): Matrix containing pairwise operation results
-    """
-
-    result_matrix = [[operator(vector1[i], vector2[j]) for j in range(len(vector2))] for i in range(len(vector1))]
-    
-    return np.array(result_matrix)
-
-
-def objective_function(params, x_s, x_t, y_s, alpha, lambda_t, n_components):
-    n_s, n_t = len(x_s), len(x_t)
-    g_params = params[:x_s.shape[1] * n_components].reshape(-1, n_components)
-    f_params = params[x_s.shape[1] * n_components:]
-    
-    # Embedding functions g
-    g_x_s = np.matmul(x_s, g_params)
-    g_x_t = np.matmul(x_t, g_params)
-    
-    # Linear regression function f
-    y_pred = linear_regression(g_x_t, f_params)
-    
-    # Calculate the optimal transport plan
-    gamma = optimal_transport_plan(x_s, x_t, alpha)
-    
-    # Calculate the objective function value
-    result_matrix_1 = pairwise_operator(x_s, x_t, lambda x, y: np.linalg.norm(x-y)**2)
-    result_matrix_2 = pairwise_operator(y_s, y_pred, lambda x, y: np.linalg.norm(x-y)**2)
-
-    loss_term_1 = np.sum(np.matmul(gamma, np.transpose(result_matrix_1)))
-    loss_term_2 = np.sum(np.matmul(gamma, np.transpose(lambda_t * result_matrix_2)))
-    
-    objective_value = loss_term_1 + loss_term_2
-    print("loss is:", objective_value)
-    
-    return objective_value
-
-
-def train_models(x_s, x_t, y_s, alpha, lambda_t, n_components):
-    # Initial guess for parameters (you may want to adjust this based on your problem)
-    initial_params = np.random.rand((x_s.shape[1] * n_components) + n_components+1) # +1 for the intercept in linear regression
-    
-    # Define the optimization problem
-    objective_function_partial = lambda params: objective_function(params, x_s, x_t, y_s, alpha, lambda_t, n_components)
-    
-    # Use a numerical optimization method to find optimal parameters
-    result = minimize(objective_function_partial, initial_params, method='BFGS')
-    
-    # Extract optimal parameters for g and f
-    optimal_params = result.x
-    optimal_g_params = optimal_params[:x_s.shape[1] * n_components].reshape(-1, n_components)
-    optimal_f_params = optimal_params[x_s.shape[1] * n_components:]
-    
-    return optimal_g_params, optimal_f_params
-
-def calc_stats(x_t, y_t, g_params, f_params):
-    """ 
-    Calculates the MAE and RMSE of the dataset 
-    """
-    g_x_t = np.matmul(x_t, g_params)
-    y_pred = linear_regression(g_x_t, f_params)
-    rmse = np.sqrt(mean_squared_error(y_t, y_pred))
-    mae = np.mean(np.abs(y_t - y_pred))
-    return rmse, mae
-
+import dnn
+from Deepjdot import Deepjdot
 
 
 output_dir = os.path.join(os.path.expanduser("~"), f"OTTEHR/outputs/mimic")
@@ -128,14 +38,100 @@ print(admid_diagnosis_df)
 
 
 selected_df = select_df_cts(admid_diagnosis_df, group_name, group_1, group_2, source_count=group_1_count, target_count=group_2_count)
+print("selected_df is:", selected_df)
 
-source_features, source_labels, target_features, target_labels = gen_features_duration(selected_df, group_name, group_1, group_2)
+source_traindata, source_trainlabel, target_traindata, target_trainlabel = gen_features_duration(selected_df, group_name, group_1, group_2)
+print("source_traindata is:", source_traindata)
+print("source_trainlabel is:", source_trainlabel)
 
-alpha = 1                    # Example value for alpha
-lambda_t = 1                 # Example value for lambda_t
-n_components = 50               # Example value for the reduced dimensions, consistent with other experiments
+import pylab as pl
+import matplotlib.pyplot as plt
+import dnn
+from scipy.spatial.distance import cdist 
+import ot
+from sklearn.datasets import make_moons, make_blobs
+import tensorflow as tf
 
-g_params, f_params = train_models(source_features, target_features, source_labels, alpha, lambda_t, n_components)
-print("g_params is:", g_params, "f_params is:", f_params)
-rmse, mae = calc_stats(source_features, source_labels, g_params, f_params)
-print(f"rmse is: {rmse}, mae is: {mae}")
+#seed=1985
+#np.random.seed(seed)
+
+
+
+
+#%% optimizer
+# n_class = len(np.unique(source_trainlabel))
+n_dim = np.shape(source_traindata)
+# optim = dnn.keras.optimizers.SGD(lr=0.001)
+optim = tf.keras.optimizers.legacy.SGD(lr=0.001)
+
+#%% feature extraction and classifier function definition
+
+def feat_ext(main_input, l2_weight=0.0):
+    net = dnn.Dense(500, activation='relu', name='fe')(main_input)
+    net = dnn.Dense(100, activation='relu', name='feat_ext')(net)
+    return net
+    
+# def classifier(model_input, nclass, l2_weight=0.0):
+#     net = dnn.Dense(100, activation='relu', name='cl')(model_input)
+#     net = dnn.Dense(nclass, activation='softmax', name='cl_output')(net)
+#     return net
+
+def regressor(model_input, l2_weight=0.0):
+    net = dnn.Dense(50, activation='relu', name='rg')(model_input)
+    net = dnn.Dense(1, activation='linear', name='rg_output')(net)
+    return net
+     
+# #%% Feature extraction as a keras model
+main_input = dnn.Input(shape=(n_dim[1],))
+fe = feat_ext(main_input)
+# fe_size=fe.get_shape().as_list()[1]
+# # feature extraction model
+fe_model = dnn.Model(main_input, fe, name= 'fe_model')
+# # Classifier model as a keras model
+rg_input = dnn.Input(shape =(fe.get_shape().as_list()[1],))  # input dim for the classifier 
+net = regressor(rg_input)
+# # classifier keras model
+rg_model = dnn.Model(rg_input, net, name ='regressor')
+# #%% source model
+ms = dnn.Input(shape=(n_dim[1],))
+fes = feat_ext(ms)
+nets = regressor(fes)
+source_model = dnn.Model(ms, nets)
+source_model.compile(optimizer=optim, loss='mean_squared_error', metrics=['accuracy'])
+source_model.fit(source_traindata, source_trainlabel, batch_size=128, epochs=100, validation_data=(target_traindata, target_trainlabel))
+source_acc = source_model.evaluate(source_traindata, source_trainlabel)
+target_acc = source_model.evaluate(target_traindata, target_trainlabel)
+print("source loss & acc using source model", source_acc)
+print("target loss & acc using source model", target_acc)
+
+#%% Target model
+main_input = dnn.Input(shape=(n_dim[1],))
+# feature extraction model
+ffe=fe_model(main_input)
+# classifier model
+net = rg_model(ffe)
+#con_cat = dnn.concatenate([net, ffe ], axis=1)
+# target model with two outputs: predicted class prob, and intermediate layers
+model = dnn.Model(inputs=main_input, outputs=[net, ffe])
+model.set_weights(source_model.get_weights())
+
+
+#%% deepjdot model and training
+from Deepjdot import Deepjdot
+
+batch_size=128
+sample_size=50
+sloss = 2.0; tloss=1.0; int_lr=0.002; jdot_alpha=5.0
+# DeepJDOT model initalization
+al_model = Deepjdot(model, batch_size, optim,allign_loss=1.0,
+                      sloss=sloss,tloss=tloss,int_lr=int_lr,jdot_alpha=jdot_alpha,
+                      lr_decay=True,verbose=1)
+# DeepJDOT model fit
+h,t_loss,tacc = al_model.fit(source_traindata, source_trainlabel, target_traindata,
+                            n_iter=1500, target_label=target_trainlabel)
+
+
+#%% accuracy assesment
+tarmodel_sacc = al_model.evaluate(source_traindata, source_trainlabel)    
+rmse, mae = al_model.evaluate(target_traindata, target_trainlabel)
+print("target loss & acc using source+target model", "rmse is:", rmse, "mae is:", mae)

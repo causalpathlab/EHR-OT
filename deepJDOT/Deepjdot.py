@@ -13,13 +13,12 @@ from sklearn.metrics import mean_squared_error
 import tensorflow as tf
 
 class Deepjdot(object):
-    def __init__(self, model, batch_size, n_class, optim, allign_loss=1.0, tar_cl_loss=1.0, 
+    def __init__(self, model, batch_size, optim, allign_loss=1.0, tar_cl_loss=1.0, 
                  sloss=0.0,tloss=1.0,int_lr=0.01, ot_method='emd',
                  jdot_alpha=0.01, lr_decay=True, verbose=1):
                      
         self.model = model   # target model
         self.batch_size = batch_size
-        self.n_class= n_class
         self.optimizer= optim
         # initialize the gamma (coupling in OT) with zeros
         self.gamma=dnn.K.zeros(shape=(self.batch_size, self.batch_size))
@@ -104,7 +103,7 @@ class Deepjdot(object):
 
  
     def fit(self, source_traindata, ys_label, target_traindata, target_label = None,
-            n_iter=5000, cal_bal=True, sample_size=None):
+            n_iter=5000, sample_size=None):
         '''
         source_traindata - source domain training data
         ys_label - source data true labels
@@ -126,24 +125,24 @@ class Deepjdot(object):
         g_metric ='deep' # to allign in intermediate layers, when g_metric='original', the
          # alignment loss is performed wrt original input features  (StochJDOT)
         
-        # function to sample n samples from each class
-        def mini_batch_class_balanced(label, sample_size=20, shuffle=False):
-            ''' sample the mini-batch with class balanced
-            '''
-            label = np.argmax(label, axis=1)
-            if shuffle:
-                rindex = np.random.permutation(len(label))
-                label = label[rindex]
+        # # function to sample n samples from each class
+        # def mini_batch_class_balanced(label, sample_size=20, shuffle=False):
+        #     ''' sample the mini-batch with class balanced
+        #     '''
+        #     label = np.argmax(label, axis=1)
+        #     if shuffle:
+        #         rindex = np.random.permutation(len(label))
+        #         label = label[rindex]
 
-            n_class = len(np.unique(label))
-            index = []
-            for i in range(n_class):
-                s_index = np.nonzero(label == i)
-                s_ind = np.random.permutation(s_index[0])
-                index = np.append(index, s_ind[0:sample_size])
-                #          print(index)
-            index = np.array(index, dtype=int)
-            return index
+        #     n_class = len(np.unique(label))
+        #     index = []
+        #     for i in range(n_class):
+        #         s_index = np.nonzero(label == i)
+        #         s_ind = np.random.permutation(s_index[0])
+        #         index = np.append(index, s_ind[0:sample_size])
+        #         #          print(index)
+        #     index = np.array(index, dtype=int)
+        #     return index
             
          # target model compliation and optimizer
         self.model.compile(optimizer= self.optimizer, loss =[self.classifier_cat_loss, self.align_loss])
@@ -159,13 +158,13 @@ class Deepjdot(object):
                 dnn.K.set_value(self.model.optimizer.lr, lr*0.1)
              
             # source domain mini-batch indexes
-            if cal_bal:
-                s_ind = mini_batch_class_balanced(ys_label, sample_size=sample_size)
-                self.sbatch_size = len(s_ind)
-            else:
-                s_ind = np.random.choice(ns, self.batch_size)
-                self.sbatch_size = self.batch_size
-                # target domain mini-batch indexes
+            # if cal_bal:
+            #     s_ind = mini_batch_class_balanced(ys_label, sample_size=sample_size)
+            #     self.sbatch_size = len(s_ind)
+            # else:
+            s_ind = np.random.choice(ns, self.batch_size)
+            self.sbatch_size = self.batch_size
+            # target domain mini-batch indexes
             t_ind = np.random.choice(nt, self.batch_size)
 
             # source and target domain mini-batch samples 
@@ -201,8 +200,6 @@ class Deepjdot(object):
                 C0 = cdist(gs_batch, gt_batch, metric='sqeuclidean')
 
             # ground metric for the target classification loss
-            print("ys shape is:", ys.shape)
-            print("ft_pred shape is:", ft_pred.shape)
             ys = ys.reshape(-1,1)
             C1 = cdist(ys, ft_pred, metric='sqeuclidean')
             
@@ -219,10 +216,7 @@ class Deepjdot(object):
             
             # train the keras model on batch
             data = np.vstack((xs_batch, xt_batch))  
-            print(ys.shape)
-            print(l_dummy.shape)
             l_dummy = l_dummy.reshape(-1,1)
-            print(g_dummy.shape)
             hist= self.model.train_on_batch([data], [np.vstack((ys,l_dummy)), g_dummy])
             
             t_loss.append(hist[0])
@@ -232,10 +226,7 @@ class Deepjdot(object):
                           hist[2], hist[0]))
                    if target_label is not None:
                        
-                       print("target_traindata shape is:", target_traindata.shape)
-                       tpred = self.model.predict(target_traindata)[0]
-                       print("tpred shape is:", tpred.shape)
-                       print("target_label shape is:", target_label.shape)
+                       tpred = self.model.predict(target_traindata)[0].reshape(-1)
                     #    t_acc.append(np.mean(np.argmax(target_label,1)==np.argmax(tpred,1)))
                        # Calculate RMSE and MAE
                        rmse = tf.keras.metrics.mean_squared_error(target_label, tpred)
@@ -251,9 +242,7 @@ class Deepjdot(object):
         return ypred
 
     def evaluate(self, data, label):
-        ypred = self.model.predict(data)[0]
-        # score = np.mean(np.argmax(label,1)==np.argmax(ypred[0],1))
-        print("label shape is:", label.shape)
-        print("ypred shape is:", np.array(ypred).shape)
-        score = tf.keras.metrics.mean_squared_error(label, ypred)
-        return score
+        ypred = self.model.predict(data)[0].reshape(-1)
+        rmse_score = tf.keras.metrics.mean_squared_error(label, ypred)
+        mae_score = tf.keras.metrics.mean_absolute_error(label, ypred)
+        return rmse_score, mae_score
