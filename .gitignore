@@ -1,2 +1,12 @@
 __pycache__/
 OTTEHR/*.pyc
+mimic_exp/mimiciii
+outputs/mimic/ADMID_DIAGNOSIS.csv
+outputs/mimic/ADMID_DIAGNOSIS_TARGET.csv
+outputs/mimic/ADMID_DIAGNOSIS_selected.csv
+outputs/mimic/CONS_VISITS.csv
+outputs/mimic/selected_code_stat.csv
+outputs/mimic/selected_codes.csv
+outputs/mimic/selected_df.csv
+outputs/mimic/selected_summary_mimic.csv
+outputs/mimic/summary_mimic.csv
