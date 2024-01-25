@@ -769,3 +769,25 @@ def compute_metric_ratio(score_df, eval_metric):
         elif eval_metric == 'mae' or eval_metric == 'rmse':
             improve_ratios.append((target_metric-trans_target_metric)/target_metric) # smaller is better
     return improve_ratios
+
+
+def get_target_stats(score_df, eval_metric, method, filter_na):
+    """ 
+    Gets the metric statistics of eval_metric from score_df for the transported target domain
+    Used for comparison between DeepJDOT and OTTEHR
+    :param Dataframe score_df: the dataframe for scores
+    :param str eval_metric: the metric name for computing ratios, can be mae or rmse for regression, \
+        precision, recall and f1 for classification
+    :param method str: OT or DeepJDOT
+    :param filter_na bool: filter out nan or not
+    """
+    stats = []
+    eval_metric = eval_metric.lower()
+    if method == 'OT':
+        stats = list(score_df[f'trans_target_{eval_metric}'])
+    elif method == 'deepJDOT':
+        stats = list(score_df[f'target_{eval_metric}'])
+
+    if filter_na:
+        stats = [x for x in stats if str(x) != 'nan']
+    return stats
