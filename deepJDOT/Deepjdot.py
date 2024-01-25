@@ -12,6 +12,7 @@ from scipy.spatial.distance import cdist
 from sklearn.metrics import mean_squared_error
 import tensorflow as tf
 
+
 class Deepjdot(object):
     def __init__(self, model, batch_size, optim, allign_loss=1.0, tar_cl_loss=1.0, 
                  sloss=0.0,tloss=1.0,int_lr=0.01, ot_method='emd',
@@ -243,6 +244,6 @@ class Deepjdot(object):
 
     def evaluate(self, data, label):
         ypred = self.model.predict(data)[0].reshape(-1)
-        rmse_score = tf.keras.metrics.mean_squared_error(label, ypred)
+        rmse_score = tf.math.sqrt(tf.keras.metrics.mean_squared_error(label, ypred))
         mae_score = tf.keras.metrics.mean_absolute_error(label, ypred)
         return rmse_score, mae_score
