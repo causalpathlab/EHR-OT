@@ -105,13 +105,10 @@ def gen_features_duration(df, group_name, source, target):
     for _, row in source_df.iterrows():
         code_ind = np.zeros(num_codes)
         for code in row["ICD codes"]:
-            print("augmenting source df", unique_code_dict[code])
             code_ind[unique_code_dict[code]] += 1
-        print("code_ind is:", code_ind)
         source_features[feature_index] = code_ind
         feature_index += 1
     source_durations = np.array(list(source_df['duration']))
-    print("source_features is:", source_features)
 
     # Prepare target
     target_features = np.empty(shape=[target_df.shape[0], num_codes])

@@ -20,15 +20,17 @@ import tensorflow as tf
 import dnn
 from Deepjdot import Deepjdot
 
+
+n_components = 50
 #%% feature extraction and regressor function definition
 def feat_ext(main_input, l2_weight=0.0):
-    net = dnn.Dense(500, activation='relu', name='fe')(main_input)
-    net = dnn.Dense(100, activation='relu', name='feat_ext')(net)
+    net = dnn.Dense(2*n_components, activation='relu', name='fe')(main_input)
+    net = dnn.Dense(n_components, activation='relu', name='feat_ext')(net)
     return net
     
 
 def regressor(model_input, l2_weight=0.0):
-    net = dnn.Dense(50, activation='relu', name='rg')(model_input)
+    net = dnn.Dense(n_components/2, activation='relu', name='rg')(model_input)
     net = dnn.Dense(1, activation='linear', name='rg_output')(net)
     return net
 
@@ -48,17 +50,22 @@ def save_results(rmses, maes, score_path):
 output_dir = os.path.join(os.path.expanduser("~"), f"OTTEHR/outputs/mimic")
 print(f"Will save outputs to {output_dir}")
 
-n_components = 50
 
 suffix = None
-group_name = 'marital_status'
+
 group_1_count = 120
 group_2_count = 100
 iterations = 100
-groups = ['MARRIED', 'SINGLE']
 trans_metric = 'deepJDOT'
+
+# group_name = 'marital_status'
 # groups = ['MARRIED', 'SINGLE', 'WIDOWED', 'DIVORCED', 'SEPARATED']
 
+group_name = 'insurance'
+groups = ['Self_Pay', 'Private', 'Government', 'Medicare', 'Medicaid']
+
+
+# groups.reverse()
 
 
 """ 
@@ -72,8 +79,12 @@ for group_1 in groups:
     for group_2 in groups:
         if group_1 == group_2:
             continue
+
         
         print(f"group_1 is: {group_1}, group_2 is: {group_2}")
+        score_path = os.path.join(output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{trans_metric}.csv")
+        if os.path.exists(score_path):
+            continue
 
         maes = []
         rmses = []
@@ -100,7 +111,7 @@ for group_1 in groups:
             nets = regressor(fes)
             source_model = dnn.Model(ms, nets)
             source_model.compile(optimizer=optim, loss='mean_squared_error', metrics=['accuracy'])
-            source_model.fit(source_traindata, source_trainlabel, batch_size=128, epochs=10, validation_data=(target_traindata, target_trainlabel))
+            source_model.fit(source_traindata, source_trainlabel, batch_size=128, epochs=100, validation_data=(target_traindata, target_trainlabel))
             source_acc = source_model.evaluate(source_traindata, source_trainlabel)
             target_acc = source_model.evaluate(target_traindata, target_trainlabel)
             print("source loss & acc using source model", source_acc)
@@ -129,7 +140,7 @@ for group_1 in groups:
                                 lr_decay=True,verbose=1)
             # DeepJDOT model fit
             h,t_loss,tacc = al_model.fit(source_traindata, source_trainlabel, target_traindata,
-                                        n_iter=10, target_label=target_trainlabel)
+                                        n_iter=1500, target_label=target_trainlabel)
 
 
             #%% accuracy assesment
@@ -140,7 +151,6 @@ for group_1 in groups:
             rmses.append(rmse.numpy())
             maes.append(mae.numpy())
         
-        score_path = os.path.join(output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{trans_metric}.csv")
 
         print("rmses is:", rmses)
         print("maes is:", maes)
