@@ -63,37 +63,9 @@ Run multiple iterations using linear regression
 """
 n_components = 50
 
-# suffix = None
-# group_name = 'gender'
-# group_1 = 'M'
-# group_2 = 'F'
-
-# suffix = None
-# group_name = 'ethnicity'
-# group_1 =   'HISPANIC_OR_LATINO'
-# group_2 = 'ASIAN'
-# # group_2 = 'WHITE'
-
-# suffix = None
-# group_name = 'marital_status'
-# group_1 =   'MARRIED'
-# group_2 = 'SEPARATED'
-
-# suffix = None
-# group_name = 'marital_status'
-# group_1 =  'MARRIED'
-# group_2 = 'SINGLE'
-
-# suffix = None
-# group_name = 'insurance'
-# group_1 =  'Medicare'
-# group_2 = 'Medicaid'
-
-# Select a subset of the data (newborn)
-# admid_diagnosis_df = admid_diagnosis_df[admid_diagnosis_df['adm_type'] == 'NEWBORN']
-# suffix = "newborn"
-
 suffix = None
+
+# Update group_name and groups to appropriate values 
 # group_name = 'insurance'
 # groups = ['Self_Pay', 'Private', 'Government', 'Medicare', 'Medicaid']
 
