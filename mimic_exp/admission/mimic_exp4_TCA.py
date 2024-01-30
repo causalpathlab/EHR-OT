@@ -1,5 +1,8 @@
+import getpass
+user_id = getpass.getuser()
+
 import sys
-sys.path.append("/home/wanxinli/OTTEHR/")
+sys.path.append(f"/home/{user_id}/OTTEHR/")
 
 from ast import literal_eval
 from common import *

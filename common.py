@@ -4,8 +4,9 @@ Common functions for synthetic datasets
 
 
 import sys
-sys.path.append("/home/wanxinli/OTTEHR")
-sys.path.append("/home/wanxinli/unbalanced_gromov_wasserstein/")
+from config import user_id
+sys.path.append(f"/home/{user_id}/OTTEHR")
+sys.path.append(f"/home/{user_id}/unbalanced_gromov_wasserstein/")
 
 import numpy as np
 import matplotlib.pylab as pl

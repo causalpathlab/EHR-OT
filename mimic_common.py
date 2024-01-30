@@ -1,6 +1,9 @@
+import getpass
+user_id = getpass.getuser()
+
 import sys
-sys.path.append("/home/wanxinli/OTTEHR/")
-sys.path.append("/home/wanxinli/unbalanced_gromov_wasserstein/")
+sys.path.append(f"/home/{user_id}/OTTEHR/")
+sys.path.append(f"/home/{user_id}/unbalanced_gromov_wasserstein/")
 
 from datetime import datetime
 import copy
@@ -27,8 +30,8 @@ from unbalancedgw.vanilla_ugw_solver import exp_ugw_sinkhorn
 from unbalancedgw._vanilla_utils import ugw_cost
 from unbalancedgw.utils import generate_measure
 
-mimic_output_dir = "/home/wanxinli/OTTEHR/outputs/mimic"
-mimic_data_dir = "/home/wanxinli/OTTEHR/mimic_exp/mimiciii"
+mimic_output_dir = f"/home/{user_id}/OTTEHR/outputs/mimic"
+mimic_data_dir = f"/home/{user_id}/OTTEHR/mimic_exp/mimiciii"
 
 
 def find_unique_code(df):
@@ -734,7 +737,7 @@ def get_label_codes():
     """ 
     Get label codes (the used label codes)
     """
-    mimic_output_dir = "/home/wanxinli/OTTEHR/outputs/mimic"
+    mimic_output_dir = f"/home/{user_id}/OTTEHR/outputs/mimic"
     label_codes = []
     for file in os.listdir(mimic_output_dir):
         if file.endswith("OT_score.csv") and "exp3" in file:

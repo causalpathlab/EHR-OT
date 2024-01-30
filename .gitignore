@@ -10,3 +10,4 @@ outputs/mimic/selected_codes.csv
 outputs/mimic/selected_df.csv
 outputs/mimic/selected_summary_mimic.csv
 outputs/mimic/summary_mimic.csv
+config.py
