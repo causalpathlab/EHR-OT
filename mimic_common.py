@@ -419,9 +419,9 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
             target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{target}2{source}_{suffix}_equity.csv")
         target_equity_df = pd.read_csv(target_equity_path, header=0, index_col = None)
 
-        target_diffs = np.divide(target_preds - target_labels, target_labels)
+        # target_diffs = np.divide(target_preds - target_labels, target_labels)
 
-        target_new_df = pd.DataFrame([target_labels, target_preds, target_diffs, target_codes]).transpose()
+        target_new_df = pd.DataFrame([target_labels, target_preds, trans_target_preds, target_codes]).transpose()
         target_new_df.columns = target_equity_df.columns
         target_equity_df = pd.concat([target_equity_df, target_new_df], ignore_index=True)
         target_equity_df.to_csv(target_equity_path, index=False, header=True)
@@ -525,7 +525,7 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
     max_hs = []
 
     if equity:
-        target_equity_df = pd.DataFrame(columns=['target_label', 'target_pred_label', 'target_diff_percent', 'target_codes'])
+        target_equity_df = pd.DataFrame(columns=['target_label', 'target_pred_label', 'trans_target_pred_label',  'target_codes'])
         target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{target}2{source}_equity.csv")
         if suffix is not None:
             target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{target}2{source}_{suffix}_equity.csv")
@@ -778,15 +778,16 @@ def get_target_stats(score_df, eval_metric, method, filter_na):
     :param Dataframe score_df: the dataframe for scores
     :param str eval_metric: the metric name for computing ratios, can be mae or rmse for regression, \
         precision, recall and f1 for classification
-    :param method str: OT or DeepJDOT
+    :param method str: OT, TCA, GFK, CA and DeepJDOT
     :param filter_na bool: filter out nan or not
     """
     stats = []
     eval_metric = eval_metric.lower()
-    if method == 'OT':
-        stats = list(score_df[f'trans_target_{eval_metric}'])
-    elif method == 'deepJDOT':
+
+    if method == 'deepJDOT':
         stats = list(score_df[f'target_{eval_metric}'])
+    else:
+        stats = list(score_df[f'trans_target_{eval_metric}'])
 
     if filter_na:
         stats = [x for x in stats if str(x) != 'nan']
