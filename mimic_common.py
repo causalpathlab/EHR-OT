@@ -411,17 +411,17 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     target_clf_preds = target_clf.predict(target_reps)
 
     if equity:
-        # compute transported target without using the model, used for studying the bias 
-        trans_target_mappings = np.matmul(coupling, source_labels)
-        trans_target_mappings = np.multiply(trans_target_mappings, target_count)
+        # compute transported target using the model, used for studying the bias 
+        # trans_target_mappings = np.matmul(coupling, source_labels)
+        # trans_target_mappings = np.multiply(trans_target_mappings, target_count)
         target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{target}2{source}_equity.csv")
         if suffix is not None:
             target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{target}2{source}_{suffix}_equity.csv")
         target_equity_df = pd.read_csv(target_equity_path, header=0, index_col = None)
 
-        target_diffs = np.divide(trans_target_mappings - target_labels, target_labels)
+        target_diffs = np.divide(target_preds - target_labels, target_labels)
 
-        target_new_df = pd.DataFrame([target_labels, trans_target_mappings, target_diffs, target_codes]).transpose()
+        target_new_df = pd.DataFrame([target_labels, target_preds, target_diffs, target_codes]).transpose()
         target_new_df.columns = target_equity_df.columns
         target_equity_df = pd.concat([target_equity_df, target_new_df], ignore_index=True)
         target_equity_df.to_csv(target_equity_path, index=False, header=True)
