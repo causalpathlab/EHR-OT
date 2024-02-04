@@ -127,15 +127,15 @@ def trans_UOT(target_reps, source_reps, reg=0.1, reg_m=1):
 
     M = ot.dist(source_reps, target_reps, metric='euclidean')
     M /= M.max()
-    coupling, ot_log = ot.unbalanced.sinkhorn_unbalanced(source_measure, target_measure, M, reg, reg_m, log=True)
-    # print(ot_log)
-    coupling = np.transpose(coupling)
-    trans_target_reps = np.matmul(coupling, source_reps)
     wa_dist = ot.emd2(source_measure, target_measure, M)
     # print("wa_distance is:", wa_dist)
 
+    ot_sinkhorn = ot.da.UnbalancedSinkhornTransport(reg_e=reg, reg_m=reg_m)
+    ot_sinkhorn.fit(Xs=target_reps, Xt=source_reps)
+    trans_target_reps = ot_sinkhorn.transform(Xs=target_reps)
+
     # Compute the maximum distance between source representations and target representations
-    return trans_target_reps, wa_dist, coupling, M.max()
+    return trans_target_reps, wa_dist, np.transpose(ot_sinkhorn.coupling_), M.max()
 
 
 """ 
