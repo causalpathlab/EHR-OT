@@ -5,3 +5,5 @@ Run mimic_exp4.py to run OTTEHR with **group_name** and **groups** updated to th
 Run mimic_exp/admission/mimic_exp4_bound.ipynb to generate analysis of target error and individual terms in the derived upper bound.
 
 Run mimic_exp/admission/mimic_exp4_accuracy.ipynb to generate benchmarking results of OTTEHR against existing transfer learning methods. 
+
+Run mimic_exp/admission/mimic_exp4_duration_diff.ipynb to generate predicted duration vs observed duration and the duration bias analysis based on subgroups 

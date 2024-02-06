@@ -96,8 +96,13 @@ def trans_GWOT(target_reps, source_reps):
     wa_dist = wa_dist.detach().cpu().numpy()
 
     coupling_1 = coupling_1.detach().cpu().numpy()
-    coupling_1 = np.transpose(coupling_1)
-    trans_target_reps = np.matmul(coupling_1, source_reps)
+    transp = np.transpose(coupling_1)
+    transp = transp/ np.sum(transp, axis=1)[:, None]
+    print("target_reps shape is:", target_reps.shape)
+    print("coupling_1 shape is:", coupling_1.shape)
+    trans_target_reps = np.matmul(transp, source_reps)
+    print("trans_target_reps is:", trans_target_reps.shape)
+    # TODO: should we standardize each row or column to 1?
 
     return trans_target_reps, coupling_1, wa_dist
 
