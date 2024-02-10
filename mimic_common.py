@@ -23,7 +23,8 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score, \
     f1_score, mean_absolute_error, mean_squared_error, \
     mutual_info_score, normalized_mutual_info_score
 from scipy.stats import entropy
-from TCA import *
+# from TCA import *
+from transfertools.models import TCA
 import torch
 
 from unbalancedgw.vanilla_ugw_solver import exp_ugw_sinkhorn
@@ -375,8 +376,8 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
 
     source_reps = None
     target_reps = None
-    if trans_metric != 'TCA':
-        source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
+    # if trans_metric != 'TCA':
+    source_reps, target_reps = custom_train_reps(source_features, target_features, n_components, pca_explain=pca_explain)
 
     trans_target_reps = None
     coupling = None
@@ -393,7 +394,11 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     if trans_metric == 'MMD':
         trans_target_reps = trans_MMD(target_reps, source_reps)
     elif trans_metric == 'TCA': # Transfer component analysis
-        source_reps, target_reps, trans_target_reps = TCA(source_features, target_features, n_components=n_components)
+        # source_reps, target_reps, trans_target_reps = TCA(source_features, target_features, n_components=n_components, scale=False)
+        transfor = TCA(mu=0.1, kernel_type='linear', n_components = source_reps.shape[1])
+        print("source_reps shape is:", source_reps.shape, "target_reps shape is:", target_reps.shape)
+        source_reps, trans_target_reps = transfor.fit_transfer(source_reps, target_reps)
+        print("After TCA, source_reps shape is:", source_reps.shape, "target_reps shape is:", target_reps.shape)
     elif trans_metric == 'NN': # Nearest neighbor
         trans_target_reps = trans_NN(source_reps, target_reps)
     elif trans_metric == 'GFK': #
@@ -403,6 +408,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     elif trans_metric == 'CA': # Correlation alignment
         trans_target_reps = trans_CA(target_reps, source_reps)
 
+    
     clf = train_model(source_reps, source_labels, model_func) 
     source_preds = clf.predict(source_reps)
     target_preds = clf.predict(target_reps)
@@ -771,7 +777,7 @@ def compute_metric_ratio(score_df, eval_metric):
     return improve_ratios
 
 
-def get_target_stats(score_df, eval_metric, method, filter_na):
+def get_target_stats(score_df, eval_metric, method, log=True, filter_na=True):
     """ 
     Gets the metric statistics of eval_metric from score_df for the transported target domain
     Used for comparison between DeepJDOT and OTTEHR
@@ -779,6 +785,7 @@ def get_target_stats(score_df, eval_metric, method, filter_na):
     :param str eval_metric: the metric name for computing ratios, can be mae or rmse for regression, \
         precision, recall and f1 for classification
     :param method str: OT, TCA, GFK, CA and DeepJDOT
+    :param log bool: log the data or not 
     :param filter_na bool: filter out nan or not
     """
     stats = []
@@ -790,5 +797,8 @@ def get_target_stats(score_df, eval_metric, method, filter_na):
         stats = list(score_df[f'trans_target_{eval_metric}'])
 
     if filter_na:
-        stats = [x for x in stats if str(x) != 'nan']
+        stats = [x for x in stats if not pd.isna(x)]
+
+    if log:
+        stats = [np.log(x) for x in stats ]
     return stats
