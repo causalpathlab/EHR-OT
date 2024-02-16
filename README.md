@@ -6,4 +6,4 @@ Run mimic_exp/admission/mimic_exp4_bound.ipynb to generate analysis of target er
 
 Run mimic_exp/admission/mimic_exp4_accuracy.ipynb to generate benchmarking results of OTTEHR against existing transfer learning methods. 
 
-Run mimic_exp/admission/mimic_exp4_duration_diff.ipynb to generate predicted duration vs observed duration and the duration bias analysis based on subgroups 
+Run mimic_exp/admission/mimic_exp4_duration_diff.ipynb to generate predicted duration vs observed duration and the treatment disparity analysis based on subgroups 
