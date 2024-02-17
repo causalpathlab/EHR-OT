@@ -1,4 +1,4 @@
-# OTTEHR: Transport-based transfer learning on Electronic Health Records with an application to detect treatment disparities #
+# Transport-based transfer learning on Electronic Health Records throught optimal transport (OTTEHR): Application to detection of treatment disparities #
 
 Run mimic_exp4.py to run OTTEHR with **group_name** and **groups** updated to the appropriate values. 
 
