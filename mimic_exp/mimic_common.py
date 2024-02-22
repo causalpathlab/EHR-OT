@@ -3,6 +3,7 @@ user_id = getpass.getuser()
 
 import sys
 sys.path.append(f"/home/{user_id}/OTTEHR/")
+sys.path.append(f"/home/{user_id}/OTTEHR/competitors")
 sys.path.append(f"/home/{user_id}/unbalanced_gromov_wasserstein/")
 
 from datetime import datetime
@@ -90,7 +91,7 @@ def gen_features_labels(df, group_name, source, target, label_code):
     return source_features, source_labels, target_features, target_labels
 
 
-def gen_features_duration(df, group_name, source, target):
+def gen_features_duration(df, group_name, source, target, ICD_col_name = 'ICD codes'):
     """ 
     Generate source features, source durations (continuous response), \
         target features and target durations (continuous response) from dataframe df
@@ -108,7 +109,7 @@ def gen_features_duration(df, group_name, source, target):
     feature_index = 0
     for _, row in source_df.iterrows():
         code_ind = np.zeros(num_codes)
-        for code in row["ICD codes"]:
+        for code in row[ICD_col_name]:
             code_ind[unique_code_dict[code]] += 1
         source_features[feature_index] = code_ind
         feature_index += 1
@@ -119,7 +120,7 @@ def gen_features_duration(df, group_name, source, target):
     feature_index = 0
     for _, row in target_df.iterrows():
         code_ind = np.zeros(num_codes)
-        for code in row["ICD codes"]:
+        for code in row[ICD_col_name]:
             code_ind[unique_code_dict[code]] += 1
         target_features[feature_index] = code_ind
         feature_index += 1

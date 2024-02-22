@@ -2,9 +2,10 @@
 Common functions for synthetic datasets
 """
 
+import getpass
+user_id = getpass.getuser()
 
 import sys
-from config import user_id
 sys.path.append(f"/home/{user_id}/OTTEHR")
 sys.path.append(f"/home/{user_id}/unbalanced_gromov_wasserstein/")
 

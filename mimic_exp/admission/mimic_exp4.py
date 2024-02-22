@@ -3,6 +3,7 @@ user_id = getpass.getuser()
 
 import sys
 sys.path.append(f"/home/{user_id}/OTTEHR/")
+sys.path.append(f"/home/{user_id}/OTTEHR/mimic_exp")
 
 from ast import literal_eval
 from common import *
