@@ -103,7 +103,6 @@ def trans_GWOT(target_reps, source_reps):
     print("coupling_1 shape is:", coupling_1.shape)
     trans_target_reps = np.matmul(transp, source_reps)
     print("trans_target_reps is:", trans_target_reps.shape)
-    # TODO: should we standardize each row or column to 1?
 
     return trans_target_reps, coupling_1, wa_dist
 
@@ -113,6 +112,19 @@ def compute_wa_dist(cost_matrix):
     w_dist = np.sum(cost_matrix[row_indices, col_indices])
     return w_dist
 
+
+def trans_EMD_OT(target_reps, source_reps):
+    """ 
+    Transport by balanced earth move distance optimal transport (optimal transport map by Monge)
+
+    :returns the transported target representations
+    """
+
+    M = ot.dist(source_reps, target_reps, metric='euclidean')
+    M /= M.max()
+    ot_emd = ot.da.EMDTransport()
+    ot_emd.fit(Xs=target_reps, Xt=source_reps)
+    return ot_emd.transform(Xs=target_reps)
 
 
 
@@ -125,7 +137,6 @@ def trans_UOT(target_reps, source_reps, reg=0.1, reg_m=1):
 
     :returns the transported target representations, the Wasserstein distance, \
         the tranport plan, and the maximum distance (diameter) between source and target embeddings
-    -
     """
 
     source_measure = np.ones((source_reps.shape[0],))/source_reps.shape[0]
