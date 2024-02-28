@@ -92,6 +92,39 @@ def find_unique_code(df, ICD_name = 'ICD codes'):
 #     return source_features, source_labels, target_features, target_labels
 
 
+def gen_feature(df, group_name, source, target, feature_code_name):
+    """ 
+    Generate source features and target features from dataframe df
+    :param str feature_code_name: name of the input. For the experiments on ICD codes vs. duration, the input_name is 'ICD codes'
+
+    """
+    unique_code_dict, num_codes = find_unique_code(df, ICD_name = feature_code_name)
+
+    source_df = df.loc[df[group_name] == source]
+    target_df = df.loc[df[group_name] == target]
+
+    # Prepare source
+    source_features = np.empty(shape=[source_df.shape[0], num_codes])
+    feature_index = 0
+    for _, row in source_df.iterrows():
+        code_ind = np.zeros(num_codes)
+        for code in row[feature_code_name]:
+            code_ind[unique_code_dict[code]] += 1
+        source_features[feature_index] = code_ind
+        feature_index += 1
+
+    # Prepare target
+    target_features = np.empty(shape=[target_df.shape[0], num_codes])
+    feature_index = 0
+    for _, row in target_df.iterrows():
+        code_ind = np.zeros(num_codes)
+        for code in row[feature_code_name]:
+            code_ind[unique_code_dict[code]] += 1
+        target_features[feature_index] = code_ind
+        feature_index += 1
+    return source_features, target_features
+
+
 def gen_code_feature_label(df, group_name, source, target, feature_code_name, label_name):
     """ 
     Generate source features, source durations (continuous response), \
@@ -172,6 +205,62 @@ def select_samples(df, group_name, source, target, source_count, target_count):
     df_copy = df_copy.drop(delete_target_indices, axis=0, inplace=False)
 
     return df_copy
+
+
+def select_drug_samples(df, group_name, drug, source, target, source_count = None, target_count = None):
+    """ 
+    Select rows in the dataframe df for source and target samples, return the results in \
+        a format that is compatible to Taskesen et al's statistical test 
+    
+    :param df Dataframe: the dataframe to select samples from.
+    :param str drug: drug name, used for preparing the labels array
+    :param str source: source group name, e.g., White
+    :param str target: target group name, e.g., Black
+    :param int source_count: if specified, the number of samples for the source. \
+        Otherwise, delete all rows that do not belong to target or source
+    :param int target_count: if specified, the number of samples for the target. \
+        Otherwise, delete all rows that do not belong to target or source
+    """
+    df_copy = copy.deepcopy(df)
+    
+    source_indices = []
+    target_indices = []
+    other_indices = []
+    for index, row in df_copy.iterrows():
+        if row[group_name] == source:
+            source_indices.append(index)
+        elif row[group_name] == target:
+            target_indices.append(index)
+        else:
+            other_indices.append(index)
+
+    
+    # indices to delete from the dataframe
+    if source_count is not None:
+        delete_source_indices = random.sample(source_indices, len(source_indices)-source_count)
+        delete_target_indices = random.sample(target_indices, len(target_indices)-target_count)
+
+        other_indices.extend(delete_source_indices)
+        other_indices.extend(delete_target_indices)
+
+    df_copy = df_copy.drop(other_indices, axis=0, inplace=False)
+
+    # prepare labels array, indicator of label attributes and \
+    # sensitive_labels array: indicator of protected attributes
+    labels = []
+    sensitive_labels = []
+    for _, row in df_copy.iterrows():
+        if drug in row['drug']:
+            labels.append(1)
+        else:
+            labels.append(0)
+
+        if row[group_name] == source:
+            sensitive_labels.append(1)
+        elif row[group_name] == target:
+            sensitive_labels.append(0)
+
+    return df_copy, labels, sensitive_labels
 
 
 def select_df_binary(df, group_name, source, target, source_count, target_count, label_code, input_name):
