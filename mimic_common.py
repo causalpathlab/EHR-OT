@@ -23,6 +23,7 @@ import random
 from sklearn.metrics import precision_score, recall_score, accuracy_score, \
     f1_score, mean_absolute_error, mean_squared_error, \
     mutual_info_score, normalized_mutual_info_score
+from sklearn.decomposition import PCA
 from scipy.stats import entropy
 # from TCA import *
 from transfertools.models import TCA

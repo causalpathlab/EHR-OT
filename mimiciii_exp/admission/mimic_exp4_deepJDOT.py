@@ -4,7 +4,7 @@ user_id = getpass.getuser()
 import sys
 sys.path.append(f"/home/{user_id}/OTTEHR/")
 sys.path.append(f"/home/{user_id}/unbalanced_gromov_wasserstein/")
-sys.path.append(f"/home/{user_id}/OTTEHR/deepJDOT")
+sys.path.append(f"/home/{user_id}/OTTEHR/competitors/deepJDOT")
 
 
 from ast import literal_eval
