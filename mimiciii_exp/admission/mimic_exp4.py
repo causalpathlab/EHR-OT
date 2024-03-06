@@ -22,7 +22,7 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_sc
 import time
 
 
-output_dir = os.path.join(os.path.expanduser("~"), f"OTTEHR/outputs/mimic")
+output_dir = os.path.join(os.path.expanduser("~"), f"OTTEHR/outputs/mimiciii")
 print(f"Will save outputs to {output_dir}")
 
 """ 
@@ -80,10 +80,10 @@ groups = ['Self_Pay', 'Private', 'Government', 'Medicare', 'Medicaid']
 group_1_count = 120
 group_2_count = 100
 
-# trans_metric = 'OT'
+trans_metric = 'OT'
 # trans_metric = 'GWOT'
 
-trans_metric = 'TCA'
+# trans_metric = 'TCA'
 # trans_metric = 'MMD'
 # trans_metric = 'NN'
 # trans_metric = 'GFK'

@@ -135,6 +135,7 @@ def gen_code_feature_label(df, group_name, source, target, feature_code_name, la
     """
 
     unique_code_dict, num_codes = find_unique_code(df, ICD_name = feature_code_name)
+    print("number of codes is:", num_codes)
 
     source_df = df.loc[df[group_name] == source]
     target_df = df.loc[df[group_name] == target]
@@ -145,7 +146,7 @@ def gen_code_feature_label(df, group_name, source, target, feature_code_name, la
     for _, row in source_df.iterrows():
         code_ind = np.zeros(num_codes)
         for code in row[feature_code_name]:
-            print("code is:", code)
+            # print("code is:", code)
             code_ind[unique_code_dict[code]] += 1
         source_features[feature_index] = code_ind
         feature_index += 1
