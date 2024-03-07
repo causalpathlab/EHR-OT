@@ -71,15 +71,8 @@ class LinearRegressionModel(nn.Module):
         self.output = nn.Linear(hidden_units, output_features)  # Output layer
 
     def forward(self, x):
-        # Apply non-linear transformations for feature extraction
-        # print("x is:", x)
-        # print("weights of extraction layer is:", self.extraction.weight.data)
-        # print("x extraction is:", self.extraction(x))
         feature = self.extraction(x)
-
-        # Linear output
         x = self.output(feature)
-        # print("weights of the output layer is:", self.output.weight.data)
         return feature, x
 
 def RSD_BMP(source_feature, target_feature, RSD_coef = 0.001, BMP_coef = 0.1, eps=1e-6):
@@ -104,19 +97,12 @@ def RSD_BMP(source_feature, target_feature, RSD_coef = 0.001, BMP_coef = 0.1, ep
 
     noisy_source_feature_t = add_noise(source_feature.t())
     noisy_target_feature_t = add_noise(target_feature.t())
-    # print("noisy_source_feature_t is:", noisy_source_feature_t)
-    # print("noisy_target_feature_t is:", noisy_target_feature_t)
 
     u_s, _, _ = torch.svd(noisy_source_feature_t)
     u_t, _, _ = torch.svd(noisy_target_feature_t)
-    # print("u_s is:", u_s)
-    # print("u_t is:", u_t)
+
     noisy_product = add_noise(torch.mm(u_s.t(), u_t))
-    # print("noisy_product is:", noisy_product)
     p_s, cosine, p_t = torch.svd(noisy_product)
-    # print("p_s is:", p_s)
-    # print("p_t is:", p_t)
-    # print("cospa is:", cosine)
     adjusted_cosine = torch.clamp(1 - torch.pow(cosine, 2), min=eps)
     sine = torch.sqrt(adjusted_cosine)
     soft_diff = softplus_abs(p_s - p_t)
@@ -155,31 +141,12 @@ for epoch in range(num_epochs):
     # Get gradients w.r.t to parameters
     total_loss.backward()
 
-   
-
-    # print("before optimization, print out model parameters")
-    # for name, param in model.named_parameters():
-    #     print("name is:", name)
-    #     print("param is:", param)
-    #     print("param.grad is:", torch.nan_to_num(param.grad))
-
     # Clip graidents
     clip_value = 1e-3
     torch.nn.utils.clip_grad_norm_(model.parameters(), clip_value)
-    # print("after gradient clipping, print out model parameters")
-    # for name, param in model.named_parameters():
-    #     print("name is:", name)
-    #     print("param is:", param)
-    #     print("param.grad is:", torch.nan_to_num(param.grad))
 
     # Update parameters
     optimizer.step()
-
-    # print("after optimiazation, print out model parameters")
-    # for name, param in model.named_parameters():
-    #     print("name is:", name)
-    #     print("param is:", param)
-    #     print("param.grad is:", param.grad)
 
     if epoch % 1 == 0:
         print(f'Epoch {epoch+1}/{num_epochs}, Loss: {total_loss.item()}')
