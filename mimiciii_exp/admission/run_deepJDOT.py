@@ -46,8 +46,8 @@ print(f"Will save outputs to {output_dir}")
 
 suffix = None
 
-group_1_count = 120
-group_2_count = 100
+source_count = 120
+target_count = 100
 iterations = 100
 trans_metric = 'deepJDOT'
 
@@ -68,24 +68,25 @@ admid_diagnosis_df = pd.read_csv(os.path.join(output_dir, "ADMID_DIAGNOSIS.csv")
 print(admid_diagnosis_df)
 
 
-for group_1 in groups:
-    for group_2 in groups:
-        if group_1 == group_2:
+for source in groups:
+    for target in groups:
+        if source == target:
             continue
 
         
-        print(f"group_1 is: {group_1}, group_2 is: {group_2}")
-        score_path = os.path.join(output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{trans_metric}.csv")
+        print(f"source is: {source}, target is: {target}")
+        score_path = os.path.join(output_dir, f"{group_name}_{target}2{source}_{trans_metric}.csv")
         if os.path.exists(score_path):
             continue
 
         maes = []
         rmses = []
         for i in range(iterations):
-            selected_df = select_df_cts(admid_diagnosis_df, group_name, group_1, group_2, source_count=group_1_count, target_count=group_2_count)
-            source_traindata, source_trainlabel, target_traindata, target_trainlabel = gen_features_duration(selected_df, group_name, group_1, group_2)
-
-            n_dim = np.shape(source_traindata)
+            selected_df = select_samples(admid_diagnosis_df, group_name, source, target, source_count, target_count)
+            code_feature_name = 'ICD codes'
+            label_name = 'duration'
+            source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, source, target, code_feature_name, label_name)
+            n_dim = np.shape(source_data)
             optim = tf.keras.optimizers.legacy.SGD(lr=0.001)
                 
             # #%% Feature extraction as a keras model
@@ -104,9 +105,9 @@ for group_1 in groups:
             nets = regressor(fes)
             source_model = dnn.Model(ms, nets)
             source_model.compile(optimizer=optim, loss='mean_squared_error', metrics=['accuracy'])
-            source_model.fit(source_traindata, source_trainlabel, batch_size=128, epochs=100, validation_data=(target_traindata, target_trainlabel))
-            source_acc = source_model.evaluate(source_traindata, source_trainlabel)
-            target_acc = source_model.evaluate(target_traindata, target_trainlabel)
+            source_model.fit(source_data, source_labels, batch_size=128, epochs=100, validation_data=(target_data, target_label))
+            source_acc = source_model.evaluate(source_data, source_labels)
+            target_acc = source_model.evaluate(target_data, target_labels)
             print("source loss & acc using source model", source_acc)
             print("target loss & acc using source model", target_acc)
 
@@ -132,13 +133,13 @@ for group_1 in groups:
                                 sloss=sloss,tloss=tloss,int_lr=int_lr,jdot_alpha=jdot_alpha,
                                 lr_decay=True,verbose=1)
             # DeepJDOT model fit
-            h,t_loss,tacc = al_model.fit(source_traindata, source_trainlabel, target_traindata,
-                                        n_iter=1500, target_label=target_trainlabel)
+            h,t_loss,tacc = al_model.fit(source_data, source_labels, target_data,
+                                        n_iter=1500, target_label=target_labels)
 
 
             #%% accuracy assesment
-            tarmodel_sacc = al_model.evaluate(source_traindata, source_trainlabel)    
-            rmse, mae = al_model.evaluate(target_traindata, target_trainlabel)
+            tarmodel_sacc = al_model.evaluate(source_data, source_labels)    
+            rmse, mae = al_model.evaluate(target_data, target_labels)
             print("target loss & acc using source+target model", "rmse is:", rmse, "mae is:", mae)
             print(rmse.numpy())
             rmses.append(rmse.numpy())

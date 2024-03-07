@@ -97,17 +97,9 @@ for group_1 in groups:
         
         print(f"group_1 is: {group_1}, group_2 is: {group_2}")
   
-        score_path = os.path.join(output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{trans_metric}.csv")
-        # if suffix is not None:
-        #     score_path = os.path.join(output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{trans_metric}_{suffix}.csv")
+        score_path = os.path.join(output_dir, f"{group_name}_{group_2}2{group_1}_{trans_metric}.csv")
 
-        target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_{trans_metric}_equity.csv")
-
-        # if not os.path.exists(target_equity_path):
-
-        # if not os.path.exists(score_path):
-            # target_equity_path = os.path.join(mimic_output_dir, f"exp4_{group_name}_{group_2}2{group_1}_equity.csv")
-            # target_equity_df = pd.read_csv(target_equity_path, header=0, index_col = None)
+        target_equity_path = os.path.join(mimic_output_dir, f"{group_name}_{group_2}2{group_1}_{trans_metric}_equity.csv")
         
         source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses, target_clf_maes, target_clf_mses, target_clf_rmses, \
             trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, coupling_diffs, diameters, max_hs \

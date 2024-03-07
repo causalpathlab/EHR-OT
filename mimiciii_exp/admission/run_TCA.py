@@ -32,7 +32,7 @@ source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
     trans_target_maes, trans_target_mses, trans_target_rmses = \
     multi_proc_cts_tca(admid_diagnosis_df, linear_model.LinearRegression, n_times = 100)
 
-tca_score_path = os.path.join(output_dir, "exp4_TCA_linear_score.csv")
+tca_score_path = os.path.join(output_dir, "TCA_linear_score.csv")
 save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
     trans_target_maes, trans_target_mses, trans_target_rmses, tca_score_path)
 
@@ -40,6 +40,6 @@ save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mse
 #     trans_target_maes, trans_target_mses, trans_target_rmses = \
 #     multi_proc_cts_tca(admid_diagnosis_df, custom_train_reps_default, linear_model.PoissonRegressor, n_times = 100)
 
-# tca_score_path = os.path.join(output_dir, "exp4_tca_poisson_score.csv")
+# tca_score_path = os.path.join(output_dir, "tca_poisson_score.csv")
 # save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, \
 #     trans_target_maes, trans_target_mses, trans_target_rmses, tca_score_path)
