@@ -38,16 +38,6 @@ def regressor(model_input, l2_weight=0.0):
     return net
 
 
-def save_results(rmses, maes, score_path):
-
-    # read dataframe
-    score_df = pd.DataFrame()
-    score_df['target_rmse'] = rmses
-    score_df['target_mae'] = maes
-
-    # save
-    score_df.to_csv(score_path, index=None, header=True)
-
 
 
 output_dir = os.path.join(os.path.expanduser("~"), f"OTTEHR/outputs/mimic")

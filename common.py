@@ -831,3 +831,12 @@ def box_plot_cts_tca_short(ot_score_path, tca_score_path, save_path=None):
     
     return median(trans_target_target_mae), median(trans_target_target_rmse)
 
+def save_results(rmses, maes, score_path):
+
+    # read dataframe
+    score_df = pd.DataFrame()
+    score_df['target_rmse'] = rmses
+    score_df['target_mae'] = maes
+
+    # save
+    score_df.to_csv(score_path, index=None, header=True)

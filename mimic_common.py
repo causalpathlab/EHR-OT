@@ -33,7 +33,7 @@ from unbalancedgw.vanilla_ugw_solver import exp_ugw_sinkhorn
 from unbalancedgw._vanilla_utils import ugw_cost
 from unbalancedgw.utils import generate_measure
 
-mimic_output_dir = f"/home/{user_id}/OTTEHR/outputs/mimic"
+mimic_output_dir = f"/home/{user_id}/OTTEHR/outputs/mimiciii"
 mimic_data_dir = f"/home/{user_id}/OTTEHR/mimic_exp/mimiciii"
 
 
@@ -890,7 +890,7 @@ def get_target_stats(score_df, eval_metric, method, log=True, filter_na=True):
     stats = []
     eval_metric = eval_metric.lower()
 
-    if method == 'deepJDOT':
+    if method == 'deepJDOT' or method == 'RSD':
         stats = list(score_df[f'target_{eval_metric}'])
     else:
         stats = list(score_df[f'trans_target_{eval_metric}'])

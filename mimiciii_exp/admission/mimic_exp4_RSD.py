@@ -25,44 +25,10 @@ import torch.nn as nn
 import torch.optim as optim
 
 
-#################### Test using synthetic data ####################
-output_dir = os.path.join(os.path.expanduser("~"), f"OTTEHR/outputs/mimiciii")
-print(f"Will save outputs to {output_dir}")
-
-suffix = None
-
-source_count = 120
-target_count = 100
-iterations = 100
-trans_metric = 'deepJDOT'
-
-# group_name = 'marital_status'
-# groups = ['MARRIED', 'SINGLE', 'WIDOWED', 'DIVORCED', 'SEPARATED']
-
-group_name = 'insurance'
-groups = ['Self_Pay', 'Private', 'Government', 'Medicare', 'Medicaid']
-
-source = 'Self_Pay'
-target = 'Private'
-admid_diagnosis_df = pd.read_csv(os.path.join(output_dir, "ADMID_DIAGNOSIS.csv"), index_col=0, header=0, converters={'ICD codes': literal_eval})
-selected_df = select_samples(admid_diagnosis_df, group_name, source, target, source_count, target_count)
-code_feature_name = 'ICD codes'
-label_name = 'duration'
-source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, source, target, code_feature_name, label_name)
-print("print data dimensions:", source_data.shape, source_labels.shape, target_data.shape, target_labels.shape)
-
-# Convert the numpy arrays into torch tensors
-source_data_tensor = torch.tensor(source_data.astype(np.float32))
-source_labels_tensor = torch.tensor(source_labels.astype(np.float32)).view(-1, 1)  # Reshaping for a single output feature
-target_data_tensor = torch.tensor(target_data.astype(np.float32))
-target_labels_tensor = torch.tensor(target_labels.astype(np.float32)).view(-1, 1)
-
-n_components = 50
-
 
 # Define the linear regression model with a feature extraction layer
 class LinearRegressionModel(nn.Module):
-    def __init__(self, input_features=source_data.shape[1], output_features=1, hidden_units=n_components):
+    def __init__(self, input_features, output_features, hidden_units):
         super(LinearRegressionModel, self).__init__()
         # Feature extraction layers
         self.extraction = nn.Linear(input_features, hidden_units)  # First hidden layer
@@ -109,65 +75,124 @@ def RSD_BMP(source_feature, target_feature, RSD_coef = 0.001, BMP_coef = 0.1, ep
 
     return RSD_coef*(torch.norm(sine, 1) + BMP_coef * torch.norm(soft_diff, 2))
 
-# Instantiate the model
-model = LinearRegressionModel()
 
-# Define the loss criterion and the optimizer
-criterion = nn.MSELoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+def run_RSD(source_data, source_labels, target_data, target_labels):
+    """ 
+    Return the RMSE and MAE
+    """
 
-# Training loop
-num_epochs = 1
-for epoch in range(num_epochs):
-    # Convert numpy arrays to torch variables for gradient computation
-    source_input_var = Variable(source_data_tensor)
-    source_label_var = Variable(source_labels_tensor)
-    target_input_var = Variable(target_data_tensor)
+    # Convert the numpy arrays into torch tensors
+    source_data_tensor = torch.tensor(source_data.astype(np.float32))
+    source_labels_tensor = torch.tensor(source_labels.astype(np.float32)).view(-1, 1)  # Reshaping for a single output feature
+    target_data_tensor = torch.tensor(target_data.astype(np.float32))
+    target_labels_tensor = torch.tensor(target_labels.astype(np.float32)).view(-1, 1)
 
-    # Clear gradient buffers because we don't want any gradient from previous epoch to carry forward
-    optimizer.zero_grad()
+    n_components = 50
 
-    # Get output from the model, given the inputs
-    source_feature, source_outputs = model(source_input_var)
-    target_feature, _ =  model(target_input_var)
-    # print("source_feature is:", source_feature)
+    # Instantiate the model
+    model = LinearRegressionModel(input_features=source_data.shape[1], output_features=1, hidden_units=n_components)
 
-    # Get loss for the predicted output
-    regression_loss = criterion(source_outputs, source_label_var)
-    rsd_bmp_loss = RSD_BMP(source_feature, target_feature)
-    # print("regression loss is:", regression_loss, "rsd_bmp_loss is:", rsd_bmp_loss)
-    total_loss = regression_loss + rsd_bmp_loss
-    
-    # Get gradients w.r.t to parameters
-    total_loss.backward()
+    # Define the loss criterion and the optimizer
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
 
-    # Clip graidents
-    clip_value = 1e-3
-    torch.nn.utils.clip_grad_norm_(model.parameters(), clip_value)
+    # Training loop
+    num_epochs = 1
+    for epoch in range(num_epochs):
+        # Convert numpy arrays to torch variables for gradient computation
+        source_input_var = Variable(source_data_tensor)
+        source_label_var = Variable(source_labels_tensor)
+        target_input_var = Variable(target_data_tensor)
 
-    # Update parameters
-    optimizer.step()
+        # Clear gradient buffers because we don't want any gradient from previous epoch to carry forward
+        optimizer.zero_grad()
 
-    if epoch % 1 == 0:
-        print(f'Epoch {epoch+1}/{num_epochs}, Loss: {total_loss.item()}')
+        # Get output from the model, given the inputs
+        source_feature, source_outputs = model(source_input_var)
+        target_feature, _ =  model(target_input_var)
 
-    
+        # Get loss for the predicted output
+        regression_loss = criterion(source_outputs, source_label_var)
+        rsd_bmp_loss = RSD_BMP(source_feature, target_feature)
+        total_loss = regression_loss + rsd_bmp_loss
+        
+        # Get gradients w.r.t to parameters
+        total_loss.backward()
+
+        # Clip graidents
+        clip_value = 1e-3
+        torch.nn.utils.clip_grad_norm_(model.parameters(), clip_value)
+
+        # Update parameters
+        optimizer.step()
+
+        if epoch % 1 == 0:
+            print(f'Epoch {epoch+1}/{num_epochs}, Loss: {total_loss.item()}')
+
+    # Evaluate the model with training data
+    model.eval()
+    with torch.no_grad():  # We don't need gradients in the testing phase
+        _, predicted_train = model(Variable(source_data_tensor))
+        predicted_train = predicted_train.data.numpy()
+        train_loss = np.mean((predicted_train - source_labels) ** 2)
+        print(f'Training Mean Squared Error: {train_loss}')
+
+        # Similarly for testing data
+        _, predicted_test = model(Variable(target_data_tensor))
+        predicted_test = predicted_test.data.numpy()
+        test_RMSE = np.sqrt(np.mean((predicted_test - target_labels) ** 2))
+        test_MAE = np.mean(np.abs(predicted_test - target_labels))
+    return test_RMSE, test_MAE
 
 
-# Evaluate the model with training data
-model.eval()
-with torch.no_grad():  # We don't need gradients in the testing phase
-    _, predicted_train = model(Variable(source_data_tensor))
-    predicted_train = predicted_train.data.numpy()
-    # predicted_train = model(Variable(source_data_tensor)).data.numpy()
-    train_loss = np.mean((predicted_train - source_labels) ** 2)
-    print(f'Training Mean Squared Error: {train_loss}')
+""" 
+Read in the original dataframe
+"""
+output_dir = os.path.join(os.path.expanduser("~"), f"OTTEHR/outputs/mimiciii")
+print(f"Will save outputs to {output_dir}")
 
-    # Similarly for testing data
-    _, predicted_test = model(Variable(target_data_tensor))
-    predicted_test = predicted_test.data.numpy()
-    # predicted_test = model(Variable(target_data_tensor)).data.numpy()
-    test_MSE = np.mean((predicted_test - target_labels) ** 2)
-    test_MAE = np.mean(np.abs(predicted_test - target_labels))
-    print(f'Testing log MSE: {np.log(test_MSE)}')
-    print(f'Testing log MAE: {np.log(test_MAE)}')
+admid_diagnosis_df = pd.read_csv(os.path.join(output_dir, "ADMID_DIAGNOSIS.csv"), index_col=0, header=0, converters={'ICD codes': literal_eval})
+print(admid_diagnosis_df)
+
+
+
+suffix = None
+
+source_count = 120
+target_count = 100
+iterations = 100
+trans_metric = 'RSD'
+
+# group_name = 'insurance'
+# groups = ['Self_Pay', 'Private', 'Government', 'Medicare', 'Medicaid']
+
+group_name = 'marital_status'
+groups = ['MARRIED', 'SINGLE', 'WIDOWED', 'DIVORCED', 'SEPARATED']
+
+for source in groups:
+    for target in groups:
+        if source == target:
+            continue
+
+        print(f"source is: {source}, target is: {target}")
+        score_path = os.path.join(output_dir, f"exp4_{group_name}_{target}2{source}_{trans_metric}.csv")
+        if os.path.exists(score_path):
+            continue
+
+        maes = []
+        rmses = []
+        for i in range(iterations):
+            print("iteration:", i)
+            selected_df = select_samples(admid_diagnosis_df, group_name, source, target, source_count, target_count)
+            code_feature_name = 'ICD codes'
+            label_name = 'duration'
+            source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, source, target, code_feature_name, label_name)
+            print("print data dimensions:", source_data.shape, source_labels.shape, target_data.shape, target_labels.shape)
+
+            test_rmse, test_mae = run_RSD(source_data, source_labels, target_data, target_labels)
+            maes.append(test_mae)
+            rmses.append(test_rmse)
+
+        print("rmses is:", rmses)
+        print("maes is:", maes)
+        save_results(rmses, maes, score_path)
