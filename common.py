@@ -854,4 +854,4 @@ class PreparedDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         sample = self.data[idx]
         label = self.labels[idx]
-        return sample, label
+        return sample.float(), label.float()

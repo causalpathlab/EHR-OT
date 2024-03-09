@@ -42,17 +42,13 @@ def daregram_loss(H1, H2):
     
     b,p = H1.shape
 
-    print("H1 is:", H1)
     A = torch.cat((torch.ones(b,1), H1), 1)
     B = torch.cat((torch.ones(b,1), H2), 1)
 
-    print("A is:", A)
 
     cov_A = (A.t()@A)
     cov_B = (B.t()@B) 
     
-    print("cov_A is:", cov_A)
-
 
     _,L_A,_ = torch.svd(add_noise(cov_A))
     _,L_B,_ = torch.svd(add_noise(cov_B))
@@ -97,20 +93,6 @@ def inv_lr_scheduler(param_lr, optimizer, iter_num, gamma, power, init_lr=0.001,
         i += 1
     return optimizer
 
-# class Regression(nn.Module):
-#     def __init__(self):
-#         super(Regression,self).__init__()
-#         self.model_fc = model.Resnet18Fc()
-#         self.classifier_layer = nn.Linear(512, 3)
-#         self.classifier_layer.weight.data.normal_(0, 0.01)
-#         self.classifier_layer.bias.data.fill_(0.0)
-#         self.classifier_layer = nn.Sequential(self.classifier_layer,  nn.Sigmoid())
-#         self.predict_layer = nn.Sequential(self.model_fc,self.classifier_layer)
-
-#     def forward(self,x):
-#         feature = self.model_fc(x)
-#         outC= self.classifier_layer(feature)
-#         return(outC, feature)
 
 class LinearRegressionModel(nn.Module):
     def __init__(self, input_features, output_features, hidden_units):
@@ -194,22 +176,19 @@ def run_daregram(source_data, source_labels, target_data, target_labels):
         data_target = iter_target.next()
 
         inputs_source, labels_source = data_source
-        inputs_target, labels_target = data_target
-        print("print input data shape")
-        print(inputs_source.shape, labels_source.shape)
-        print(inputs_target.shape, labels_target.shape)
+        inputs_target, _ = data_target
 
 
         feature_s, outC_s,  = reg_model(inputs_source)
-        feature_t, outC_t = reg_model(inputs_target)
+        feature_t, _ = reg_model(inputs_target)
 
 
         regression_loss = criterion["regressor"](outC_s, labels_source)
         dare_gram_loss = daregram_loss(feature_s,feature_t)
-        print("daregram_loss is:", dare_gram_loss)
 
         total_loss = regression_loss + dare_gram_loss
 
+        reg_model = reg_model
         total_loss.backward()
 
         # Clip graidents
@@ -231,24 +210,13 @@ def run_daregram(source_data, source_labels, target_data, target_labels):
     with torch.no_grad():  # We don't need gradients in the testing phase
 
         # Similarly for testing data
-        print("target_data shape is:", target_data.shape)
-        _, target_pred_labels = reg_model(target_data)
+        _, target_pred_labels = reg_model(target_data.float())
         target_pred_labels = target_pred_labels.data.numpy()
-        print("target_pred_labels shape is:", target_pred_labels.shape)
         target_labels = target_labels.data.numpy()
         
         test_RMSE = np.sqrt(np.mean((target_pred_labels- target_labels) ** 2))
         test_MAE = np.mean(np.abs(target_pred_labels - target_labels))
-        print("test RMSE is:", test_RMSE, "test_MAE is:", test_MAE)
+        print("log RMSE is:", np.log(test_RMSE), "log MAE is:", np.log(test_MAE))
     return test_RMSE, test_MAE
 
 
-# Define dimensions
-num_samples_source = 1000  # Adjust based on your source needs
-num_samples_target = 1200    # Adjust based on your target needs
-num_features = 512        # Total number of features for each example, adjust as needed
-source_data = np.random.rand(num_samples_source, num_features).astype(np.float32)
-source_labels = np.random.rand(num_samples_source).astype(np.float32)
-target_data = np.random.rand(num_samples_target, num_features).astype(np.float32)
-target_labels = np.random.rand(num_samples_target).astype(np.float32)
-run_daregram(source_data, source_labels, target_data, target_labels)

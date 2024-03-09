@@ -890,7 +890,7 @@ def get_target_stats(score_df, eval_metric, method, log=True, filter_na=True):
     stats = []
     eval_metric = eval_metric.lower()
 
-    if method == 'deepJDOT' or method == 'RSD':
+    if method == 'deepJDOT' or method == 'RSD' or method == 'daregram':
         stats = list(score_df[f'target_{eval_metric}'])
     else:
         stats = list(score_df[f'trans_target_{eval_metric}'])
