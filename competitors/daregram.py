@@ -22,62 +22,8 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 
-parser = argparse.ArgumentParser(description='PyTorch DARE-GRAM experiment')
-parser.add_argument('--seed', type=int, default=1,
-                        help='random seed')
-parser.add_argument('--lr', type=float, default=0.1,
-                        help='init learning rate for fine-tune')
-parser.add_argument('--gamma', type=float, default=0.0001,
-                        help='learning rate decay')
-parser.add_argument('--tradeoff_angle', type=float, default=0.05,
-                        help='tradeoff for angle alignment')
-parser.add_argument('--tradeoff_scale', type=float, default=0.001,
-                        help='tradeoff for scale alignment')
-parser.add_argument('--threshold', type=float, default=0.9,
-                        help='threshold for the pseudo inverse')
-parser.add_argument('--batch', type=int, default=36,
-                        help='batch size')
-args = parser.parse_args()
-
-torch.manual_seed(args.seed)
-np.random.seed(args.seed)
-
-
-
-# set dataset
-batch_size = {"source": args.batch, "target": args.batch}
-
-# Define dimensions
-num_samples_source = 1000  # Adjust based on your source needs
-num_samples_target = 1200    # Adjust based on your target needs
-num_features = 512        # Total number of features for each example, adjust as needed
-
-# Create synthetic data using numpy
-np.random.seed(args.seed)  # Ensure reproducibility
-source_data = np.random.rand(num_samples_source, num_features).astype(np.float32)
-source_labels = np.random.rand(num_samples_source).astype(np.float32)
-target_data = np.random.rand(num_samples_target, num_features).astype(np.float32)
-target_labels = np.random.rand(num_samples_target).astype(np.float32)
-
-# Convert numpy arrays to PyTorch tensors
-source_data = torch.tensor(source_data)
-source_labels = torch.tensor(source_labels)
-target_data = torch.tensor(target_data)
-target_labels = torch.tensor(target_labels)
-
-
-
-
-# Create datasets
-source_dataset = PreparedDataset(source_data, source_labels)
-target_dataset = PreparedDataset(target_data, target_labels)
-
-# Create data loaders
-batch_size = {"source": args.batch, "target": args.batch}
-dset_loaders = {
-    "source": torch.utils.data.DataLoader(source_dataset, batch_size=batch_size["source"], shuffle=True, num_workers=4),
-    "target": torch.utils.data.DataLoader(target_dataset, batch_size=batch_size["target"], shuffle=False, num_workers=4)
-}
+torch.manual_seed(0)
+np.random.seed(0)
 
 
 
@@ -114,17 +60,21 @@ def daregram_loss(H1, H2):
     eigen_A = torch.cumsum(L_A.detach(), dim=0)/L_A.sum()
     eigen_B = torch.cumsum(L_B.detach(), dim=0)/L_B.sum()
 
-    if(eigen_A[1]>args.threshold):
+    threshold = 0.999
+    tradeoff_angle = 0.1
+    tradeoff_scale = 0.001
+
+    if(eigen_A[1]> threshold):
         T = eigen_A[1].detach()
     else:
-        T = args.threshold
+        T = threshold
         
     index_A = torch.argwhere(eigen_A.detach()<=T)[-1]
 
-    if(eigen_B[1]>args.threshold):
+    if(eigen_B[1]> threshold):
         T = eigen_B[1].detach()
     else:
-        T = args.threshold
+        T = threshold
 
     index_B = torch.argwhere(eigen_B.detach()<=T)[-1]
     
@@ -136,7 +86,7 @@ def daregram_loss(H1, H2):
     cos_sim = nn.CosineSimilarity(dim=0,eps=1e-6)
     cos = torch.dist(torch.ones((p+1)),(cos_sim(A,B)),p=1)/(p+1)
     
-    return args.tradeoff_angle*(cos) + args.tradeoff_scale*torch.dist((L_A[:k]),(L_B[:k]))/k
+    return tradeoff_angle*(cos) + tradeoff_scale*torch.dist((L_A[:k]),(L_B[:k]))/k
 
 def inv_lr_scheduler(param_lr, optimizer, iter_num, gamma, power, init_lr=0.001, weight_decay=0.0005):
     lr = init_lr * (1 + gamma * iter_num) ** (-power)
@@ -176,94 +126,129 @@ class LinearRegressionModel(nn.Module):
         x = self.output(feature)
         return feature, x
 
+def run_daregram(source_data, source_labels, target_data, target_labels):
+    """ 
+    Return the RMSE and MAE
+    """
 
-n_components = 50
-Model_R = LinearRegressionModel(input_features=source_data.shape[1], output_features=1, hidden_units=n_components)
-# Model_R = Model_R.to(device)
+    # set dataset
+    batch_size = {"source": 10, "target": 10}
 
-Model_R.train(True)
-criterion = {"regressor": nn.MSELoss()}
-optimizer_dict = [{"params": filter(lambda p: p.requires_grad, Model_R.extraction.parameters()), "lr": 0.1},
-                  {"params": filter(lambda p: p.requires_grad, Model_R.output.parameters()), "lr": 1}]
+    # Convert numpy arrays to PyTorch tensors
+    source_data = torch.tensor(source_data)
+    source_labels = torch.tensor(source_labels)
+    target_data = torch.tensor(target_data)
+    target_labels = torch.tensor(target_labels)
 
-optimizer = optim.SGD(optimizer_dict, lr=0.1, momentum=0.9, weight_decay=0.0005, nesterov=True)
+    # Create datasets
+    source_dataset = PreparedDataset(source_data, source_labels)
+    target_dataset = PreparedDataset(target_data, target_labels)
 
-
-len_source = len(dset_loaders["source"]) - 1
-len_target = len(dset_loaders["target"]) - 1
-param_lr = []
-iter_source = iter(dset_loaders["source"])
-iter_target = iter(dset_loaders["target"])
-
-for param_group in optimizer.param_groups:
-    param_lr.append(param_group["lr"])
-
-test_interval = 5
-num_iter = 100
-
-train_regression_loss = train_dare_gram_loss = train_total_loss =  0.0
-print(args)
-
-for iter_num in range(1, num_iter + 1):
-    print("iter_num is:", iter_num)
-    Model_R.train(True)
-    optimizer = inv_lr_scheduler(param_lr, optimizer, iter_num, init_lr=args.lr, gamma=args.gamma, power=0.75,
-                                 weight_decay=0.0005)
-    optimizer.zero_grad()
-    if iter_num % len_source == 0:
-        iter_source = iter(dset_loaders["source"])
-    if iter_num % len_target == 0:
-        iter_target = iter(dset_loaders["target"])
-
-    data_source = iter_source.next()
-    data_target = iter_target.next()
-
-    inputs_source, labels_source = data_source
-    inputs_target, labels_target = data_target
-    print("print input data shape")
-    print(inputs_source.shape, labels_source.shape)
-    print(inputs_target.shape, labels_target.shape)
+    # Create data loaders
+    dset_loaders = {
+        "source": torch.utils.data.DataLoader(source_dataset, batch_size=batch_size["source"], shuffle=True, num_workers=4),
+        "target": torch.utils.data.DataLoader(target_dataset, batch_size=batch_size["target"], shuffle=False, num_workers=4)
+    }
 
 
-    feature_s, outC_s,  = Model_R(inputs_source)
-    feature_t, outC_t = Model_R(inputs_target)
+    n_components = 50
+    reg_model = LinearRegressionModel(input_features=source_data.shape[1], output_features=1, hidden_units=n_components)
+    # Model_R = Model_R.to(device)
+
+    reg_model.train(True)
+    criterion = {"regressor": nn.MSELoss()}
+    optimizer_dict = [{"params": filter(lambda p: p.requires_grad, reg_model.extraction.parameters()), "lr": 0.1},
+                    {"params": filter(lambda p: p.requires_grad, reg_model.output.parameters()), "lr": 1}]
+
+    optimizer = optim.SGD(optimizer_dict, lr=0.1, momentum=0.9, weight_decay=0.0005, nesterov=True)
 
 
-    regression_loss = criterion["regressor"](outC_s, labels_source)
-    dare_gram_loss = daregram_loss(feature_s,feature_t)
-    print("daregram_loss is:", dare_gram_loss)
+    len_source = len(dset_loaders["source"]) - 1
+    len_target = len(dset_loaders["target"]) - 1
+    param_lr = []
+    iter_source = iter(dset_loaders["source"])
+    iter_target = iter(dset_loaders["target"])
+    lr = 0.1
+    gamma = 0.0001
 
-    total_loss = regression_loss + dare_gram_loss
+    for param_group in optimizer.param_groups:
+        param_lr.append(param_group["lr"])
 
-    total_loss.backward()
+    test_interval = 5
+    num_iter = 100
 
-    # Clip graidents
-    clip_value = 1
-    torch.nn.utils.clip_grad_norm_(Model_R.parameters(), clip_value)
+    train_regression_loss = train_dare_gram_loss = train_total_loss =  0.0
 
-    optimizer.step()
+    for iter_num in range(1, num_iter + 1):
+        print("iter_num is:", iter_num)
+        reg_model.train(True)
+        optimizer = inv_lr_scheduler(param_lr, optimizer, iter_num, init_lr=lr, gamma=gamma, power=0.75,
+                                    weight_decay=0.0005)
+        optimizer.zero_grad()
+        if iter_num % len_source == 0:
+            iter_source = iter(dset_loaders["source"])
+        if iter_num % len_target == 0:
+            iter_target = iter(dset_loaders["target"])
 
-    train_regression_loss += regression_loss.item()
-    train_dare_gram_loss += dare_gram_loss.item()
-    train_total_loss += total_loss.item()
-    if iter_num % test_interval == 0:
-        print("Iter {:05d}, Average MSE Loss: {:.4f}; Average DARE-GRAM Loss: {:.4f}; Average Training Loss: {:.4f}".format(
-            iter_num, train_regression_loss / float(test_interval), train_dare_gram_loss / float(test_interval), train_total_loss / float(test_interval)))
-        train_regression_loss = train_dare_gram_loss = train_total_loss =  0.0
+        data_source = iter_source.next()
+        data_target = iter_target.next()
+
+        inputs_source, labels_source = data_source
+        inputs_target, labels_target = data_target
+        print("print input data shape")
+        print(inputs_source.shape, labels_source.shape)
+        print(inputs_target.shape, labels_target.shape)
 
 
-# Evaluate the model with training data
-with torch.no_grad():  # We don't need gradients in the testing phase
+        feature_s, outC_s,  = reg_model(inputs_source)
+        feature_t, outC_t = reg_model(inputs_target)
 
-    # Similarly for testing data
-    print("target_data shape is:", target_data.shape)
-    _, target_pred_labels = Model_R(target_data)
-    target_pred_labels = target_pred_labels.data.numpy()
-    print("target_pred_labels shape is:", target_pred_labels.shape)
-    target_labels = target_labels.data.numpy()
-    
-    test_RMSE = np.sqrt(np.mean((target_pred_labels- target_labels) ** 2))
-    test_MAE = np.mean(np.abs(target_pred_labels - target_labels))
-    print("test RMSE is:", test_RMSE, "test_MAE is:", test_MAE)
 
-      
+        regression_loss = criterion["regressor"](outC_s, labels_source)
+        dare_gram_loss = daregram_loss(feature_s,feature_t)
+        print("daregram_loss is:", dare_gram_loss)
+
+        total_loss = regression_loss + dare_gram_loss
+
+        total_loss.backward()
+
+        # Clip graidents
+        clip_value = 1
+        torch.nn.utils.clip_grad_norm_(reg_model.parameters(), clip_value)
+
+        optimizer.step()
+
+        train_regression_loss += regression_loss.item()
+        train_dare_gram_loss += dare_gram_loss.item()
+        train_total_loss += total_loss.item()
+        if iter_num % test_interval == 0:
+            print("Iter {:05d}, Average MSE Loss: {:.4f}; Average DARE-GRAM Loss: {:.4f}; Average Training Loss: {:.4f}".format(
+                iter_num, train_regression_loss / float(test_interval), train_dare_gram_loss / float(test_interval), train_total_loss / float(test_interval)))
+            train_regression_loss = train_dare_gram_loss = train_total_loss =  0.0
+
+
+    # Evaluate the model with training data
+    with torch.no_grad():  # We don't need gradients in the testing phase
+
+        # Similarly for testing data
+        print("target_data shape is:", target_data.shape)
+        _, target_pred_labels = reg_model(target_data)
+        target_pred_labels = target_pred_labels.data.numpy()
+        print("target_pred_labels shape is:", target_pred_labels.shape)
+        target_labels = target_labels.data.numpy()
+        
+        test_RMSE = np.sqrt(np.mean((target_pred_labels- target_labels) ** 2))
+        test_MAE = np.mean(np.abs(target_pred_labels - target_labels))
+        print("test RMSE is:", test_RMSE, "test_MAE is:", test_MAE)
+    return test_RMSE, test_MAE
+
+
+# Define dimensions
+num_samples_source = 1000  # Adjust based on your source needs
+num_samples_target = 1200    # Adjust based on your target needs
+num_features = 512        # Total number of features for each example, adjust as needed
+source_data = np.random.rand(num_samples_source, num_features).astype(np.float32)
+source_labels = np.random.rand(num_samples_source).astype(np.float32)
+target_data = np.random.rand(num_samples_target, num_features).astype(np.float32)
+target_labels = np.random.rand(num_samples_target).astype(np.float32)
+run_daregram(source_data, source_labels, target_data, target_labels)
