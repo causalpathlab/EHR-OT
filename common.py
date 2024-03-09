@@ -840,3 +840,18 @@ def save_results(rmses, maes, score_path):
 
     # save
     score_df.to_csv(score_path, index=None, header=True)
+
+
+# Define a simple dataset class
+class PreparedDataset(torch.utils.data.Dataset):
+    def __init__(self, data, labels):
+        self.data = data
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        sample = self.data[idx]
+        label = self.labels[idx]
+        return sample, label
