@@ -1,2 +1,2 @@
 Mean loss: 4.605
-Accuracy: 0.014
+Accuracy: 0.013

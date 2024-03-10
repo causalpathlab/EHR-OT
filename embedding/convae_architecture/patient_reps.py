@@ -21,7 +21,7 @@ Learn patient representations from the EHRs using an autoencoder of CNNs
 def learn_patient_representations(indir, input_file, output_file,
                                   test_set=False,
                                   sampling=None,
-                                  emb_filename=None):
+                                  emb_filename=None, seed=0):
     """ 
     :param indir: input directory, also the directory for generating outputs (e.g. syn_example)
     :param input_file: input file name within indir (e.g., male_seqs.csv)
@@ -55,8 +55,8 @@ def learn_patient_representations(indir, input_file, output_file,
         embs = None
 
     # set random seed for experiment reproducibility
-    torch.manual_seed(123)
-    torch.cuda.manual_seed(123)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
 
     # load data
     data_tr = EHRdata(os.path.join(indir), input_file, sampling)
