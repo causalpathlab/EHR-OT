@@ -7,3 +7,5 @@ Run mimic_exp/admission/analyze_bound.ipynb to generate analysis of target error
 Run mimic_exp/admission/analyze_accuracy.ipynb to generate benchmarking results of OTTEHR against existing transfer learning methods. 
 
 Run mimic_exp/admission/analyze_duration_diff.ipynb to generate predicted duration vs observed duration and the treatment disparity analysis based on subgroups.
+
+Run embedding/convae_architecture/emb_diff.ipynb to generate the unstable embeddings by a non-linear, multi-layered EHR embedding method convae.
