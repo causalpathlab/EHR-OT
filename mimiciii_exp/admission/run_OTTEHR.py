@@ -22,13 +22,13 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_sc
 import time
 
 
-output_dir = os.path.join(os.path.expanduser("~"), f"OTTEHR/outputs/mimiciii")
+output_dir = os.path.join(os.path.expanduser("~"), f"OTTEHR/outputs/mimic_iii")
 print(f"Will save outputs to {output_dir}")
 
 """ 
 Read in the original dataframe
 """
-admid_diagnosis_df = pd.read_csv(os.path.join(output_dir, "ADMID_DIAGNOSIS.csv"), index_col=0, header=0, converters={'ICD codes': literal_eval})
+admid_diagnosis_df = pd.read_csv(os.path.join(output_dir, "admission_patient_diagnosis_ICD.csv"), index_col=0, header=0, converters={'ICD codes': literal_eval})
 print(admid_diagnosis_df)
 
 
@@ -47,7 +47,6 @@ def custom_train_reps(source_features, target_features, n_components, pca_explai
     source_pca = PCA(n_components=n_components)
     source_reps = source_pca.fit_transform(source_features)
 
-    # target_pca = PCA(n_components=n_components)
     # Use source PCA to embed target representations (based on the assumption source and target are using the same ICD encoding system)
     target_reps = source_pca.fit_transform(target_features)
 

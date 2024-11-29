@@ -33,8 +33,8 @@ from unbalancedgw.vanilla_ugw_solver import exp_ugw_sinkhorn
 from unbalancedgw._vanilla_utils import ugw_cost
 from unbalancedgw.utils import generate_measure
 
-mimic_output_dir = f"/home/{user_id}/OTTEHR/outputs/mimiciii"
-mimic_data_dir = f"/home/{user_id}/OTTEHR/mimic_exp/mimiciii"
+mimic_output_dir = f"/home/{user_id}/OTTEHR/outputs/mimic_iii"
+mimic_data_dir = f"/home/{user_id}/OTTEHR/mimic_exp/mimic_iii"
 
 
 def find_unique_code(df, ICD_name = 'ICD codes'):
@@ -500,7 +500,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
         print("After TCA, source_reps shape is:", source_reps.shape, "target_reps shape is:", target_reps.shape)
     elif trans_metric == 'NN': # Nearest neighbor
         trans_target_reps = trans_NN(source_reps, target_reps)
-    elif trans_metric == 'GFK': #
+    elif trans_metric == 'GFK': # Geodesic flow kernel minimization 
         source_reps, trans_target_reps = trans_GFK(source_reps, target_reps)
     elif trans_metric == 'OT': # Unbalanced OT
         trans_target_reps, wa_dist, coupling, diameter = trans_UOT(target_reps, source_reps)

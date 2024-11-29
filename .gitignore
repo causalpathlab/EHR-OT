@@ -12,4 +12,5 @@ outputs/mimic_iii/selected_df.csv
 outputs/mimic_iii/selected_summary_mimic.csv
 outputs/mimic_iii/summary_mimic.csv
 outputs/mimic_iv/admission_patient_diagnosis_ICD.csv
+outputs/cross/admission_patient_diagnosis_ICD.csv
 config.py

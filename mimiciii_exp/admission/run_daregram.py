@@ -29,10 +29,10 @@ import torch.optim as optim
 """ 
 Read in the original dataframe
 """
-output_dir = os.path.join(os.path.expanduser("~"), f"OTTEHR/outputs/mimiciii")
+output_dir = os.path.join(os.path.expanduser("~"), f"OTTEHR/outputs/mimic_iii")
 print(f"Will save outputs to {output_dir}")
 
-admid_diagnosis_df = pd.read_csv(os.path.join(output_dir, "ADMID_DIAGNOSIS.csv"), index_col=0, header=0, converters={'ICD codes': literal_eval})
+admid_diagnosis_df = pd.read_csv(os.path.join(output_dir, "admission_patient_diagnosis_ICD.csv"), index_col=0, header=0, converters={'ICD codes': literal_eval})
 print(admid_diagnosis_df)
 
 

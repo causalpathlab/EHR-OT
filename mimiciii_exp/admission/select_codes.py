@@ -74,7 +74,7 @@ def select_codes(group_1_dict, group_2_dict, group_1_min_count, group_2_min_coun
 
 
 
-df_path = f"/home/{user_id}/OTTEHR/outputs/mimic/ADMID_DIAGNOSIS.csv"
+df_path = f"/home/{user_id}/OTTEHR/outputs/mimic/admission_patient_diagnosis_ICD.csv"
 admid_diag_df = pd.read_csv(df_path, index_col=0, header=0, converters={'ICD codes': literal_eval})
 admid_diag_df
 

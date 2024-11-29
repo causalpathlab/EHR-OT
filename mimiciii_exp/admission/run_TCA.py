@@ -25,7 +25,7 @@ print(f"Will save outputs to {output_dir}")
 """ 
 Read in the original dataframe
 """
-admid_diagnosis_df = pd.read_csv("../../outputs/mimic/ADMID_DIAGNOSIS.csv", index_col=0, header=0, converters={'ICD codes': literal_eval})
+admid_diagnosis_df = pd.read_csv("../../outputs/mimic/admission_patient_diagnosis_ICD.csv", index_col=0, header=0, converters={'ICD codes': literal_eval})
 # print(admid_diagnosis_df)
 
 source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses,\
