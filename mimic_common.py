@@ -196,7 +196,9 @@ def select_samples(df, group_name, source, target, source_count, target_count):
 
     
     # indices to delete from the dataframe
-    # sample the same number of label 0s and label 1s
+
+    print("number of target indices is:", len(target_indices), 'target_count is:', target_count)
+    print("number of source indices is:", len(source_indices), 'source_count is:', source_count)
 
     delete_target_indices = random.sample(target_indices, len(target_indices)-target_count)
     delete_source_indices = random.sample(source_indices, len(source_indices)-source_count)
@@ -519,9 +521,9 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
         # compute transported target using the model, used for studying the bias 
         # trans_target_mappings = np.matmul(coupling, source_labels)
         # trans_target_mappings = np.multiply(trans_target_mappings, target_count)
-        target_equity_path = os.path.join(mimic_output_dir, f"{group_name}_{target}2{source}_{trans_metric}_equity.csv")
+        target_equity_path = os.path.join(mimic_output_dir, f"{group_name}_{target}_to_{source}_{trans_metric}_equity.csv")
         if suffix is not None:
-            target_equity_path = os.path.join(mimic_output_dir, f"{group_name}_{target}2{source}_{trans_metric}_{suffix}_equity.csv")
+            target_equity_path = os.path.join(mimic_output_dir, f"{group_name}_{target}_to_{source}_{trans_metric}_{suffix}_equity.csv")
         target_equity_df = pd.read_csv(target_equity_path, header=0, index_col = None)
 
         # target_diffs = np.divide(target_preds - target_labels, target_labels)
@@ -631,9 +633,9 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
 
     if equity:
         target_equity_df = pd.DataFrame(columns=['target_label', 'target_pred_label', 'trans_target_pred_label',  'target_codes'])
-        target_equity_path = os.path.join(mimic_output_dir, f"{group_name}_{target}2{source}_{trans_metric}_equity.csv")
+        target_equity_path = os.path.join(mimic_output_dir, f"{group_name}_{target}_to_{source}_{trans_metric}_equity.csv")
         if suffix is not None:
-            target_equity_path = os.path.join(mimic_output_dir, f"{group_name}_{target}2{source}_{trans_metric}_{suffix}_equity.csv")
+            target_equity_path = os.path.join(mimic_output_dir, f"{group_name}_{target}_to_{source}_{trans_metric}_{suffix}_equity.csv")
         target_equity_df.to_csv(target_equity_path, header=True, index=False)
 
     for i in range(iteration):

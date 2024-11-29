@@ -46,7 +46,7 @@ def custom_train_reps(source_features, target_features, n_components, pca_explai
     source_reps = source_pca.fit_transform(source_features)
 
     # Use source PCA to embed target representations (based on the assumption source and target are using the same ICD encoding system)
-    target_pca = PCA(n_components=n_components)
+    # target_pca = PCA(n_components=n_components)
     target_reps = target_pca.fit_transform(target_features)
 
     if pca_explain:
@@ -69,8 +69,8 @@ suffix = None
 
 # Update group_name and groups to appropriate values 
 group_name = 'version'
-group_1 = 'mimic_iii'
-group_2 = 'mimic_iv'
+group_1 = 'mimic_iv'
+group_2 = 'mimic_iii'
 
 group_1_count = 120
 group_2_count = 100
@@ -88,7 +88,7 @@ trans_metric = 'GWOT'
 
         
 
-score_path = os.path.join(output_dir, f"{group_name}_{group_2}2{group_1}_{trans_metric}.csv")
+score_path = os.path.join(output_dir, f"{group_name}_{group_2}_to_{group_1}_{trans_metric}.csv")
 
 source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses, target_clf_maes, target_clf_mses, target_clf_rmses, \
     trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, coupling_diffs, diameters, max_hs \
