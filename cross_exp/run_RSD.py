@@ -45,7 +45,7 @@ target_count = 100
 iterations = 100
 
 
-score_path = os.path.join(output_dir, f"{group_name}_{target}2{source}_{trans_metric}.csv")
+score_path = os.path.join(output_dir, f"{group_name}_{target}_to_{source}_{trans_metric}.csv")
 
 maes, rmses = multi_proc_daregram_RSD(cross_df,  group_name, source, target, source_count, target_count, trans_metric, iteration=100)
 

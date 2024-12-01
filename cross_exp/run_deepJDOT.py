@@ -68,7 +68,7 @@ target_count = 100
 
 
 
-score_path = os.path.join(output_dir, f"{group_name}_{target}2{source}_{trans_metric}.csv")
+score_path = os.path.join(output_dir, f"{group_name}_{target}_to_{source}_{trans_metric}.csv")
 
 maes = []
 rmses = []
