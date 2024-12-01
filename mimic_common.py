@@ -6,26 +6,28 @@ sys.path.append(f"/home/{user_id}/OTTEHR/")
 sys.path.append(f"/home/{user_id}/OTTEHR/competitors")
 sys.path.append(f"/home/{user_id}/unbalanced_gromov_wasserstein/")
 
+from ast import literal_eval
 from datetime import datetime
 import copy
 from CA import *
 from common import *
 from collections import Counter
-from ast import literal_eval
+from daregram import *
 from GFK import *
 from MMD import *
-import numpy as np
-from NN import *
 import matplotlib.pyplot as plt
 from multiprocess import Pool
+import numpy as np
+from NN import *
 import os
 import random
+from RSD import *
 from sklearn.metrics import precision_score, recall_score, accuracy_score, \
     f1_score, mean_absolute_error, mean_squared_error, \
     mutual_info_score, normalized_mutual_info_score
 from sklearn.decomposition import PCA
 from scipy.stats import entropy
-# from TCA import *
+from TCA import *
 from transfertools.models import TCA
 import torch
 
@@ -35,6 +37,7 @@ from unbalancedgw.utils import generate_measure
 
 mimic_output_dir = f"/home/{user_id}/OTTEHR/outputs/mimic_iii"
 mimic_data_dir = f"/home/{user_id}/OTTEHR/mimic_exp/mimic_iii"
+cross_output_dir = f"/home/{user_id}/OTTEHR/outputs/cross"
 
 
 def find_unique_code(df, ICD_name = 'ICD codes'):
@@ -448,26 +451,28 @@ def entire_proc_binary(n_components, group_name, source, target, label_code, ful
 
 def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, \
                     group_name, source, target, source_count = 120, \
-                    target_count = 100, pca_explain=False, equity=False, suffix=None, input_name = 'ICD codes'):
+                    target_count = 100, pca_explain=False, equity=False, suffix=None, \
+                    input_name = 'ICD codes', output_name = 'duration'):
     """
-    Wrap up the entire procedure
+    Wrap up the entire procedure for transportation method being OT, GWOT, TCA, CA, GFK
 
     :param int n_components: the number of components for PCA learning
     :param str label_code: the ICD code to determine labels
     :param dataframe full_df: the full dataframe
     :param function custom_train_reps: the customized function for learning representations
     :param function model_func: the function the model the relationship between target representations and target response
-    :param str trans_metric: transport metric, OT, MMD, TCA or NN
+    :param str trans_metric: transport metric, OT, GWOT, TCA, CA, GFK
     :param str group_name: the group name 
     :param int male_count: the number of samples with label 1s and label 0s for target (male). Default 120.
     :param int female_count: the number of samples with label 1s and label 0s for source (female). Default 100.
     :param bool pca_explain: print the variance explained by the PCA, if True. Default False.
     :param bool equity: track differences in predicted values versus ground-truth values, to prepare data to check for equity
+    :param str suffix: suffix added to the equity file
+    :param str input_name: the feature name of model_func (the name of the ICD code column)
+    :param str output_name: the output name of the model_func
 
     """
     
-    input_name = 'ICD codes'
-    output_name = 'duration'
     selected_df = select_samples(full_df, group_name, source, target, source_count=source_count, target_count=target_count)
 
     source_features, source_labels, target_features, target_labels = gen_code_feature_label(selected_df, group_name, source, target, input_name, output_name)
@@ -492,22 +497,14 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
     # (1) OTTEHR - mitigate bias in the regressor (2) bias detection between two subpopulations
     if trans_metric == 'GWOT': # Unbalanced Gromov Wasserstein OT
         trans_target_reps, coupling, wa_dist = trans_GWOT(target_reps, source_reps)
-    if trans_metric == 'MMD':
-        trans_target_reps = trans_MMD(target_reps, source_reps)
-    elif trans_metric == 'TCA': # Transfer component analysis
-        # source_reps, target_reps, trans_target_reps = TCA(source_features, target_features, n_components=n_components, scale=False)
-        transfor = TCA(mu=0.1, kernel_type='linear', n_components = source_reps.shape[1])
-        print("source_reps shape is:", source_reps.shape, "target_reps shape is:", target_reps.shape)
-        source_reps, trans_target_reps = transfor.fit_transfer(source_reps, target_reps)
-        print("After TCA, source_reps shape is:", source_reps.shape, "target_reps shape is:", target_reps.shape)
-    elif trans_metric == 'NN': # Nearest neighbor
-        trans_target_reps = trans_NN(source_reps, target_reps)
     elif trans_metric == 'GFK': # Geodesic flow kernel minimization 
         source_reps, trans_target_reps = trans_GFK(source_reps, target_reps)
     elif trans_metric == 'OT': # Unbalanced OT
         trans_target_reps, wa_dist, coupling, diameter = trans_UOT(target_reps, source_reps)
     elif trans_metric == 'CA': # Correlation alignment
         trans_target_reps = trans_CA(target_reps, source_reps)
+    elif trans_metric == 'TCA': # Transfer component analysis
+        source_reps, target_reps, trans_target_reps = trans_TCA(source_features, target_features, n_components=n_components)
 
     
     clf = train_model(source_reps, source_labels, model_func) 
@@ -680,6 +677,26 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
         trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, \
         wa_dists, coupling_diffs, diameters, max_hs
 
+
+def multi_proc_daregram_RSD(full_df,  group_name, source, target, source_count, target_count, trans_metric, iteration=20):
+        maes = []
+        rmses = []
+        for i in range(iteration):
+            print("iteration:", i)
+            selected_df = select_samples(full_df, group_name, source, target, source_count, target_count)
+            code_feature_name = 'ICD codes'
+            label_name = 'duration'
+            source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, source, target, code_feature_name, label_name)
+            print("print data dimensions:", source_data.shape, source_labels.shape, target_data.shape, target_labels.shape)
+            test_rmse = None,
+            test_mae = None
+            if trans_metric == 'RSD':
+                test_rmse, test_mae = run_RSD(source_data, source_labels, target_data, target_labels)
+            elif trans_metric == 'daregram':
+                test_rmse, test_mae = run_daregram(source_data, source_labels, target_data, target_labels)
+            maes.append(test_mae)
+            rmses.append(test_rmse)
+        return maes, rmses
 
 
 

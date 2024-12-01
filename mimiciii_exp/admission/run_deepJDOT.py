@@ -105,7 +105,7 @@ for source in groups:
             nets = regressor(fes)
             source_model = dnn.Model(ms, nets)
             source_model.compile(optimizer=optim, loss='mean_squared_error', metrics=['accuracy'])
-            source_model.fit(source_data, source_labels, batch_size=128, epochs=100, validation_data=(target_data, target_label))
+            source_model.fit(source_data, source_labels, batch_size=128, epochs=100, validation_data=(target_data, target_labels))
             source_acc = source_model.evaluate(source_data, source_labels)
             target_acc = source_model.evaluate(target_data, target_labels)
             print("source loss & acc using source model", source_acc)

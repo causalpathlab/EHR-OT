@@ -11,7 +11,7 @@ from sklearn.metrics.pairwise import rbf_kernel
 from sklearn.preprocessing import KernelCenterer
 
 
-def TCA(Xs, Xt, n_components=None, scale=True):
+def trans_TCA(Xs, Xt, n_components=None, scale=True):
     """
     Transfer Component Analysis (TCA) implementation.
 

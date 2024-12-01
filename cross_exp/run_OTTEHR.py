@@ -45,7 +45,7 @@ def custom_train_reps(source_features, target_features, n_components, pca_explai
     source_pca = PCA(n_components=n_components)
     source_reps = source_pca.fit_transform(source_features)
 
-    # Use source PCA to embed target representations (based on the assumption source and target are using the same ICD encoding system)
+    # When using gromov Wasserstein OT, we can use different PCA to embed source and target features 
     target_pca = PCA(n_components=n_components)
     target_reps = target_pca.fit_transform(target_features)
 

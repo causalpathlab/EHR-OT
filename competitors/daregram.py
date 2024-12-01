@@ -10,12 +10,8 @@ from common import *
 from mimic_common import *
 import torch
 import torch.optim as optim
-import torch.nn.functional as F
 import torch.nn as nn
-import transform as tran
 import numpy as np
-import os
-import argparse
 
 
 torch.backends.cudnn.deterministic = True
@@ -172,8 +168,8 @@ def run_daregram(source_data, source_labels, target_data, target_labels):
         if iter_num % len_target == 0:
             iter_target = iter(dset_loaders["target"])
 
-        data_source = iter_source.next()
-        data_target = iter_target.next()
+        data_source = next(iter_source)
+        data_target = next(iter_target)
 
         inputs_source, labels_source = data_source
         inputs_target, _ = data_target

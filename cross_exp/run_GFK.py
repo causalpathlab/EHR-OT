@@ -77,11 +77,13 @@ group_2_count = 100
 # trans_metric = 'OT'
 # trans_metric = 'GWOT'
 
-trans_metric = 'TCA'
+# trans_metric = 'TCA'
 # trans_metric = 'MMD'
 # trans_metric = 'NN'
-# trans_metric = 'GFK'
+trans_metric = 'GFK'
 # trans_metric = 'CA'
+
+# groups.reverse()
 
         
 
