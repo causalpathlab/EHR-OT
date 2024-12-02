@@ -21,20 +21,15 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score
 import time
 
-
+# Set output directory
 output_dir = os.path.join(os.path.expanduser("~"), f"OTTEHR/outputs/mimic_iii")
 print(f"Will save outputs to {output_dir}")
 
-""" 
-Read in the original dataframe
-"""
+# Read in dataframe
 admid_diagnosis_df = pd.read_csv(os.path.join(output_dir, "admission_patient_diagnosis_ICD.csv"), index_col=0, header=0, converters={'ICD codes': literal_eval})
 print(admid_diagnosis_df)
 
 
-"""
-Train deep patient model and generate representations for targets and sources
-"""
 
 def custom_train_reps(source_features, target_features, n_components, pca_explain=False):
     """ 
@@ -61,9 +56,7 @@ def custom_train_reps(source_features, target_features, n_components, pca_explai
     return source_reps, target_reps
 
 
-""" 
-Run multiple iterations using linear regression
-"""
+# Set parameters
 n_components = 50
 
 suffix = None
@@ -88,6 +81,7 @@ trans_metric = 'OT'
 # trans_metric = 'GFK'
 # trans_metric = 'CA'
 
+# Run multiple iterations using OTTEHR
 # groups.reverse()
 for group_1 in groups:
     for group_2 in groups:
