@@ -75,7 +75,7 @@ for source in groups:
 
         
         print(f"source is: {source}, target is: {target}")
-        score_path = os.path.join(output_dir, f"{group_name}_{target}2{source}_{trans_metric}.csv")
+        score_path = os.path.join(output_dir, f"{group_name}_{target}_to_{source}_{trans_metric}.csv")
         if os.path.exists(score_path):
             continue
 

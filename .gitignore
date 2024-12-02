@@ -1,7 +1,7 @@
 __pycache__/
 OTTEHR/*.pyc
-mimiciii_exp/mimiciii
-mimiciv_exp/mimiciv
+mimic_iii_exp/mimic_iii
+mimic_iv_exp/mimic_iv
 outputs/mimic_iii/admission_patient_diagnosis_ICD.csv
 outputs/mimic_iii/ADMID_DIAGNOSIS_TARGET.csv
 outputs/mimic_iii/ADMID_DIAGNOSIS_selected.csv
