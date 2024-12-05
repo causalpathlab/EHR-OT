@@ -63,7 +63,10 @@ n_components = 50
 
 # Update group_name and groups to appropriate values 
 group_name = 'age'
-groups = [[10, 25], [25, 40], [40, 55], [55, 70], [50, 70]]
+# groups = [[10, 25], [25, 40], [40, 55], [55, 70], [50, 70]]
+
+source = [50, 70]
+target_groups = [[30, 45], [35, 50], [45, 60], [50, 65]]
 
 
 source_count = 120
@@ -76,20 +79,18 @@ append_features = ['age']
 
 # Run multiple iterations using OTTEHR
 # groups.reverse()
-for source in groups:
-    for target in groups:
-        if source == target:
-            continue
-        
-        print(f"source is: {source}, target is: {target}")
-  
-        score_path = os.path.join(output_dir, f"{group_name}_{target}_to_{source}_{trans_metric}.csv")
-        
-        source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses, target_clf_maes, target_clf_mses, target_clf_rmses, \
-            trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, coupling_diffs, diameters, max_hs \
-                = multi_proc(n_components, admid_diagnosis_df, custom_train_reps, group_name, feature_type, source, target, \
-                    source_count, target_count, trans_metric=trans_metric, model_func = linear_model.LinearRegression, \
-                    iteration=100, equity=False, append_features=append_features)
 
-        save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, target_clf_maes, target_clf_mses, target_clf_rmses, \
-            trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, coupling_diffs, diameters, max_hs, score_path)
+for target in target_groups:
+    
+    print(f"source is: {source}, target is: {target}")
+
+    score_path = os.path.join(output_dir, f"{group_name}_{target}_to_{source}_{trans_metric}.csv")
+    
+    source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses, target_clf_maes, target_clf_mses, target_clf_rmses, \
+        trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, coupling_diffs, diameters, max_hs \
+            = multi_proc(n_components, admid_diagnosis_df, custom_train_reps, group_name, feature_type, source, target, \
+                source_count, target_count, trans_metric=trans_metric, model_func = linear_model.LinearRegression, \
+                iteration=100, equity=False, append_features=append_features)
+
+    save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, target_clf_maes, target_clf_mses, target_clf_rmses, \
+        trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, coupling_diffs, diameters, max_hs, score_path)
