@@ -129,10 +129,12 @@ def gen_feature(df, group_name, source, target, feature_code_name):
     return source_features, target_features
 
 
-def gen_code_feature_label(df, group_name, source, target, feature_code_name, label_name, append_features=[]):
+def gen_code_feature_label(df, group_name, type, source, target, feature_code_name, label_name, append_features=[]):
     """ 
     Generate source features, source durations (continuous response), \
         target features and target durations (continuous response) from dataframe df
+    :param str group_name: the continuous/categorical feature name to divide the population
+    :param str type: cat (categorical) or cts (continuous)        
     :param str feature_code_name: name of the input. For the experiments on ICD codes vs. duration, the input_name is 'ICD codes'
     :param str label_name: name of the label/response. For the experiments on ICD codes vs. duration, the label_name is 'duration'.
     :param array append_feature: Other features to append to the feature arrays. For example, [age]. Empty array by default.
@@ -141,29 +143,39 @@ def gen_code_feature_label(df, group_name, source, target, feature_code_name, la
     unique_code_dict, num_codes = find_unique_code(df, ICD_name = feature_code_name)
     print("number of codes is:", num_codes)
 
-    source_df = df.loc[df[group_name] == source]
-    target_df = df.loc[df[group_name] == target]
+    source_df = None
+    target_df = None
+    if type == 'cat':
+        source_df = df.loc[df[group_name] == source]
+        target_df = df.loc[df[group_name] == target]
+    elif type == 'cts':
+        source_df = df[(df[group_name] >= source[0]) & (df[group_name] <= source[1])]
+        target_df = df[(df[group_name] >= target[0]) & (df[group_name] <= target[1])]
+
 
     # Prepare source
-    source_features = np.empty(shape=[source_df.shape[0], num_codes])
+    source_features = np.empty(shape=[source_df.shape[0], num_codes+len(append_features)])
     feature_index = 0
-    for feature_index, row in source_df.iterrows():
+    for _, row in source_df.iterrows():
         code_ind = np.zeros(num_codes)
         for code in row[feature_code_name]:
             code_ind[unique_code_dict[code]] += 1
-        code_ind.extend(row[append_features].values)
-        source_features[feature_index] = code_ind
+        combined_info = np.append(code_ind, row[append_features].values)
+        source_features[feature_index] = combined_info
+        feature_index += 1
 
     source_labels = np.array(list(source_df[label_name]))
 
     # Prepare target
-    target_features = np.empty(shape=[target_df.shape[0], num_codes])
-    for feature_index, row in target_df.iterrows():
+    target_features = np.empty(shape=[target_df.shape[0], num_codes+len(append_features)])
+    feature_index = 0
+    for _, row in target_df.iterrows():
         code_ind = np.zeros(num_codes)
         for code in row[feature_code_name]:
             code_ind[unique_code_dict[code]] += 1
-        code_ind.extend(row[append_features].values)
-        target_features[feature_index] = code_ind
+        combined_info = np.append(code_ind, row[append_features].values)
+        target_features[feature_index] = combined_info
+        feature_index += 1
         
     target_labels = np.array(list(target_df[label_name]))
 
@@ -203,10 +215,11 @@ def select_samples(df, group_name, type, source, target, source_count, target_co
                 other_indices.append(index)
     elif type == 'cts':
         for index, row in df_copy.iterrows():
-            if source[0] <= row[group_name] <= source[1]:
-                source_indices.append(index)
-            elif target[0] <= row[group_name] <= target[1]:
-                target_indices.append(index)
+            if (source[0] <= row[group_name] <= source[1] or target[0] <= row[group_name] <= target[1]):
+                if source[0] <= row[group_name] <= source[1]:
+                    source_indices.append(index)
+                if target[0] <= row[group_name] <= target[1]:
+                    target_indices.append(index)
             else:
                 other_indices.append(index)
     
@@ -215,13 +228,11 @@ def select_samples(df, group_name, type, source, target, source_count, target_co
     print("number of target indices is:", len(target_indices), 'target_count is:', target_count)
     print("number of source indices is:", len(source_indices), 'source_count is:', source_count)
 
-    delete_target_indices = random.sample(target_indices, len(target_indices)-target_count)
-    delete_source_indices = random.sample(source_indices, len(source_indices)-source_count)
+    selected_target_indices = random.sample(target_indices, target_count)
+    selected_source_indices = random.sample(source_indices, source_count)
+    selected_target_indices.extend(selected_source_indices)
 
-    delete_target_indices.extend(delete_source_indices)
-    delete_target_indices.extend(other_indices)
-
-    df_copy = df_copy.drop(delete_target_indices, axis=0, inplace=False)
+    df_copy = df_copy.loc[selected_target_indices]
 
     return df_copy
 
@@ -489,10 +500,9 @@ def entire_proc(n_components, full_df, custom_train_reps, model_func, trans_metr
     
     selected_df = select_samples(full_df, group_name, type, source, target, source_count=source_count, target_count=target_count)
 
-    source_features, source_labels, target_features, target_labels = gen_code_feature_label(selected_df, group_name, source, target, input_name, output_name, append_features)
+    source_features, source_labels, target_features, target_labels = \
+        gen_code_feature_label(selected_df, group_name, type, source, target, input_name, output_name, append_features)
 
-    # Generate target codes
-    target_codes = list(selected_df.loc[selected_df[group_name] == target][input_name])
 
     source_reps = None
     target_reps = None
@@ -538,7 +548,7 @@ def entire_proc(n_components, full_df, custom_train_reps, model_func, trans_metr
         target_equity_df = pd.read_csv(target_equity_path, header=0, index_col = None)
 
         # target_diffs = np.divide(target_preds - target_labels, target_labels)
-
+        target_codes = list(selected_df.loc[selected_df[group_name] == target][input_name])
         target_new_df = pd.DataFrame([target_labels, target_preds, trans_target_preds, target_codes]).transpose()
         target_new_df.columns = target_equity_df.columns
         target_equity_df = pd.concat([target_equity_df, target_new_df], ignore_index=True)
@@ -604,7 +614,7 @@ def multi_proc_binary(score_path, n_components, label_code, full_df, custom_trai
 
 
 def multi_proc(n_components, full_df, custom_train_reps, \
-               group_name, source, target, source_count, target_count, \
+               group_name, type, source, target, source_count, target_count, \
                 trans_metric, model_func = linear_model.LinearRegression, \
                 iteration=20, equity=False, suffix=None, append_features = []):
     """ 
@@ -616,6 +626,7 @@ def multi_proc(n_components, full_df, custom_train_reps, \
     :param function custom_train_reps: the customized function for learning representations
     :param int n_components: the number of components in PCA to learn representations
     :param str group_name: the name of the dividing group
+    :param str type: the type of the group name, cat (categorical) or cts (continuous), for example, cat for insurance, cts for age 
     :param str source: value for group 1
     :param str target: value for group 2
     :param int source_count: the number of samples with label 1s and label 0s for target (male)
@@ -670,7 +681,7 @@ def multi_proc(n_components, full_df, custom_train_reps, \
         source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, target_clf_mae, target_clf_mse, target_clf_rmse, \
             trans_target_mae, trans_target_mse, trans_target_rmse, label_div_score, wa_dist, coupling_diff, diameter, max_h = \
                 entire_proc(n_components, full_df, custom_train_reps, model_func, trans_metric, \
-                    group_name, source, target, source_count, target_count, equity=equity, suffix=suffix, append_features = append_features)
+                    group_name, type, source, target, source_count, target_count, equity=equity, suffix=suffix, append_features = append_features)
             
         source_maes.append(source_mae)
         source_mses.append(source_mse)
