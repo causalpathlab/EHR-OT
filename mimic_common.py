@@ -129,13 +129,13 @@ def gen_feature(df, group_name, source, target, feature_code_name):
     return source_features, target_features
 
 
-def gen_code_feature_label(df, group_name, source, target, feature_code_name, label_name):
+def gen_code_feature_label(df, group_name, source, target, feature_code_name, label_name, append_features=[]):
     """ 
     Generate source features, source durations (continuous response), \
         target features and target durations (continuous response) from dataframe df
     :param str feature_code_name: name of the input. For the experiments on ICD codes vs. duration, the input_name is 'ICD codes'
     :param str label_name: name of the label/response. For the experiments on ICD codes vs. duration, the label_name is 'duration'.
-
+    :param array append_feature: Other features to append to the feature arrays. For example, [age]. Empty array by default.
     """
 
     unique_code_dict, num_codes = find_unique_code(df, ICD_name = feature_code_name)
@@ -147,76 +147,40 @@ def gen_code_feature_label(df, group_name, source, target, feature_code_name, la
     # Prepare source
     source_features = np.empty(shape=[source_df.shape[0], num_codes])
     feature_index = 0
-    for _, row in source_df.iterrows():
+    for feature_index, row in source_df.iterrows():
         code_ind = np.zeros(num_codes)
         for code in row[feature_code_name]:
-            # print("code is:", code)
             code_ind[unique_code_dict[code]] += 1
+        code_ind.extend(row[append_features].values)
         source_features[feature_index] = code_ind
-        feature_index += 1
+
     source_labels = np.array(list(source_df[label_name]))
 
     # Prepare target
     target_features = np.empty(shape=[target_df.shape[0], num_codes])
-    feature_index = 0
-    for _, row in target_df.iterrows():
+    for feature_index, row in target_df.iterrows():
         code_ind = np.zeros(num_codes)
         for code in row[feature_code_name]:
             code_ind[unique_code_dict[code]] += 1
+        code_ind.extend(row[append_features].values)
         target_features[feature_index] = code_ind
-        feature_index += 1
+        
     target_labels = np.array(list(target_df[label_name]))
 
     return source_features, source_labels, target_features, target_labels
 
 
-def select_samples_by_cts(df, cts_feature, source_range, target_range, source_count, target_count):
+def select_samples(df, group_name, type, source, target, source_count, target_count):
     """ 
-    Select rows in the dataframe df for source and target population by a continuous feature \
+    Select rows in the dataframe df by source and target constraints 
 
     :param Dataframe df: the dataframe to select samples from.
-    :param str cts_feature: the continuous feature name to divide the population
-    :param [float, float] source_range: the range of the continuous feature for the source population
-    :param [float, float] target_range: the range of the continuous feature for the target population 
-    :param int source_count: the number of samples for the source
-    :param int target_count: the number of samples for the target
-    """
-    df_copy = copy.deepcopy(df)
-    
-    # Find indices that belong to two populations
-    source_indices = []
-    target_indices = []
-    other_indices = []
-    for index, row in df_copy.iterrows():
-        if source_range[0] <= row[cts_feature] <= source_range[1]:
-            source_indices.append(index)
-        elif target_range[0] <= row[cts_feature] <= target_range[1]:
-            target_indices.append(index)
-        else:
-            other_indices.append(index)
-    
-    # Find to delete from the dataframe
-    print("number of target indices is:", len(target_indices), 'target_count is:', target_count)
-    print("number of source indices is:", len(source_indices), 'source_count is:', source_count)
-
-    delete_target_indices = random.sample(target_indices, len(target_indices)-target_count)
-    delete_source_indices = random.sample(source_indices, len(source_indices)-source_count)
-
-    delete_target_indices.extend(delete_source_indices)
-    delete_target_indices.extend(other_indices)
-
-    # Construct new dataframe to return 
-    df_copy = df_copy.drop(delete_target_indices, axis=0, inplace=False)
-
-    return df_copy
-    
-
-
-def select_samples_cat(df, group_name, source, target, source_count, target_count):
-    """ 
-    Select rows in the dataframe df when the feature to divide population is catogorical 
-
-    :param Dataframe df: the dataframe to select samples from.
+    :param str group_name: the continuous/categorical feature name to divide the population
+    :param str type: cat (categorical) or cts (continuous)
+    :param str source: the source type for categorical type, or \
+    :param [float, float] source: the range of the continuous feature for the source population for continuous type
+    :param str target: the target type for categorical type, or \
+    :param [float, float] target: the range of the continuous feature for the target population for continuous type 
     :param int source_count: the number of samples for the source
     :param int target_count: the number of samples for the target
 
@@ -229,14 +193,22 @@ def select_samples_cat(df, group_name, source, target, source_count, target_coun
     source_indices = []
     target_indices = []
     other_indices = []
-    for index, row in df_copy.iterrows():
-        if row[group_name] == source:
-            source_indices.append(index)
-        elif row[group_name] == target:
-            target_indices.append(index)
-        else:
-            other_indices.append(index)
-
+    if type == 'cat':
+        for index, row in df_copy.iterrows():
+            if row[group_name] == source:
+                source_indices.append(index)
+            elif row[group_name] == target:
+                target_indices.append(index)
+            else:
+                other_indices.append(index)
+    elif type == 'cts':
+        for index, row in df_copy.iterrows():
+            if source[0] <= row[group_name] <= source[1]:
+                source_indices.append(index)
+            elif target[0] <= row[group_name] <= target[1]:
+                target_indices.append(index)
+            else:
+                other_indices.append(index)
     
     # indices to delete from the dataframe
 
@@ -489,10 +461,10 @@ def entire_proc_binary(n_components, group_name, source, target, label_code, ful
 
 
 
-def entire_proc_cat(n_components, full_df, custom_train_reps, model_func, trans_metric, \
-                    group_name, source, target, source_count = 120, \
+def entire_proc(n_components, full_df, custom_train_reps, model_func, trans_metric, \
+                    group_name, type, source, target, source_count = 120, \
                     target_count = 100, pca_explain=False, equity=False, suffix=None, \
-                    input_name = 'ICD codes', output_name = 'duration'):
+                    input_name = 'ICD codes', output_name = 'duration', append_features = []):
     """
     Wrap up the entire procedure for transportation method being OT, GWOT, TCA, CA, GFK when the feature to divide groups are categorical 
 
@@ -502,7 +474,8 @@ def entire_proc_cat(n_components, full_df, custom_train_reps, model_func, trans_
     :param function custom_train_reps: the customized function for learning representations
     :param function model_func: the function the model the relationship between target representations and target response
     :param str trans_metric: transport metric, OT, GWOT, TCA, CA, GFK
-    :param str group_name: the group name 
+    :param str group_name: the group name to divide populations
+    :param str type: the type of the group name, cat (categorical) or cts (continuous), for example, cat for insurance, cts for age 
     :param int male_count: the number of samples with label 1s and label 0s for target (male). Default 120.
     :param int female_count: the number of samples with label 1s and label 0s for source (female). Default 100.
     :param bool pca_explain: print the variance explained by the PCA, if True. Default False.
@@ -510,12 +483,13 @@ def entire_proc_cat(n_components, full_df, custom_train_reps, model_func, trans_
     :param str suffix: suffix added to the equity file
     :param str input_name: the feature name of model_func (the name of the ICD code column)
     :param str output_name: the output name of the model_func
+    :param np.array append_features: features other than the input_name to be appended to the input, e.g., [age]
 
     """
     
-    selected_df = select_samples_cat(full_df, group_name, source, target, source_count=source_count, target_count=target_count)
+    selected_df = select_samples(full_df, group_name, type, source, target, source_count=source_count, target_count=target_count)
 
-    source_features, source_labels, target_features, target_labels = gen_code_feature_label(selected_df, group_name, source, target, input_name, output_name)
+    source_features, source_labels, target_features, target_labels = gen_code_feature_label(selected_df, group_name, source, target, input_name, output_name, append_features)
 
     # Generate target codes
     target_codes = list(selected_df.loc[selected_df[group_name] == target][input_name])
@@ -629,11 +603,12 @@ def multi_proc_binary(score_path, n_components, label_code, full_df, custom_trai
     return res
 
 
-def multi_proc_cts(n_components, full_df, custom_train_reps, \
+def multi_proc(n_components, full_df, custom_train_reps, \
                group_name, source, target, source_count, target_count, \
-                trans_metric, model_func = linear_model.LinearRegression, iteration=20, equity=False, suffix=None):
+                trans_metric, model_func = linear_model.LinearRegression, \
+                iteration=20, equity=False, suffix=None, append_features = []):
     """ 
-    Run the entire_proc function multiple times (iteration) for continuous responses
+    Run the entire_proc function multiple times (iteration) 
 
     :param str score_path: the path to save results
     :param str label_code: the ICD code to determine labels
@@ -648,6 +623,8 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
     :param str trans_metric: transport metric, OT, MMD, TCA or NN
     :param int iteration: the number of iterations (repetitions)
     :param bool equity: prepare statistics for equity
+    :param array append_feature: Other features to append to the feature arrays. For example, [age]. Empty array by default.
+
     """
     random.seed(0)
     source_maes = []
@@ -692,8 +669,8 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
 
         source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, target_clf_mae, target_clf_mse, target_clf_rmse, \
             trans_target_mae, trans_target_mse, trans_target_rmse, label_div_score, wa_dist, coupling_diff, diameter, max_h = \
-                entire_proc_cat(n_components, full_df, custom_train_reps, model_func, trans_metric, \
-                    group_name, source, target, source_count, target_count, equity=equity, suffix=suffix)
+                entire_proc(n_components, full_df, custom_train_reps, model_func, trans_metric, \
+                    group_name, source, target, source_count, target_count, equity=equity, suffix=suffix, append_features = append_features)
             
         source_maes.append(source_mae)
         source_mses.append(source_mse)
@@ -723,7 +700,7 @@ def multi_proc_daregram_RSD(full_df,  group_name, source, target, source_count, 
         rmses = []
         for i in range(iteration):
             print("iteration:", i)
-            selected_df = select_samples_cat(full_df, group_name, source, target, source_count, target_count)
+            selected_df = select_samples(full_df, group_name, source, target, source_count, target_count)
             code_feature_name = 'ICD codes'
             label_name = 'duration'
             source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, source, target, code_feature_name, label_name)

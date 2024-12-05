@@ -64,7 +64,7 @@ for source in groups:
         rmses = []
         for i in range(iterations):
             print("iteration:", i)
-            selected_df = select_samples_cat(admid_diagnosis_df, group_name, source, target, source_count, target_count)
+            selected_df = select_samples(admid_diagnosis_df, group_name, source, target, source_count, target_count)
             code_feature_name = 'ICD codes'
             label_name = 'duration'
             source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, source, target, code_feature_name, label_name)
