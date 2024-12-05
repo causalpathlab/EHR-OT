@@ -170,10 +170,51 @@ def gen_code_feature_label(df, group_name, source, target, feature_code_name, la
     return source_features, source_labels, target_features, target_labels
 
 
-def select_samples(df, group_name, source, target, source_count, target_count):
+def select_samples_by_cts(df, cts_feature, source_range, target_range, source_count, target_count):
     """ 
-    Select row in the dataframe df with balanced number of labels for males and females \
-        for binary reponse
+    Select rows in the dataframe df for source and target population by a continuous feature \
+
+    :param Dataframe df: the dataframe to select samples from.
+    :param str cts_feature: the continuous feature name to divide the population
+    :param [float, float] source_range: the range of the continuous feature for the source population
+    :param [float, float] target_range: the range of the continuous feature for the target population 
+    :param int source_count: the number of samples for the source
+    :param int target_count: the number of samples for the target
+    """
+    df_copy = copy.deepcopy(df)
+    
+    # Find indices that belong to two populations
+    source_indices = []
+    target_indices = []
+    other_indices = []
+    for index, row in df_copy.iterrows():
+        if source_range[0] <= row[cts_feature] <= source_range[1]:
+            source_indices.append(index)
+        elif target_range[0] <= row[cts_feature] <= target_range[1]:
+            target_indices.append(index)
+        else:
+            other_indices.append(index)
+    
+    # Find to delete from the dataframe
+    print("number of target indices is:", len(target_indices), 'target_count is:', target_count)
+    print("number of source indices is:", len(source_indices), 'source_count is:', source_count)
+
+    delete_target_indices = random.sample(target_indices, len(target_indices)-target_count)
+    delete_source_indices = random.sample(source_indices, len(source_indices)-source_count)
+
+    delete_target_indices.extend(delete_source_indices)
+    delete_target_indices.extend(other_indices)
+
+    # Construct new dataframe to return 
+    df_copy = df_copy.drop(delete_target_indices, axis=0, inplace=False)
+
+    return df_copy
+    
+
+
+def select_samples_cat(df, group_name, source, target, source_count, target_count):
+    """ 
+    Select rows in the dataframe df when the feature to divide population is catogorical 
 
     :param Dataframe df: the dataframe to select samples from.
     :param int source_count: the number of samples for the source
@@ -183,7 +224,6 @@ def select_samples(df, group_name, source, target, source_count, target_count):
         - the selected dataframe
     """
 
-    # generate label column based on label_code
     df_copy = copy.deepcopy(df)
     
     source_indices = []
@@ -449,12 +489,12 @@ def entire_proc_binary(n_components, group_name, source, target, label_code, ful
 
 
 
-def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, \
+def entire_proc_cat(n_components, full_df, custom_train_reps, model_func, trans_metric, \
                     group_name, source, target, source_count = 120, \
                     target_count = 100, pca_explain=False, equity=False, suffix=None, \
                     input_name = 'ICD codes', output_name = 'duration'):
     """
-    Wrap up the entire procedure for transportation method being OT, GWOT, TCA, CA, GFK
+    Wrap up the entire procedure for transportation method being OT, GWOT, TCA, CA, GFK when the feature to divide groups are categorical 
 
     :param int n_components: the number of components for PCA learning
     :param str label_code: the ICD code to determine labels
@@ -473,7 +513,7 @@ def entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_
 
     """
     
-    selected_df = select_samples(full_df, group_name, source, target, source_count=source_count, target_count=target_count)
+    selected_df = select_samples_cat(full_df, group_name, source, target, source_count=source_count, target_count=target_count)
 
     source_features, source_labels, target_features, target_labels = gen_code_feature_label(selected_df, group_name, source, target, input_name, output_name)
 
@@ -652,7 +692,7 @@ def multi_proc_cts(n_components, full_df, custom_train_reps, \
 
         source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, target_clf_mae, target_clf_mse, target_clf_rmse, \
             trans_target_mae, trans_target_mse, trans_target_rmse, label_div_score, wa_dist, coupling_diff, diameter, max_h = \
-                entire_proc_cts(n_components, full_df, custom_train_reps, model_func, trans_metric, \
+                entire_proc_cat(n_components, full_df, custom_train_reps, model_func, trans_metric, \
                     group_name, source, target, source_count, target_count, equity=equity, suffix=suffix)
             
         source_maes.append(source_mae)
@@ -683,7 +723,7 @@ def multi_proc_daregram_RSD(full_df,  group_name, source, target, source_count, 
         rmses = []
         for i in range(iteration):
             print("iteration:", i)
-            selected_df = select_samples(full_df, group_name, source, target, source_count, target_count)
+            selected_df = select_samples_cat(full_df, group_name, source, target, source_count, target_count)
             code_feature_name = 'ICD codes'
             label_name = 'duration'
             source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, source, target, code_feature_name, label_name)

@@ -73,7 +73,7 @@ score_path = os.path.join(output_dir, f"{group_name}_{target}_to_{source}_{trans
 maes = []
 rmses = []
 for i in range(iterations):
-    selected_df = select_samples(cross_df, group_name, source, target, source_count, target_count)
+    selected_df = select_samples_cat(cross_df, group_name, source, target, source_count, target_count)
     code_feature_name = 'ICD codes'
     label_name = 'duration'
     source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, source, target, code_feature_name, label_name)

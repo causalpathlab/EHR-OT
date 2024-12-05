@@ -58,7 +58,7 @@ maes = []
 rmses = []
 for i in range(iterations):
     print("iteration:", i)
-    selected_df = select_samples(cross_df, group_name, group_1, group_2, group_1_count, group_2_count)
+    selected_df = select_samples_cat(cross_df, group_name, group_1, group_2, group_1_count, group_2_count)
     code_feature_name = 'ICD codes'
     label_name = 'duration'
     source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, group_1, group_2, code_feature_name, label_name)
