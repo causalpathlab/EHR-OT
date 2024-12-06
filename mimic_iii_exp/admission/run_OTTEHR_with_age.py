@@ -65,8 +65,13 @@ n_components = 50
 group_name = 'age'
 # groups = [[10, 25], [25, 40], [40, 55], [55, 70], [50, 70]]
 
+# source = [50, 70]
+# target_groups = [[30, 45], [35, 50], [45, 60], [50, 65]]
+
 source = [50, 70]
-target_groups = [[30, 45], [35, 50], [45, 60], [50, 65]]
+# target_groups = [[60, 75], [65, 80]]
+# target_groups = [[50, 65]]
+target_groups = [[15, 30]]
 
 
 source_count = 120
