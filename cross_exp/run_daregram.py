@@ -24,6 +24,7 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 import torch.nn as nn
 import torch.optim as optim
+import time
 
 
 
@@ -48,6 +49,7 @@ group_2 = 'mimic_iii'
 group_1_count = 120
 group_2_count = 100
 iterations = 100
+type = 'cat'
 
 
 
@@ -58,15 +60,17 @@ maes = []
 rmses = []
 for i in range(iterations):
     print("iteration:", i)
-    selected_df = select_samples(cross_df, group_name, group_1, group_2, group_1_count, group_2_count)
+    start_time = time.time()
+    selected_df = select_samples(cross_df, group_name, type, group_1, group_2, group_1_count, group_2_count)
     code_feature_name = 'ICD codes'
     label_name = 'duration'
-    source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, group_1, group_2, code_feature_name, label_name)
+    source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, type, group_1, group_2, code_feature_name, label_name)
     print("print data dimensions:", source_data.shape, source_labels.shape, target_data.shape, target_labels.shape)
 
     test_rmse, test_mae = run_daregram(source_data, source_labels, target_data, target_labels)
     maes.append(test_mae)
     rmses.append(test_rmse)
+    print("time for one iteration is:", time.time()-start_time)
 
 print("rmses is:", rmses)
 print("maes is:", maes)

@@ -64,7 +64,7 @@ def custom_train_reps(source_features, target_features, n_components, pca_explai
 Run multiple iterations using linear regression
 """
 n_components = 50
-
+type = 'cat'
 suffix = None
 
 # Update group_name and groups to appropriate values 
@@ -76,13 +76,13 @@ group_1_count = 120
 group_2_count = 100
 
 # trans_metric = 'OT'
-trans_metric = 'GWOT'
+# trans_metric = 'GWOT'
 
 # trans_metric = 'TCA'
 # trans_metric = 'MMD'
 # trans_metric = 'NN'
 # trans_metric = 'GFK'
-# trans_metric = 'CA'
+trans_metric = 'CA'
 
 # groups.reverse()
 
@@ -92,7 +92,7 @@ score_path = os.path.join(output_dir, f"{group_name}_{group_2}_to_{group_1}_{tra
 
 source_maes, source_mses, source_rmses, target_maes, target_mses, target_rmses, target_clf_maes, target_clf_mses, target_clf_rmses, \
     trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, coupling_diffs, diameters, max_hs \
-        = multi_proc_cts(n_components, cross_df, custom_train_reps, group_name, group_1, group_2, \
+        = multi_proc(n_components, cross_df, custom_train_reps, group_name, type, group_1, group_2, \
             group_1_count, group_2_count, trans_metric=trans_metric, model_func = linear_model.LinearRegression, iteration=100, equity=False, suffix=suffix)
 
 save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, target_clf_maes, target_clf_mses, target_clf_rmses, \

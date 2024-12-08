@@ -72,7 +72,7 @@ groups = ['Self_Pay', 'Private', 'Government', 'Medicare', 'Medicaid']
 group_1_count = 120
 group_2_count = 100
 
-trans_metric = 'OT'
+# trans_metric = 'OT'
 # trans_metric = 'GWOT'
 
 # trans_metric = 'TCA'

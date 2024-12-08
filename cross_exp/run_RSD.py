@@ -18,6 +18,7 @@ from scipy.optimize import minimize
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
 from common import *
+import time 
 from torch.utils.data import TensorDataset, DataLoader
 import torch
 from torch.autograd import Variable
@@ -42,12 +43,13 @@ target = 'mimic_iii'
 
 source_count = 120
 target_count = 100
+type = 'cat'
 iterations = 100
 
 
 score_path = os.path.join(output_dir, f"{group_name}_{target}_to_{source}_{trans_metric}.csv")
 
-maes, rmses = multi_proc_daregram_RSD(cross_df,  group_name, source, target, source_count, target_count, trans_metric, iteration=100)
+maes, rmses = multi_proc_daregram_RSD(cross_df,  group_name, type, source, target, source_count, target_count, trans_metric, iteration=100)
 
 print("rmses is:", rmses)
 print("maes is:", maes)

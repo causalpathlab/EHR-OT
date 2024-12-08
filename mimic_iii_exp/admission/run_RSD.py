@@ -32,7 +32,8 @@ Read in the original dataframe
 output_dir = os.path.join(os.path.expanduser("~"), f"OTTEHR/outputs/mimic_iii")
 print(f"Will save outputs to {output_dir}")
 
-admid_diagnosis_df = pd.read_csv(os.path.join(output_dir, "admission_patient_diagnosis_ICD.csv"), index_col=0, header=0, converters={'ICD codes': literal_eval})
+suffix = "with_age"
+admid_diagnosis_df = pd.read_csv(os.path.join(output_dir, f"admission_patient_diagnosis_ICD_{suffix}.csv"), index_col=0, header=0, converters={'ICD codes': literal_eval})
 print(admid_diagnosis_df)
 
 
@@ -44,36 +45,41 @@ target_count = 100
 iterations = 100
 trans_metric = 'RSD'
 
+# Update group_name and groups to appropriate values 
+group_name = 'age'
+source = [50, 70]
+target_groups = [[25, 45], [30, 50], [35, 55], [45, 65], [49, 70], [55, 75], [60, 80]]
+type = 'cts'
+append_features = ['age']
+
 # group_name = 'insurance'
 # groups = ['Self_Pay', 'Private', 'Government', 'Medicare', 'Medicaid']
 
-group_name = 'marital_status'
-groups = ['MARRIED', 'SINGLE', 'WIDOWED', 'DIVORCED', 'SEPARATED']
 
-for source in groups:
-    for target in groups:
-        if source == target:
-            continue
 
-        print(f"source is: {source}, target is: {target}")
-        score_path = os.path.join(output_dir, f"{group_name}_{target}_to_{source}_{trans_metric}.csv")
-        if os.path.exists(score_path):
-            continue
+for target in target_groups:
+    # if source == target:
+    #     continue
 
-        maes = []
-        rmses = []
-        for i in range(iterations):
-            print("iteration:", i)
-            selected_df = select_samples(admid_diagnosis_df, group_name, source, target, source_count, target_count)
-            code_feature_name = 'ICD codes'
-            label_name = 'duration'
-            source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, source, target, code_feature_name, label_name)
-            print("print data dimensions:", source_data.shape, source_labels.shape, target_data.shape, target_labels.shape)
+    print(f"source is: {source}, target is: {target}")
+    score_path = os.path.join(output_dir, f"{group_name}_{target}_to_{source}_{trans_metric}.csv")
+    # if os.path.exists(score_path):
+    #     continue
 
-            test_rmse, test_mae = run_RSD(source_data, source_labels, target_data, target_labels)
-            maes.append(test_mae)
-            rmses.append(test_rmse)
+    maes = []
+    rmses = []
+    for i in range(iterations):
+        print("iteration:", i)
+        selected_df = select_samples(admid_diagnosis_df, group_name, type, source, target, source_count, target_count)
+        code_feature_name = 'ICD codes'
+        label_name = 'duration'
+        source_data, source_labels, target_data, target_labels = \
+            gen_code_feature_label(selected_df, group_name, type, source, target, code_feature_name, label_name, append_features=append_features)
 
-        print("rmses is:", rmses)
-        print("maes is:", maes)
-        save_results(rmses, maes, score_path)
+        test_rmse, test_mae = run_RSD(source_data, source_labels, target_data, target_labels)
+        maes.append(test_mae)
+        rmses.append(test_rmse)
+
+    print("rmses is:", rmses)
+    print("maes is:", maes)
+    save_results(rmses, maes, score_path)

@@ -30,6 +30,7 @@ from scipy.stats import entropy
 from TCA import *
 from transfertools.models import TCA
 import torch
+import time
 
 from unbalancedgw.vanilla_ugw_solver import exp_ugw_sinkhorn
 from unbalancedgw._vanilla_utils import ugw_cost
@@ -678,10 +679,12 @@ def multi_proc(n_components, full_df, custom_train_reps, \
         target_clf_mse = None
         target_clf_rmse = None
 
+        start_time = time.time()
         source_mae, source_mse, source_rmse, target_mae, target_mse, target_rmse, target_clf_mae, target_clf_mse, target_clf_rmse, \
             trans_target_mae, trans_target_mse, trans_target_rmse, label_div_score, wa_dist, coupling_diff, diameter, max_h = \
                 entire_proc(n_components, full_df, custom_train_reps, model_func, trans_metric, \
                     group_name, type, source, target, source_count, target_count, equity=equity, suffix=suffix, append_features = append_features)
+        print("one iteration time is:", time.time()-start_time)
             
         source_maes.append(source_mae)
         source_mses.append(source_mse)
@@ -706,15 +709,16 @@ def multi_proc(n_components, full_df, custom_train_reps, \
         wa_dists, coupling_diffs, diameters, max_hs
 
 
-def multi_proc_daregram_RSD(full_df,  group_name, source, target, source_count, target_count, trans_metric, iteration=20):
+def multi_proc_daregram_RSD(full_df,  group_name, type, source, target, source_count, target_count, trans_metric, iteration=20):
         maes = []
         rmses = []
         for i in range(iteration):
             print("iteration:", i)
-            selected_df = select_samples(full_df, group_name, source, target, source_count, target_count)
+            start_time = time.time()
+            selected_df = select_samples(full_df, group_name, type, source, target, source_count, target_count)
             code_feature_name = 'ICD codes'
             label_name = 'duration'
-            source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, source, target, code_feature_name, label_name)
+            source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, type, source, target, code_feature_name, label_name)
             print("print data dimensions:", source_data.shape, source_labels.shape, target_data.shape, target_labels.shape)
             test_rmse = None,
             test_mae = None
@@ -724,6 +728,7 @@ def multi_proc_daregram_RSD(full_df,  group_name, source, target, source_count, 
                 test_rmse, test_mae = run_daregram(source_data, source_labels, target_data, target_labels)
             maes.append(test_mae)
             rmses.append(test_rmse)
+            print("time for one iteration is:", time.time()-start_time)
         return maes, rmses
 
 

@@ -19,6 +19,7 @@ from scipy.optimize import minimize
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
 import tensorflow as tf
+import time
 
 import dnn
 from Deepjdot import Deepjdot
@@ -65,6 +66,7 @@ target = 'mimic_iii'
 
 source_count = 120
 target_count = 100
+type = 'cat'
 
 
 
@@ -73,10 +75,11 @@ score_path = os.path.join(output_dir, f"{group_name}_{target}_to_{source}_{trans
 maes = []
 rmses = []
 for i in range(iterations):
-    selected_df = select_samples(cross_df, group_name, source, target, source_count, target_count)
+    start_time = time.time()
+    selected_df = select_samples(cross_df, group_name, type, source, target, source_count, target_count)
     code_feature_name = 'ICD codes'
     label_name = 'duration'
-    source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, source, target, code_feature_name, label_name)
+    source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, type, source, target, code_feature_name, label_name)
     n_dim = np.shape(source_data)
     optim = tf.keras.optimizers.legacy.SGD(lr=0.001)
         
@@ -135,6 +138,7 @@ for i in range(iterations):
     print(rmse.numpy())
     rmses.append(rmse.numpy())
     maes.append(mae.numpy())
+    print("time for one iteration is:", time.time()-start_time)
 
 
 print("rmses is:", rmses)

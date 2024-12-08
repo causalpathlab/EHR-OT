@@ -65,19 +65,16 @@ n_components = 50
 group_name = 'age'
 # groups = [[10, 25], [25, 40], [40, 55], [55, 70], [50, 70]]
 
-# source = [50, 70]
-# target_groups = [[30, 45], [35, 50], [45, 60], [50, 65]]
-
 source = [50, 70]
-# target_groups = [[60, 75], [65, 80]]
-# target_groups = [[50, 65]]
-target_groups = [[15, 30]]
-
-
+target_groups = [[25, 45], [30, 50], [35, 55], [45, 65], [50, 70], [55, 75], [60, 80]]
 source_count = 120
 target_count = 100
+iterations = 100
 
-trans_metric = 'OT'
+# trans_metric = 'OT' 
+# trans_metric = 'TCA'
+# trans_metric = 'GFK'
+trans_metric = 'CA'
 feature_type = 'cts'
 append_features = ['age']
 
@@ -95,7 +92,7 @@ for target in target_groups:
         trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, coupling_diffs, diameters, max_hs \
             = multi_proc(n_components, admid_diagnosis_df, custom_train_reps, group_name, feature_type, source, target, \
                 source_count, target_count, trans_metric=trans_metric, model_func = linear_model.LinearRegression, \
-                iteration=100, equity=False, append_features=append_features)
+                iteration=iterations, equity=False, append_features=append_features)
 
     save_scores_cts(source_maes, source_mses, source_rmses,  target_maes, target_mses, target_rmses, target_clf_maes, target_clf_mses, target_clf_rmses, \
         trans_target_maes, trans_target_mses, trans_target_rmses, label_div_scores, wa_dists, coupling_diffs, diameters, max_hs, score_path)
