@@ -19,6 +19,8 @@ from scipy.optimize import minimize
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
 import tensorflow as tf
+from tensorflow.keras import layers
+
 
 import dnn
 from Deepjdot import Deepjdot
@@ -44,23 +46,28 @@ output_dir = mimic_output_dir
 print(f"Will save outputs to {output_dir}")
 
 
-suffix = None
-
 source_count = 120
 target_count = 100
-iterations = 20
+iterations = 100
 trans_metric = 'deepJDOT'
 
 # # For insurance experiments
 # group_name = 'insurance'
 # groups = ['Self_Pay', 'Private', 'Government', 'Medicare', 'Medicaid']
+# source = 'Self_Pay'
+# target_groups = ['Private']
+# type = 'cat'
+# append_features = []
+# suffix = None
+
 
 # For age experiment, update group_name and groups to appropriate values 
 group_name = 'age'
 source = [50, 70]
 target_groups = [[25, 45], [30, 50], [35, 55], [45, 65], [50, 70], [55, 75], [60, 80]]
 type = 'cts'
-append_features = ['age']
+append_features = ['age_normalized']
+suffix = "with_age"
 
 
 # groups.reverse()
@@ -69,8 +76,12 @@ append_features = ['age']
 """ 
 Read in the original dataframe
 """
-suffix = "with_age"
-admid_diagnosis_df = pd.read_csv(os.path.join(output_dir, f"admission_patient_diagnosis_ICD_{suffix}.csv"), index_col=0, header=0, converters={'ICD codes': literal_eval})
+
+admid_diagnosis_df = pd.read_csv(os.path.join(output_dir, f"admission_patient_diagnosis_ICD.csv"), index_col=0, header=0, converters={'ICD codes': literal_eval})
+if suffix is not None:
+    admid_diagnosis_df = pd.read_csv(os.path.join(output_dir, f"admission_patient_diagnosis_ICD_{suffix}.csv"), index_col=0, header=0, converters={'ICD codes': literal_eval})
+    admid_diagnosis_df['age_normalized'] = admid_diagnosis_df['age'] / 80
+
 print(admid_diagnosis_df)
 
 
@@ -93,10 +104,12 @@ for target in target_groups:
         label_name = 'duration'
         source_data, source_labels, target_data, target_labels = gen_code_feature_label(selected_df, group_name, type, source, target, code_feature_name, label_name, append_features=append_features)
         n_dim = np.shape(source_data)
-        optim = tf.keras.optimizers.legacy.SGD(lr=0.001)
+        print("n_dim is:", n_dim)
+        optim = tf.keras.optimizers.legacy.SGD(lr=0.01)
             
         # #%% Feature extraction as a keras model
         main_input = dnn.Input(shape=(n_dim[1],))
+        print("main_input is:", main_input)
         fe = feat_ext(main_input)
         # # feature extraction model
         fe_model = dnn.Model(main_input, fe, name= 'fe_model')
@@ -140,7 +153,7 @@ for target in target_groups:
                             lr_decay=True,verbose=1)
         # DeepJDOT model fit
         h,t_loss,tacc = al_model.fit(source_data, source_labels, target_data,
-                                    n_iter=1500, target_label=target_labels)
+                                    n_iter=100, target_label=target_labels)
 
 
         #%% accuracy assesment

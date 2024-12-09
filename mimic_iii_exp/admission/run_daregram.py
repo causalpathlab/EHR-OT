@@ -37,9 +37,6 @@ admid_diagnosis_df = pd.read_csv(os.path.join(output_dir, f"admission_patient_di
 print(admid_diagnosis_df)
 
 
-
-suffix = None
-
 source_count = 120
 target_count = 100
 iterations = 100
